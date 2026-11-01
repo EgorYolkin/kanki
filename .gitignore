@@ -22,3 +22,6 @@ Package.resolved.bak
 *.moved-aside
 *.hmap
 *.xcconfig.local
+
+# LLVM coverage artifacts
+*.profraw
