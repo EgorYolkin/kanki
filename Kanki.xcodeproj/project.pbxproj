@@ -8,11 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		07AF579290417D019A9855BC /* KankiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */; };
+		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F9D6142B71CACCB35784B8A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9423A96F92E9FCAC34FA7861 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F0B68E82BEF2032A426A67C8;
+			remoteInfo = Kanki;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		08A1350F44A56F3BE86B85CD /* Kanki.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kanki.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KankiApp.swift; sourceTree = "<group>"; };
+		CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -24,10 +37,19 @@
 			path = Kanki;
 			sourceTree = "<group>";
 		};
+		735E615811A651D363DD6972 /* KankiUITests */ = {
+			isa = PBXGroup;
+			children = (
+				6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */,
+			);
+			path = KankiUITests;
+			sourceTree = "<group>";
+		};
 		A391310A17803DA0F932D4BE /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				08A1350F44A56F3BE86B85CD /* Kanki.app */,
+				CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -36,6 +58,7 @@
 			isa = PBXGroup;
 			children = (
 				0553AB699CD3C1D2268B6F3B /* Kanki */,
+				735E615811A651D363DD6972 /* KankiUITests */,
 				A391310A17803DA0F932D4BE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +66,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		D9EEDE399456879E71B5E570 /* KankiUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5D4B6A8B8194B0277A8B8565 /* Build configuration list for PBXNativeTarget "KankiUITests" */;
+			buildPhases = (
+				B4A8A9B40EE3D0CB27F2E40D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				414DE14720D2B608E6C130F4 /* PBXTargetDependency */,
+			);
+			name = KankiUITests;
+			packageProductDependencies = (
+			);
+			productName = KankiUITests;
+			productReference = CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		F0B68E82BEF2032A426A67C8 /* Kanki */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 37C88A4E3842F5B524F4749F /* Build configuration list for PBXNativeTarget "Kanki" */;
@@ -69,6 +110,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					D9EEDE399456879E71B5E570 = {
+						TestTargetID = F0B68E82BEF2032A426A67C8;
+					};
 				};
 			};
 			buildConfigurationList = 3C5A617B3E5132E9B4D7EAF9 /* Build configuration list for PBXProject "Kanki" */;
@@ -86,6 +130,7 @@
 			projectRoot = "";
 			targets = (
 				F0B68E82BEF2032A426A67C8 /* Kanki */,
+				D9EEDE399456879E71B5E570 /* KankiUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -99,7 +144,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B4A8A9B40EE3D0CB27F2E40D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		414DE14720D2B608E6C130F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F0B68E82BEF2032A426A67C8 /* Kanki */;
+			targetProxy = F9D6142B71CACCB35784B8A8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		30A684E1D5770D8C30F58B3A /* Debug */ = {
@@ -196,6 +257,22 @@
 			};
 			name = Release;
 		};
+		8983964C9A7926599BF3284E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kanki;
+			};
+			name = Debug;
+		};
 		AF1120423F98D5A95B612CFE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -263,6 +340,22 @@
 			};
 			name = Debug;
 		};
+		FC256BFA693CF1C0DE12626B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kanki;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -280,6 +373,15 @@
 			buildConfigurations = (
 				AF1120423F98D5A95B612CFE /* Debug */,
 				6BDAA4CA7B2A079AA886CCFF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5D4B6A8B8194B0277A8B8565 /* Build configuration list for PBXNativeTarget "KankiUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8983964C9A7926599BF3284E /* Debug */,
+				FC256BFA693CF1C0DE12626B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

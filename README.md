@@ -1,0 +1,37 @@
+# Kanki
+
+Нативное iOS-приложение для заметок с типизированными связями, графом знаний и интервальным повторением. Планируется обмен с Anki через `.apkg`: заметки и связи остаются в модели Kanki, а карточки можно повторять в совместимых клиентах Anki. **Сейчас это проект на этапе скелета, а не готовое приложение для обучения.**
+
+## Что есть сейчас
+
+Swift 6 / SwiftUI, минимум iOS 17. В приложении есть вкладки «Обучение», «Заметки», «Граф», «Настройки» и навигационные заготовки экранов карточки, заметки, редактора, поиска, библиотеки, мержей и конфликтов. Пустые состояния сообщают об отсутствии данных. Сохранение, импорт, FSRS, сервер и синхронизация **ещё не реализованы**. На iOS 26 системные элементы используют нативный Liquid Glass; на более ранних версиях — стандартный интерфейс SwiftUI.
+
+## Запуск проекта
+
+Нужны macOS, Xcode с установленной iOS-платформой и [XcodeGen](https://github.com/yonaskolb/XcodeGen). `project.yml` — источник конфигурации; `Kanki.xcodeproj` хранится в репозитории.
+
+```bash
+xcodegen generate
+open Kanki.xcodeproj
+```
+
+Выберите схему `Kanki` и iOS Simulator, затем запустите приложение в Xcode. Подпись кода в проекте отключена; для запуска на физическом устройстве потребуется настроить signing. Проверка из терминала:
+
+```bash
+xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
+  -target arm64-apple-ios17.0-simulator Kanki/KankiApp.swift
+xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' build
+```
+
+Typecheck исходника ранее прошёл. Сборка и запуск пока **не подтверждены**: после установки simulator runtime Xcode запросил принятие лицензии владельцем среды (`sudo xcodebuild -license`). Текущий статус проверки — [issue #2](https://github.com/EgorYolkin/kanki/issues/2).
+
+## Дальнейшая разработка
+
+[План восьми этапов](tasks/plan.md) и [список задач](tasks/todo.md) описывают зависимости и критерии приёмки; задачи ведутся также в [GitHub Issues](https://github.com/EgorYolkin/kanki/issues). Следующий независимый этап — проверка контракта данных и полного цикла `.apkg` в AnkiDesktop ([Э1, issue #3](https://github.com/EgorYolkin/kanki/issues/3)). До Э1 состав нотетайпа и правила обновления нельзя считать зафиксированными. Возможность custom sync URL в AnkiMobile отдельно не подтверждена.
+
+Источник истины по плану — сервер Kanki; локальное хранилище, граф, FSRS и sync появляются на последующих этапах. Планируемая совместимость с Anki не означает, что граф или типизированные связи заработают внутри стандартных клиентов Anki.
+
+## Участие
+
+Прочитайте [правила участия](CONTRIBUTING.md), [правила поведения](CODE_OF_CONDUCT.md) и [инструкции агентам](AGENTS.md). Gitflow: отдельная рабочая ветка от `dev` → PR в `dev`; выпуск — отдельный PR `dev` → `main`. Не коммитьте напрямую в `main` или `dev`. История изменений — в [CHANGELOG.md](CHANGELOG.md) после включения [PR #12](https://github.com/EgorYolkin/kanki/pull/12).
