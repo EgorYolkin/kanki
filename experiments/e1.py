@@ -4,6 +4,7 @@ Run with: uv run --no-project --with genanki==0.13.1 python experiments/e1.py ..
 """
 
 import argparse
+import io
 import json
 import sqlite3
 import tempfile
@@ -67,7 +68,13 @@ def generate(directory: Path) -> None:
 def inspect(package: Path) -> None:
     with zipfile.ZipFile(package) as archive, tempfile.TemporaryDirectory() as temp:
         database = Path(temp) / "collection.anki2"
-        database.write_bytes(archive.read("collection.anki2"))
+        if "collection.anki21b" in archive.namelist():
+            import zstandard
+
+            with zstandard.ZstdDecompressor().stream_reader(io.BytesIO(archive.read("collection.anki21b"))) as source:
+                database.write_bytes(source.read())
+        else:
+            database.write_bytes(archive.read("collection.anki2"))
         with sqlite3.connect(database) as connection:
             notes = connection.execute("SELECT id, guid, mid, mod, flds FROM notes ORDER BY id").fetchall()
             cards = connection.execute("SELECT nid, ord, due, ivl FROM cards ORDER BY nid, ord").fetchall()

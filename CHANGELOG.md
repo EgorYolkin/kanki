@@ -13,4 +13,4 @@
 
 ### Проверка и ограничения
 - Скелет и пробное добавление карточек собраны и проверены на iPhone 17e Simulator (iOS 26.3.1): два UI-теста прошли. Этап 1 завершён, [issue #2](https://github.com/EgorYolkin/kanki/issues/2) закрыт.
-- Эксперимент Э1 с Anki и состав нотетайпа остаются открытыми: [issue #3](https://github.com/EgorYolkin/kanki/issues/3).
+- Эксперимент Э1: скрипт на backend Anki 26.09.3 проверил импорт, два повторения Good, современный `.apkg` (`collection.anki21b`), обновление без потери revlog/due/interval, повторный импорт без дублей и конфликт смены нотетайпа. Визуальный прогон и обратный конвертер в БД Kanki не выполнены; состав нотетайпа не закреплён ([issue #3](https://github.com/EgorYolkin/kanki/issues/3)).
