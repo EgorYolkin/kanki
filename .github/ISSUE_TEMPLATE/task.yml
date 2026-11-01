@@ -1,0 +1,66 @@
+name: Задача
+about: 'Прослеживаемая задача: план, границы, проверка и связь с PR'
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Заполните issue **до** изменений. Ведение плана и статуса — в этом issue; PR открывается после реализации и проверки и ссылается на него через `Closes #N`. Приватные данные и уязвимости — через private vulnerability reporting, не публично.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Пользовательский результат
+      description: Какое наблюдаемое поведение или документ должно измениться?
+    validations:
+      required: true
+  - type: input
+    id: phase
+    attributes:
+      label: Этап или связанный issue
+      placeholder: 'Например: этап 2 / #3; или «вне этапов»'
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Контекст и зависимости
+      description: Файлы, контракты, блокеры; не включайте секреты и личные заметки.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Границы
+      description: Что входит и что явно не входит в задачу?
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: План
+      description: Упорядоченные шаги в чекбоксах; отмечайте их здесь по мере выполнения.
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      description: Проверяемые результат, крайний случай и ожидаемая ошибка.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Сценарий проверки
+      description: Команда или ручной сценарий и способ сообщить о недоступной среде.
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Статус и блокеры
+      description: Заполняйте по ходу работы фактическими результатами; незавершённое не закрывайте.
+      value: 'Ожидает начала.'
