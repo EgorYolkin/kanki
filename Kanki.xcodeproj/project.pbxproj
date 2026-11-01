@@ -7,8 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		007F568FD25838F0311ABF95 /* LearningSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */; };
 		01CEB24A2815331C4773EFDF /* Destination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2E736179A418F50CB67EBB /* Destination.swift */; };
 		037B39E0BD011C0960ECF264 /* RecallRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B3EFF5EE7F649EA9F3D241 /* RecallRating.swift */; };
+		04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */; };
 		07AF579290417D019A9855BC /* KankiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */; };
 		18000D5D18FABA38A7C40F42 /* ReviewSessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */; };
 		1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B91454A611902605A7BD438 /* RecallRatingTests.swift */; };
@@ -26,6 +28,7 @@
 		6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48706187509E815F62681E73 /* DestinationTests.swift */; };
 		738AB8DFF25CDBC497363B8A /* LearningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B576BC0D00A4522D761422A /* LearningScreen.swift */; };
 		7503E6A97B9795F4FCA97EA9 /* SectionIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE0D609C81D308B2B202E60 /* SectionIntro.swift */; };
+		793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */; };
 		7C4B54AC72903FE1FC95EF08 /* AddSessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */; };
 		8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */; };
 		94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B9A60F2B13C0AFD8FE7597 /* PlaceholderScreen.swift */; };
@@ -35,6 +38,7 @@
 		C3D75FF8CCCF06BEBD697B3A /* ReviewSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */; };
 		CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */; };
 		D1108B1F5BD6837BD01A0962 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF15689DA2A920F45308E742 /* Assets.xcassets */; };
+		D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */; };
 		D9EE570D6F392F7EEECF4528 /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9D099E1E9DFE214E983738 /* SessionLog.swift */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 		E899C275914FBF2E1848C731 /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5298CF1C1CD9C6617351780 /* AppSection.swift */; };
@@ -70,6 +74,7 @@
 		08A1350F44A56F3BE86B85CD /* Kanki.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kanki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardScreen.swift; sourceTree = "<group>"; };
 		110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearanceTests.swift; sourceTree = "<group>"; };
+		115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchTests.swift; sourceTree = "<group>"; };
 		18B9A60F2B13C0AFD8FE7597 /* PlaceholderScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderScreen.swift; sourceTree = "<group>"; };
 		1A0A4013C1076D774BBD30F1 /* SessionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCard.swift; sourceTree = "<group>"; };
 		1B2E736179A418F50CB67EBB /* Destination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Destination.swift; sourceTree = "<group>"; };
@@ -77,11 +82,14 @@
 		283B368D15032ED87CD7B9CD /* NotesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesScreen.swift; sourceTree = "<group>"; };
 		2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B9D099E1E9DFE214E983738 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
+		2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCardStore.swift; sourceTree = "<group>"; };
 		32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDraftTests.swift; sourceTree = "<group>"; };
 		34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsUITests.swift; sourceTree = "<group>"; };
 		3E52C6E14626A98CC3C8D2F2 /* SessionReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReview.swift; sourceTree = "<group>"; };
+		3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearch.swift; sourceTree = "<group>"; };
 		41DFA9F67E9235B814C342A5 /* KankiMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KankiMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48706187509E815F62681E73 /* DestinationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationTests.swift; sourceTree = "<group>"; };
+		51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningSnapshot.swift; sourceTree = "<group>"; };
 		54B3EFF5EE7F649EA9F3D241 /* RecallRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecallRating.swift; sourceTree = "<group>"; };
 		5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		5B576BC0D00A4522D761422A /* LearningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningScreen.swift; sourceTree = "<group>"; };
@@ -112,6 +120,7 @@
 			children = (
 				CF15689DA2A920F45308E742 /* Assets.xcassets */,
 				B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */,
+				2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */,
 				FF1E0E94D27AC4F318732EC0 /* Domain */,
 				F37EF497576787401095E09E /* Views */,
 			);
@@ -124,6 +133,7 @@
 				110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */,
 				248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */,
 				32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */,
+				115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */,
 				48706187509E815F62681E73 /* DestinationTests.swift */,
 				5B91454A611902605A7BD438 /* RecallRatingTests.swift */,
 				BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */,
@@ -204,7 +214,9 @@
 				5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */,
 				D5298CF1C1CD9C6617351780 /* AppSection.swift */,
 				690B4C72A928A06894F3ADDB /* CardDraft.swift */,
+				3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */,
 				1B2E736179A418F50CB67EBB /* Destination.swift */,
+				51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */,
 				54B3EFF5EE7F649EA9F3D241 /* RecallRating.swift */,
 				BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */,
 				1A0A4013C1076D774BBD30F1 /* SessionCard.swift */,
@@ -347,6 +359,7 @@
 				40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */,
 				31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */,
 				B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */,
+				793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */,
 				6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */,
 				1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */,
 				CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */,
@@ -364,10 +377,13 @@
 				E899C275914FBF2E1848C731 /* AppSection.swift in Sources */,
 				3FAEE456BE886530D1044886 /* AppShell.swift in Sources */,
 				A83D5F95586A1F21B0C8CF8A /* CardDraft.swift in Sources */,
+				04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */,
 				01CEB24A2815331C4773EFDF /* Destination.swift in Sources */,
 				2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */,
 				07AF579290417D019A9855BC /* KankiApp.swift in Sources */,
 				738AB8DFF25CDBC497363B8A /* LearningScreen.swift in Sources */,
+				007F568FD25838F0311ABF95 /* LearningSnapshot.swift in Sources */,
+				D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */,
 				5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */,
 				94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */,
 				037B39E0BD011C0960ECF264 /* RecallRating.swift in Sources */,
