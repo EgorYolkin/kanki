@@ -22,3 +22,9 @@ Package.resolved.bak
 *.moved-aside
 *.hmap
 *.xcconfig.local
+
+# LLVM coverage artifacts
+*.profraw
+# Python bytecode
+__pycache__/
+*.pyc

@@ -1,5 +1,7 @@
 # Kanki
 
+[![CI](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml/badge.svg)](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml)
+
 Нативное iOS-приложение для заметок с типизированными связями, графом знаний и интервальным повторением. Планируется обмен с Anki через `.apkg`: заметки и связи остаются в модели Kanki, а карточки можно повторять в совместимых клиентах Anki. **Сейчас это скелет приложения с демо-функциями текущего сеанса, а не готовое приложение для обучения.**
 
 ## Что есть сейчас
@@ -15,19 +17,17 @@ xcodegen generate
 open Kanki.xcodeproj
 ```
 
-Выберите схему `Kanki` и iOS Simulator, затем запустите приложение в Xcode. Подпись кода в проекте отключена; для запуска на физическом устройстве потребуется настроить signing. Проверка из терминала:
+Выберите схему `Kanki` и iOS Simulator, затем запустите приложение в Xcode. Подпись кода в проекте отключена; для запуска на физическом устройстве потребуется настроить signing. Проверка из терминала — те же команды, что выполняет CI:
 
 ```bash
-xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
-  -target arm64-apple-ios17.0-simulator Kanki/KankiApp.swift
-xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
-  -destination 'generic/platform=iOS Simulator' build
-xcodebuild test -project Kanki.xcodeproj -scheme Kanki \
-  -derivedDataPath /tmp/kanki-build \
-  -destination 'platform=iOS Simulator,name=iPhone 17e' CODE_SIGNING_ALLOWED=NO
+xcodegen generate
+./scripts/lint.sh      # SwiftLint --strict и markdownlint-cli2
+./scripts/test.sh      # unit-тесты KankiTests и порог покрытия 95 %
+./scripts/ui-test.sh   # четыре UI-теста
+./scripts/ci.sh        # весь контур целиком
 ```
 
-Сборка, запуск и UI-тесты проверены на iPhone 17e Simulator (iOS 26.3.1, Xcode 27.2): четыре теста — три `SessionCardUITests` (вкладки, переходы, пустые состояния, пробная карточка с оценкой и очередью повторения, отсутствие сохранения после перезапуска) и `SettingsUITests` (тема сохраняется между запусками, статусы не обещают нереализованное). Для стабильного прогона используйте отдельный симулятор и чистый `-derivedDataPath`: общее устройство или DerivedData, занятые другой сборкой, дают `Test crashed with signal kill` или устаревший тест-бандл. При таком падении перезапустите симулятор (`xcrun simctl shutdown/boot`).
+Сборка, запуск и тесты проверены на iPhone 17e Simulator (iOS 26.3.1, Xcode 27.2): 24 unit-теста покрывают доменный слой (`Kanki/Domain`, 100 % строк при пороге 95 %), четыре UI-теста — три `SessionCardUITests` (вкладки, переходы, пустые состояния, пробная карточка с оценкой и очередью повторения, отсутствие сохранения после перезапуска) и `SettingsUITests` (тема сохраняется между запусками, статусы не обещают нереализованное). Для стабильного прогона используйте отдельный симулятор и чистый `-derivedDataPath`: общее устройство или занятая другой сборкой DerivedData дают устаревший тест-бандл, а `Test crashed with signal kill` лечится перезапуском симулятора (`xcrun simctl shutdown/boot`). Правила проверок и порог — в [docs/quality-gates.md](docs/quality-gates.md).
 
 ## Установка на личное устройство без платной подписки
 
@@ -52,4 +52,4 @@ LaunchAgent запускается при загрузке пользовате�
 
 ## Участие
 
-Прочитайте [правила участия](CONTRIBUTING.md), [правила поведения](CODE_OF_CONDUCT.md) и [инструкции агентам](AGENTS.md). Любая задача начинается с отдельного GitHub issue: план, границы и проверка ведутся там, затем изменения приходят через коммиты и PR с `Closes #N`. Gitflow: отдельная рабочая ветка от `dev` → PR в `dev`; выпуск — отдельный PR `dev` → `main`. Не коммитьте напрямую в `main` или `dev`. История изменений — в [CHANGELOG.md](CHANGELOG.md).
+Прочитайте [правила участия](CONTRIBUTING.md), [правила поведения](CODE_OF_CONDUCT.md), [инструкции агентам](AGENTS.md) и [контур качества](docs/quality-gates.md). Любая задача начинается с отдельного GitHub issue: план, границы и проверка ведутся там, затем изменения приходят через коммиты и PR с `Closes #N`. Gitflow: отдельная рабочая ветка от `dev` → PR в `dev`; выпуск — отдельный PR `dev` → `main`. Не коммитьте напрямую в `main` или `dev`. История изменений — в [CHANGELOG.md](CHANGELOG.md).
