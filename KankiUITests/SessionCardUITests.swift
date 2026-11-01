@@ -49,6 +49,7 @@ final class SessionCardUITests: XCTestCase {
 
         let startReview = app.buttons["startReviewSession"]
         XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
+        XCTAssertEqual(app.buttons.matching(identifier: "addSessionCard").count, 1)
         XCTAssertTrue(startReview.isEnabled)
         XCTAssertTrue(startReview.isHittable)
         let tabBar = app.tabBars.firstMatch
@@ -80,6 +81,24 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
     }
 
+    func testSearchFiltersCardsByQuestion() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
+        addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
+
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("небо")
+
+        XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Что такое Km?"].exists)
+        XCTAssertFalse(app.staticTexts["Ничего не найдено"].exists)
+    }
+
     private func addCard(in app: XCUIApplication, question: String, answer: String) {
         app.buttons["addSessionCard"].tap()
         let questionField = app.descendants(matching: .any)["cardQuestion"]
@@ -100,6 +119,7 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.searchFields.firstMatch.exists)
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
         XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5))

@@ -143,6 +143,16 @@ private struct LearningScreen: View {
     @State private var isAddingCard = false
     @State private var isReviewing = false
     @State private var selectedCard: SessionCard?
+    @State private var searchQuery = ""
+
+    private var filteredCards: [SessionCard] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return cards }
+        return cards.filter {
+            $0.question.localizedCaseInsensitiveContains(query) ||
+            $0.answer.localizedCaseInsensitiveContains(query)
+        }
+    }
 
     init() {
         var snapshot = LearningSnapshot()
@@ -173,34 +183,39 @@ private struct LearningScreen: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Section("Карточки") {
-                    ForEach(cards) { card in
-                        Button {
-                            selectedCard = card
-                        } label: {
-                            Label(card.question, systemImage: "rectangle.on.rectangle")
-                                .foregroundStyle(.primary)
+                if filteredCards.isEmpty {
+                    Section {
+                        SectionIntro(symbol: "magnifyingglass", title: "Ничего не найдено", detail: "Измените запрос или добавьте карточку.")
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    Section("Карточки") {
+                        ForEach(filteredCards) { card in
+                            Button {
+                                selectedCard = card
+                            } label: {
+                                Label(card.question, systemImage: "rectangle.on.rectangle")
+                                    .foregroundStyle(.primary)
+                            }
                         }
                     }
                 }
             }
         }
-        .contentMargins(.bottom, 88, for: .scrollContent)
+        .contentMargins(.bottom, 148, for: .scrollContent)
         .navigationTitle("Обучение")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isAddingCard = true
-                } label: {
-                    Label("Добавить карточку", systemImage: "plus")
-                }
-                .accessibilityIdentifier("addSessionCard")
-            }
-        }
+        .searchable(
+            text: $searchQuery,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Поиск по карточкам"
+        )
         .overlay(alignment: .bottomTrailing) {
-            reviewButton
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
+            VStack(alignment: .trailing, spacing: 12) {
+                addCardButton
+                reviewButton
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
             AddSessionCardScreen { question, answer in
@@ -227,6 +242,22 @@ private struct LearningScreen: View {
         }
     }
 
+    private var addCardButton: some View {
+        Button {
+            isAddingCard = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .background { FloatingCircleBackground(size: 44) }
+        .accessibilityLabel("Добавить карточку")
+        .accessibilityIdentifier("addSessionCard")
+    }
+
     private var reviewButton: some View {
         Button {
             isReviewing = true
@@ -238,7 +269,7 @@ private struct LearningScreen: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .background { ReviewFloatingBackground() }
+        .background { FloatingCircleBackground(size: 56) }
         .accessibilityLabel("Начать повторение")
         .accessibilityIdentifier("startReviewSession")
         .disabled(cards.isEmpty)
@@ -261,16 +292,18 @@ private struct LearningScreen: View {
     }
 }
 
-private struct ReviewFloatingBackground: View {
+private struct FloatingCircleBackground: View {
+    let size: CGFloat
+
     var body: some View {
         if #available(iOS 26.0, *) {
             Color.clear
-                .frame(width: 56, height: 56)
+                .frame(width: size, height: size)
                 .glassEffect(.regular.interactive(), in: Circle())
         } else {
             Circle()
                 .fill(.regularMaterial)
-                .frame(width: 56, height: 56)
+                .frame(width: size, height: size)
                 .overlay(Circle().strokeBorder(Color.primary.opacity(0.08)))
                 .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
         }

@@ -24,7 +24,7 @@ Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, serve
 
 `Kanki/KankiApp.swift` currently contains the entire app: `KankiApp` → `AppShell` (`TabView`) → four independent `NavigationStack`s for Learning, Notes, Graph and Settings. `Destination: Hashable` is the value-based route (`card`, `note`, `editor`, `search`, `library`, `merges`, `conflicts`), with exhaustive `title` and `symbol` switches. `NavigationLink(value:)` in the three list-based tabs resolves to `PlaceholderScreen` via `.navigationDestination(for:)`; **Graph has no destination registration**, so register one before adding links there. `SectionIntro` wraps `ContentUnavailableView` for empty states; all leaf destinations are placeholders.
 
-`LearningScreen` owns the stage-1 demo: `SessionCard` (id, question, answer, createdAt) and `SessionReview` (`RecallRating` 1–4 plus timestamp), loaded from and written to `LocalCardStore` — a Codable `LearningSnapshot` in `Application Support/Kanki/cards.json`, written atomically. Cards, ratings and the theme survive relaunch; a running review queue does not. A write/read failure surfaces in an alert. `ReviewSessionScreen` (`startReviewSession`, `reviewFinish`) walks the stored cards as a queue and shows a session summary («Сеанс завершён»). Due dates, FSRS, import and sync do not exist.
+`LearningScreen` owns the stage-1 demo: `SessionCard` (id, question, answer, createdAt) and `SessionReview` (`RecallRating` 1–4 plus timestamp), loaded from and written to `LocalCardStore` — a Codable `LearningSnapshot` in `Application Support/Kanki/cards.json`, written atomically. Cards, ratings and the theme survive relaunch; a running review queue does not. A write/read failure surfaces in an alert. `ReviewSessionScreen` (`startReviewSession`, `reviewFinish`) walks the stored cards as a queue and shows a session summary («Сеанс завершён»). A floating action stack sits above the tab bar in the bottom-right corner: `addSessionCard` (44 pt plus) above `startReviewSession` (56 pt play), Liquid Glass on iOS 26 and `.regularMaterial` below. `.searchable` filters the card list by question or answer and shows «Ничего не найдено». Due dates, FSRS, import and sync do not exist.
 
 There are no models, networking, database, async operations, dependency injection or state container yet. The *planned*, not implemented, path is note import → relations/edges and FTS5 → card display in WKWebView → swift-fsrs scheduling/review log → delta sync and `(guid, ord)` Anki progress mapping. Do not introduce a repository/view-model layer before its feature needs it.
 
@@ -70,9 +70,9 @@ Build and UI tests are verified on iPhone 17e Simulator (iOS 26.3.1) with Xcode 
 
 | File | Role |
 |---|---|
-| `Kanki/KankiApp.swift` | Entry point, routes, tabs, empty states, placeholder screens, the session-card/rating demo and the floating review button. |
+| `Kanki/KankiApp.swift` | Entry point, routes, tabs, empty states, placeholder screens, the session-card/rating demo, card search and the floating action stack. |
 | `Kanki/LocalCardStore.swift` | Codable card/review models and the JSON snapshot in Application Support; `--reset-store` clears it for tests. |
-| `KankiUITests/SessionCardUITests.swift` | UI tests for tabs, placeholder navigation, session cards and persistence across relaunch. |
+| `KankiUITests/SessionCardUITests.swift` | UI tests for tabs, placeholder navigation, session cards, search and persistence across relaunch. |
 | `project.yml` | Sole build specification: app target `Kanki` and `KankiUITests`, iOS 17, Swift 6, signing disabled, generated Info.plist. |
 | `tasks/plan.md`, `tasks/todo.md` | Eight-stage plan and current stage acceptance ledger; cross-check stage issues. |
 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | Review/verification process and participant/agent conduct. |
