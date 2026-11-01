@@ -2,13 +2,10 @@ import SwiftUI
 
 @main
 struct KankiApp: App {
-    @AppStorage("appearance") private var appearance: AppAppearance = .system
-
     var body: some Scene {
         WindowGroup {
             AppShell()
                 .tint(.indigo)
-                .preferredColorScheme(appearance.colorScheme)
         }
     }
 }
@@ -62,6 +59,8 @@ enum Destination: Hashable {
 }
 
 struct AppShell: View {
+    @AppStorage("appearance") private var appearance: AppAppearance = .system
+
     var body: some View {
         TabView {
             NavigationStack {
@@ -93,6 +92,7 @@ struct AppShell: View {
             }
             .tabItem { Label("Настройки", systemImage: "gearshape") }
         }
+        .preferredColorScheme(appearance.colorScheme)
     }
 }
 
@@ -500,13 +500,23 @@ private struct SettingsScreen: View {
     var body: some View {
         List {
             Section("Оформление") {
-                Picker("Тема", selection: $appearance) {
-                    ForEach(AppAppearance.allCases) { option in
-                        Text(option.title).tag(option)
+                ForEach(AppAppearance.allCases) { option in
+                    Button {
+                        appearance = option
+                    } label: {
+                        HStack {
+                            Text(option.title)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if appearance == option {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
                     }
+                    .accessibilityIdentifier("appearance-\(option.rawValue)")
+                    .accessibilityAddTraits(appearance == option ? [.isSelected] : [])
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("appearancePicker")
                 Text("Тема сохраняется между запусками и применяется ко всему приложению.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
