@@ -20,6 +20,7 @@ from anki.importing import ImportAnkiPackageOptions, ImportAnkiPackageRequest
 from anki.scheduler.v3 import CardAnswer
 
 from e1 import UID_A, UID_B, inspect
+from e1_restore import restore
 
 
 def exported_state(package: Path):
@@ -107,6 +108,26 @@ def run(directory: Path) -> None:
             assert len(conflict.conflicting) == 1 and not conflict.updated and not conflict.new
             final_notes, final_progress, final_logs = state()
             assert len(final_notes) == 2 and final_progress == reviewed and final_logs == 2
+            restored = Path(temp) / "restored.sqlite"
+            restore(directory / "test3.apkg", package, restored)
+            with sqlite3.connect(restored) as database:
+                assert database.execute("SELECT body FROM notes WHERE uid = ?", (UID_A,)).fetchone()[0] == "Обновлённая модель скорости реакции."
+                assert set(database.execute("SELECT src_uid, rel_type, dst_uid, derived FROM edges")) == {
+                    (UID_B, "requires", UID_A, 0), (UID_A, "required_for", UID_B, 1),
+                    (UID_A, "related", UID_B, 0), (UID_B, "related", UID_A, 1),
+                }
+                assert set(database.execute("SELECT guid, ord, due, interval, queue FROM cards")) == {
+                    (guid, ord_, due, ivl, queue) for (guid, ord_), (due, ivl, queue) in reviewed.items()
+                }
+                assert sorted(database.execute("SELECT guid, ord FROM review_log")) == sorted(reviewed)
+            rejected = Path(temp) / "rejected.sqlite"
+            try:
+                restore(directory / "test4-type-change.apkg", package, rejected)
+            except ValueError:
+                assert not rejected.exists()
+            else:
+                raise AssertionError("E1 type-change package was not rejected")
+            print("Reverse import: current content, 4 canonical/derived edges, 2 reviews and due/interval restored by (guid, ord)")
             print("Anki 26.09.3 backend: 2 notes, 2 cards, 2 reviews; export/import preserved (guid, ord), progress and Relations")
             print("Re-import: 0 added, 0 updated; note-type change: 1 conflict, original notes and progress intact")
             inspect(package)
