@@ -34,4 +34,4 @@ Typecheck исходника ранее прошёл. Сборка и запус
 
 ## Участие
 
-Прочитайте [правила участия](CONTRIBUTING.md), [правила поведения](CODE_OF_CONDUCT.md) и [инструкции агентам](AGENTS.md). Gitflow: отдельная рабочая ветка от `dev` → PR в `dev`; выпуск — отдельный PR `dev` → `main`. Не коммитьте напрямую в `main` или `dev`. История изменений — в [CHANGELOG.md](CHANGELOG.md) после включения [PR #12](https://github.com/EgorYolkin/kanki/pull/12).
+Прочитайте [правила участия](CONTRIBUTING.md), [правила поведения](CODE_OF_CONDUCT.md) и [инструкции агентам](AGENTS.md). Любая задача начинается с отдельного GitHub issue: план, границы и проверка ведутся там, затем изменения приходят через коммиты и PR с `Closes #N`. Gitflow: отдельная рабочая ветка от `dev` → PR в `dev`; выпуск — отдельный PR `dev` → `main`. Не коммитьте напрямую в `main` или `dev`. История изменений — в [CHANGELOG.md](CHANGELOG.md).
