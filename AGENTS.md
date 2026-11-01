@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Kanki is a native SwiftUI iOS app (Swift 6, iOS 17+) for Markdown-based notes, typed relations, a knowledge graph, spaced repetition and eventual Anki `.apkg` interoperability. **Current code is a navigation shell plus an in-memory demo**: session cards and their ratings live only in `@State` and disappear on relaunch. There are no real notes, persistence, SRS, import or sync. The future server is the source of truth; never present planned behavior as implemented. Read `tasks/plan.md` before changing scope and `tasks/todo.md` for stage status; GitHub issues track stage work (iOS stages #3–#9, macOS proposal #14).
+Kanki is a native SwiftUI iOS app (Swift 6, iOS 17+) for Markdown-based notes, typed relations, a knowledge graph, spaced repetition and eventual Anki `.apkg` interoperability. **Current code is a navigation shell plus a locally stored demo**: session cards, their ratings and the appearance theme persist on device; there are no real notes, SRS, import, server or sync. The future server is the source of truth; never present planned behavior as implemented. Read `tasks/plan.md` before changing scope and `tasks/todo.md` for stage status; GitHub issues track stage work (iOS stages #3–#9, macOS proposal #14).
 
-Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, persistence or successful actions. Do not freeze database/network contracts or the Anki note type before experiment Э1 (#3).
+Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, server state or successful actions. Local persistence must be real (`LocalCardStore`) and must surface write failures. Do not freeze database/network contracts or the Anki note type before experiment Э1 (#3).
 
 ## Gitflow (required)
 
@@ -24,7 +24,7 @@ Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, persi
 
 `Kanki/KankiApp.swift` currently contains the entire app: `KankiApp` → `AppShell` (`TabView`) → four independent `NavigationStack`s for Learning, Notes, Graph and Settings. `Destination: Hashable` is the value-based route (`card`, `note`, `editor`, `search`, `library`, `merges`, `conflicts`), with exhaustive `title` and `symbol` switches. `NavigationLink(value:)` in the three list-based tabs resolves to `PlaceholderScreen` via `.navigationDestination(for:)`; **Graph has no destination registration**, so register one before adding links there. `SectionIntro` wraps `ContentUnavailableView` for empty states; all leaf destinations are placeholders.
 
-`LearningScreen` owns the stage-1 demo in `@State`: `SessionCard` (question/answer) and `SessionReview` (`RecallRating` 1–4 plus timestamp), with the count and last rating shown in the list. `ReviewSessionScreen` (`startReviewSession`, `reviewFinish`) walks the same in-memory cards as a queue, records a rating per card and ends with a session summary («Сеанс завершён»). Nothing is written to disk; relaunching clears cards, reviews and any running session. Due dates, FSRS, import and sync do not exist.
+`LearningScreen` owns the stage-1 demo: `SessionCard` (id, question, answer, createdAt) and `SessionReview` (`RecallRating` 1–4 plus timestamp), loaded from and written to `LocalCardStore` — a Codable `LearningSnapshot` in `Application Support/Kanki/cards.json`, written atomically. Cards, ratings and the theme survive relaunch; a running review queue does not. A write/read failure surfaces in an alert. `ReviewSessionScreen` (`startReviewSession`, `reviewFinish`) walks the stored cards as a queue and shows a session summary («Сеанс завершён»). Due dates, FSRS, import and sync do not exist.
 
 There are no models, networking, database, async operations, dependency injection or state container yet. The *planned*, not implemented, path is note import → relations/edges and FTS5 → card display in WKWebView → swift-fsrs scheduling/review log → delta sync and `(guid, ord)` Anki progress mapping. Do not introduce a repository/view-model layer before its feature needs it.
 
@@ -62,7 +62,7 @@ Build and UI tests are verified on iPhone 17e Simulator (iOS 26.3.1) with Xcode 
 - Swift 6 project mode; SwiftUI `View` value structs, `var body: some View`, `List { Section }`, `.navigationTitle(...)`; pushed placeholders use `.navigationBarTitleDisplayMode(.inline)`.
 - `KankiApp`, `Destination` and `AppShell` have module visibility; screens/helpers are file-private `private struct`. Promote deliberately when sharing or testing. Types use PascalCase; properties and enum cases use camelCase/lowercase.
 - User-visible strings are Russian literals; identifiers and SF Symbol names are English. `Destination` cases require updates to both exhaustive `title` and `symbol` switches. Tab labels and navigation titles are separate literals.
-- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. `SettingsScreen` is a real page: an appearance picker (`appearancePicker`) backed by `@AppStorage("appearance")` (`AppAppearance`: системное/светлое/тёмное, applied in `KankiApp` via `preferredColorScheme`, the only persisted user preference), a non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")` with an explanation of when sync arrives, a note that cards/ratings/sessions are in-memory, version/build from `Info.plist`, and links to merges/conflicts. No fake connect button.
+- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. `SettingsScreen` is a real page: an appearance picker (`appearancePicker`) backed by `@AppStorage("appearance")` (`AppAppearance`: системное/светлое/тёмное, applied in `KankiApp` via `preferredColorScheme`), a non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")` with an explanation of when sync arrives, a note that cards/ratings are stored on this iPhone while no server is configured, version/build from `Info.plist`, and links to merges/conflicts. No fake connect button.
 - No error-handling, async, DI or app-state convention exists yet. For future actor-crossing models honor Swift 6 isolation/`Sendable`; choose patterns when implementing the actual feature, not as a speculative scaffold.
 - Keep in-app copy and `tasks/` Russian; commit messages English.
 
@@ -70,8 +70,9 @@ Build and UI tests are verified on iPhone 17e Simulator (iOS 26.3.1) with Xcode 
 
 | File | Role |
 |---|---|
-| `Kanki/KankiApp.swift` | Entry point, routes, tabs, empty states, placeholder screens and the session-card/rating demo. |
-| `KankiUITests/SessionCardUITests.swift` | UI tests for tabs, placeholder navigation, session cards and the persistence-free relaunch. |
+| `Kanki/KankiApp.swift` | Entry point, routes, tabs, empty states, placeholder screens, the session-card/rating demo and the floating review button. |
+| `Kanki/LocalCardStore.swift` | Codable card/review models and the JSON snapshot in Application Support; `--reset-store` clears it for tests. |
+| `KankiUITests/SessionCardUITests.swift` | UI tests for tabs, placeholder navigation, session cards and persistence across relaunch. |
 | `project.yml` | Sole build specification: app target `Kanki` and `KankiUITests`, iOS 17, Swift 6, signing disabled, generated Info.plist. |
 | `tasks/plan.md`, `tasks/todo.md` | Eight-stage plan and current stage acceptance ledger; cross-check stage issues. |
 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | Review/verification process and participant/agent conduct. |
@@ -83,6 +84,6 @@ macOS with Xcode 27.2 (Xcode 26.3 or newer also supported) and XcodeGen 2.46.0. 
 
 ## Testing & QA
 
-XCUITest target `KankiUITests` exists; there is no unit-test target, CI, linter or formatter. Gates for a change: `xcodegen generate` when sources/resources move, `swiftc -typecheck -parse-as-library`, `xcodebuild build`, and `xcodebuild test` for user-visible changes (see commands above). Run tests on an available booted simulator; if both tests die with `signal kill`, reboot the simulator rather than re-running blindly. Verify changed user paths on the simulator: tab access, destination navigation, explanatory empty states and no misleading affordances. Report actual commands/results and blockers; never equate typecheck with a successful build or test.
+XCUITest target `KankiUITests` exists; there is no unit-test target, CI, linter or formatter. Gates for a change: `xcodegen generate` when sources/resources move, `swiftc -typecheck -parse-as-library`, `xcodebuild build`, and `xcodebuild test` for user-visible changes (see commands above). Run tests on an available booted simulator; if the whole suite dies with `signal kill`, reboot the simulator rather than re-running blindly. Tests that depend on stored cards launch with the `--reset-store` argument to start from an empty snapshot. Verify changed user paths on the simulator: tab access, destination navigation, explanatory empty states and no misleading affordances. Report actual commands/results and blockers; never equate typecheck with a successful build or test.
 
 Keep the test target a sibling directory in `project.yml`, **not under `Kanki/`** (its entire path belongs to the app target), then regenerate. Private screens require an intentional visibility change for direct tests. Update both `tasks/todo.md` and the relevant stage issue when acceptance criteria actually land; leave blocked work unchecked with the reason.

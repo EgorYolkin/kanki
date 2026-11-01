@@ -8,7 +8,7 @@ final class SettingsUITests: XCTestCase {
 
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
-        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения."].exists)
+        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся на этом iPhone. Сервер не подключён, синхронизация не настроена."].exists)
 
         app.buttons["Тёмное"].tap()
         XCTAssertTrue(app.buttons["Тёмное"].isSelected)
@@ -17,6 +17,7 @@ final class SettingsUITests: XCTestCase {
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["О приложении"].exists)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Версия'")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Пробная сборка'")).firstMatch.exists)
 
         app.terminate()
         app.launch()

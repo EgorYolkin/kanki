@@ -4,6 +4,12 @@ import SwiftUI
 struct KankiApp: App {
     @AppStorage("appearance") private var appearance: AppAppearance = .system
 
+    init() {
+        if ProcessInfo.processInfo.arguments.contains(LocalCardStore.resetArgument) {
+            LocalCardStore.reset()
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             AppShell()
@@ -110,18 +116,7 @@ private struct SectionIntro: View {
     }
 }
 
-private struct SessionCard: Identifiable {
-    let id = UUID()
-    let question: String
-    let answer: String
-}
-
-private enum RecallRating: Int, CaseIterable {
-    case again = 1
-    case hard
-    case good
-    case easy
-
+private extension RecallRating {
     var title: String {
         switch self {
         case .again: "Снова"
@@ -141,42 +136,44 @@ private enum RecallRating: Int, CaseIterable {
     }
 }
 
-private struct SessionReview {
-    let cardID: UUID
-    let rating: RecallRating
-    let reviewedAt: Date
-}
-
 private struct LearningScreen: View {
-    @State private var cards: [SessionCard] = []
-    @State private var reviews: [SessionReview] = []
+    @State private var cards: [SessionCard]
+    @State private var reviews: [SessionReview]
+    @State private var storageError: String?
     @State private var isAddingCard = false
     @State private var isReviewing = false
     @State private var selectedCard: SessionCard?
 
+    init() {
+        var snapshot = LearningSnapshot()
+        var loadMessage: String?
+        do {
+            snapshot = try LocalCardStore.load()
+        } catch {
+            loadMessage = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
+        }
+        _cards = State(initialValue: snapshot.cards)
+        _reviews = State(initialValue: snapshot.reviews)
+        _storageError = State(initialValue: loadMessage)
+    }
+
     var body: some View {
         List {
-            Section {
-                Text("Карточки и оценки сохраняются только до закрытия приложения. Расписание повторения и синхронизация пока недоступны.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
             if cards.isEmpty {
                 Section {
-                    SectionIntro(symbol: "rectangle.stack", title: "Карточек пока нет", detail: "Добавьте карточку с вопросом и ответом для просмотра в этом сеансе.")
+                    SectionIntro(symbol: "rectangle.stack", title: "Карточек пока нет", detail: "Добавьте карточку с вопросом и ответом.")
                         .frame(maxWidth: .infinity)
                 }
             } else {
                 Section {
-                    Text("Оценок в этом сеансе: \(reviews.count)")
+                    Text("Оценок: \(reviews.count)")
                         .foregroundStyle(.secondary)
                     if let lastReview = reviews.last {
                         Text("Последняя оценка: \(lastReview.rating.title)")
                             .foregroundStyle(.secondary)
                     }
                 }
-                Section("Карточки этого сеанса") {
+                Section("Карточки") {
                     ForEach(cards) { card in
                         Button {
                             selectedCard = card
@@ -187,21 +184,8 @@ private struct LearningScreen: View {
                     }
                 }
             }
-
-            Section {
-                Button {
-                    isReviewing = true
-                } label: {
-                    Label("Начать повторение", systemImage: "play.fill")
-                }
-                .accessibilityIdentifier("startReviewSession")
-                .disabled(cards.isEmpty)
-            } footer: {
-                Text(cards.isEmpty
-                     ? "Добавьте хотя бы одну карточку, чтобы начать сеанс."
-                     : "Очередь пройдёт по карточкам этого сеанса. Расписание повторения не рассчитывается.")
-            }
         }
+        .contentMargins(.bottom, 88, for: .scrollContent)
         .navigationTitle("Обучение")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -213,20 +197,82 @@ private struct LearningScreen: View {
                 .accessibilityIdentifier("addSessionCard")
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            reviewButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
+        }
         .sheet(isPresented: $isAddingCard) {
             AddSessionCardScreen { question, answer in
                 cards.append(SessionCard(question: question, answer: answer))
+                persist()
             }
         }
         .sheet(item: $selectedCard) { card in
             SessionCardScreen(card: card) { rating in
                 reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+                persist()
             }
         }
         .sheet(isPresented: $isReviewing) {
             ReviewSessionScreen(cards: cards) { card, rating in
                 reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+                persist()
             }
+        }
+        .alert("Ошибка сохранения", isPresented: isStorageErrorPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(storageError ?? "")
+        }
+    }
+
+    private var reviewButton: some View {
+        Button {
+            isReviewing = true
+        } label: {
+            Image(systemName: "play.fill")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(cards.isEmpty ? Color.secondary : Color.primary)
+                .frame(width: 56, height: 56)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .background { ReviewFloatingBackground() }
+        .accessibilityLabel("Начать повторение")
+        .accessibilityIdentifier("startReviewSession")
+        .disabled(cards.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: cards.isEmpty)
+    }
+
+    private var isStorageErrorPresented: Binding<Bool> {
+        Binding(
+            get: { storageError != nil },
+            set: { if !$0 { storageError = nil } }
+        )
+    }
+
+    private func persist() {
+        do {
+            try LocalCardStore.save(LearningSnapshot(cards: cards, reviews: reviews))
+        } catch {
+            storageError = "Не удалось сохранить данные: \(error.localizedDescription)"
+        }
+    }
+}
+
+private struct ReviewFloatingBackground: View {
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            Color.clear
+                .frame(width: 56, height: 56)
+                .glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            Circle()
+                .fill(.regularMaterial)
+                .frame(width: 56, height: 56)
+                .overlay(Circle().strokeBorder(Color.primary.opacity(0.08)))
+                .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
         }
     }
 }
@@ -252,7 +298,7 @@ private struct AddSessionCardScreen: View {
                         .accessibilityIdentifier("cardAnswer")
                 }
                 Section {
-                    Text("Карточка доступна только в этом сеансе и не попадает в Anki или на сервер.")
+                    Text("Карточка сохранится на этом iPhone.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -322,13 +368,8 @@ private struct SessionCardScreen: View {
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
-                Section {
-                    Text("Оценка останется только в этом сеансе. Срок следующего повтора не рассчитывается.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
-            .navigationTitle("Карточка этого сеанса")
+            .navigationTitle("Карточка")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 isAnswerVisible = false
@@ -414,11 +455,6 @@ private struct ReviewSessionScreen: View {
                     }
                 }
             }
-            Section {
-                Text("Оценка остаётся в этом сеансе. Расписание повторения не рассчитывается.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -436,9 +472,6 @@ private struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценки исчезнут при закрытии приложения. Сроки и синхронизация пока не поддерживаются.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
                 Button("Готово") { dismiss() }
                     .accessibilityIdentifier("reviewFinish")
             }
@@ -519,7 +552,7 @@ private struct SettingsScreen: View {
                     .foregroundStyle(.secondary)
             }
             Section("Данные") {
-                Text("Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения.")
+                Text("Карточки и оценки хранятся на этом iPhone. Сервер не подключён, синхронизация не настроена.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -534,9 +567,6 @@ private struct SettingsScreen: View {
             Section("О приложении") {
                 LabeledContent("Версия", value: appVersion)
                 LabeledContent("Сборка", value: buildNumber)
-                Text("Пробная сборка: импорт заметок, SRS и синхронизация ещё не реализованы.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Настройки")

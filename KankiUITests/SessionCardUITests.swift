@@ -2,20 +2,12 @@ import XCTest
 
 @MainActor
 final class SessionCardUITests: XCTestCase {
-    func testCardIsAddedViewedAndLostAfterRestart() {
+    func testCardAndReviewsPersistAfterRestart() {
         let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
         app.launch()
 
-        app.buttons["addSessionCard"].tap()
-        let question = app.descendants(matching: .any)["cardQuestion"]
-        let answer = app.descendants(matching: .any)["cardAnswer"]
-        XCTAssertFalse(app.buttons["Добавить"].isEnabled)
-        question.tap()
-        question.typeText("Почему небо голубое?")
-        XCTAssertFalse(app.buttons["Добавить"].isEnabled)
-        answer.tap()
-        answer.typeText("Рассеяние света")
-        app.buttons["Добавить"].tap()
+        addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
 
         let card = app.buttons["Почему небо голубое?"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
@@ -23,39 +15,49 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Рассеяние света"].exists)
         app.buttons["Показать ответ"].tap()
         XCTAssertTrue(app.staticTexts["Рассеяние света"].exists)
-        let ratingScreen = XCTAttachment(screenshot: app.screenshot())
-        ratingScreen.lifetime = .keepAlways
-        add(ratingScreen)
         for label in ["Снова", "Трудно", "Хорошо", "Легко"] {
             XCTAssertTrue(app.buttons[label].exists)
         }
         app.buttons["Хорошо"].tap()
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Хорошо"].exists)
 
         card.tap()
         XCTAssertFalse(app.buttons["Снова"].exists)
         app.buttons["Показать ответ"].tap()
         app.buttons["Снова"].tap()
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
 
         app.terminate()
+        app.launchArguments = []
         app.launch()
-        XCTAssertFalse(app.buttons["Почему небо голубое?"].exists)
-        XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
-        XCTAssertFalse(app.staticTexts["Оценок в этом сеансе: 2"].exists)
-        XCTAssertFalse(app.staticTexts["Последняя оценка: Снова"].exists)
+
+        XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].exists)
+        XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
     }
 
     func testReviewSessionCoversQueueAndSummarizes() {
         let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
         app.launch()
 
         addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
         addCard(in: app, question: "Что растёт у конкурентного ингибитора?", answer: "Растёт Km")
 
-        app.buttons["startReviewSession"].tap()
+        let startReview = app.buttons["startReviewSession"]
+        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
+        XCTAssertTrue(startReview.isEnabled)
+        XCTAssertTrue(startReview.isHittable)
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertLessThanOrEqual(startReview.frame.maxY, tabBar.frame.minY, "Кнопка перекрывает таб-бар")
+        XCTAssertGreaterThan(startReview.frame.midX, app.frame.midX, "Кнопка не в правой половине экрана")
+        XCTAssertEqual(startReview.frame.width, 56, accuracy: 1)
+        XCTAssertEqual(startReview.frame.height, 56, accuracy: 1)
+
+        startReview.tap()
         XCTAssertTrue(app.staticTexts["Карточка 1 из 2"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Концентрация при половине Vmax"].exists)
         app.buttons["Показать ответ"].tap()
@@ -74,7 +76,7 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Снова"].exists)
         app.buttons["reviewFinish"].tap()
 
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
     }
 
@@ -91,10 +93,12 @@ final class SessionCardUITests: XCTestCase {
 
     func testShellTabsAndPlaceholderNavigation() {
         let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
         app.launch()
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
@@ -125,5 +129,4 @@ final class SessionCardUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
         }
     }
-
 }
