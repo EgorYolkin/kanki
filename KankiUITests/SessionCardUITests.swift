@@ -48,15 +48,53 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Последняя оценка: Снова"].exists)
     }
 
+    func testReviewSessionCoversQueueAndSummarizes() {
+        let app = XCUIApplication()
+        app.launch()
+
+        addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
+        addCard(in: app, question: "Что растёт у конкурентного ингибитора?", answer: "Растёт Km")
+
+        app.buttons["startReviewSession"].tap()
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 2"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Концентрация при половине Vmax"].exists)
+        app.buttons["Показать ответ"].tap()
+        XCTAssertTrue(app.staticTexts["Концентрация при половине Vmax"].exists)
+        app.buttons["Хорошо"].tap()
+
+        XCTAssertTrue(app.staticTexts["Карточка 2 из 2"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Растёт Km"].waitForExistence(timeout: 1))
+        app.buttons["Показать ответ"].tap()
+        XCTAssertTrue(app.staticTexts["Растёт Km"].waitForExistence(timeout: 5))
+        app.buttons["Снова"].tap()
+
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценено карточек: 2."].exists)
+        XCTAssertTrue(app.staticTexts["Хорошо"].exists)
+        XCTAssertTrue(app.staticTexts["Снова"].exists)
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
+    }
+
+    private func addCard(in app: XCUIApplication, question: String, answer: String) {
+        app.buttons["addSessionCard"].tap()
+        let questionField = app.descendants(matching: .any)["cardQuestion"]
+        let answerField = app.descendants(matching: .any)["cardAnswer"]
+        questionField.tap()
+        questionField.typeText(question)
+        answerField.tap()
+        answerField.typeText(answer)
+        app.buttons["Добавить"].tap()
+    }
+
     func testShellTabsAndPlaceholderNavigation() {
         let app = XCUIApplication()
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
-        app.buttons["Будущий экран повторения"].tap()
-        XCTAssertTrue(app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."].exists)
-        app.navigationBars.buttons["Обучение"].tap()
-
+        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
         app.tabBars.buttons["Заметки"].tap()
         XCTAssertTrue(app.staticTexts["Заметок пока нет"].exists)
         for label in ["Поиск", "Экран заметки", "Редактор", "Библиотека"] {
