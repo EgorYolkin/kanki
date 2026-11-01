@@ -1,6 +1,6 @@
 # Kanki
 
-Нативное iOS-приложение для заметок с типизированными связями, графом знаний и интервальным повторением. Планируется обмен с Anki через `.apkg`: заметки и связи остаются в модели Kanki, а карточки можно повторять в совместимых клиентах Anki. **Сейчас это проект на этапе скелета, а не готовое приложение для обучения.**
+Нативное iOS-приложение для заметок с типизированными связями, графом знаний и интервальным повторением. Планируется обмен с Anki через `.apkg`: заметки и связи остаются в модели Kanki, а карточки можно повторять в совместимых клиентах Anki. **Сейчас это скелет приложения с демо-функциями текущего сеанса, а не готовое приложение для обучения.**
 
 ## Что есть сейчас
 
@@ -23,10 +23,24 @@ xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
 xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
   -destination 'generic/platform=iOS Simulator' build
 xcodebuild test -project Kanki.xcodeproj -scheme Kanki \
+  -derivedDataPath /tmp/kanki-build \
   -destination 'platform=iOS Simulator,name=iPhone 17e' CODE_SIGNING_ALLOWED=NO
 ```
 
-Сборка, запуск и UI-тесты проверены на iPhone 17e Simulator (iOS 26.3.1, Xcode 27.2): `SessionCardUITests` покрывают вкладки, переходы, пустые состояния, пробную карточку с оценкой и отсутствие сохранения после перезапуска. Если оба теста падают с `signal kill`, перезапустите симулятор (`xcrun simctl shutdown/boot`).
+Сборка, запуск и UI-тесты проверены на iPhone 17e Simulator (iOS 26.3.1, Xcode 27.2): четыре теста — три `SessionCardUITests` (вкладки, переходы, пустые состояния, пробная карточка с оценкой и очередью повторения, отсутствие сохранения после перезапуска) и `SettingsUITests` (тема сохраняется между запусками, статусы не обещают нереализованное). Для стабильного прогона используйте отдельный симулятор и чистый `-derivedDataPath`: общее устройство или DerivedData, занятые другой сборкой, дают `Test crashed with signal kill` или устаревший тест-бандл. При таком падении перезапустите симулятор (`xcrun simctl shutdown/boot`).
+
+## Установка на личное устройство без платной подписки
+
+Для Personal Team есть локальный [скрипт переподписи](scripts/personal_team.py) ([issue #40](https://github.com/EgorYolkin/kanki/issues/40)). Он **не** меняет `project.yml`: только для сборки на физическое устройство передаёт Xcode `CODE_SIGNING_ALLOWED=YES`, `CODE_SIGN_STYLE=Automatic`, Team ID и bundle ID. Требуются macOS, установленный Xcode, вход в Apple Account в Xcode, сопряжённый iPhone/iPad и доступная сессия пользователя; 2FA и права Apple на устройство скрипт не обходит.
+
+Сначала узнайте Team ID в Xcode → Settings → Accounts и UDID устройства через `xcrun devicectl list devices`. Установите один раз вручную, когда устройство доступно (используйте **один и тот же bundle ID** при каждом обновлении):
+
+```bash
+python3 scripts/personal_team.py refresh --team-id "$TEAM_ID" --device-id "$UDID" --bundle-id app.kanki.ios --force
+python3 scripts/personal_team.py install-agent --team-id "$TEAM_ID" --device-id "$UDID" --bundle-id app.kanki.ios
+```
+
+LaunchAgent запускается при загрузке пользовательской сессии и ежедневно в 09:00. После успешной установки он пропускает попытки в течение пяти дней; при сбое повторяет на следующий запуск. Проверьте локальные логи в `~/Library/Logs/Kanki/`; отключение: `python3 scripts/personal_team.py uninstall-agent`. Профиль Personal Team действует 7 дней: если Mac выключен, устройство недоступно, сессия заблокирована для 2FA или Xcode требует входа, автоматическое продление **не гарантируется**. При ошибке войдите в Xcode и повторите `refresh --force`. Переустановка с тем же bundle ID не удаляет контейнер приложения, но сделайте резервную копию важных данных заранее. Free-аккаунт не позволяет TestFlight и некоторые capabilities, включая push для будущей синхронизации; для чужих устройств этот способ не предназначен.
 
 ## Дальнейшая разработка
 
