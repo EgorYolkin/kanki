@@ -23,11 +23,29 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Рассеяние света"].exists)
         app.buttons["Показать ответ"].tap()
         XCTAssertTrue(app.staticTexts["Рассеяние света"].exists)
+        let ratingScreen = XCTAttachment(screenshot: app.screenshot())
+        ratingScreen.lifetime = .keepAlways
+        add(ratingScreen)
+        for label in ["Снова", "Трудно", "Хорошо", "Легко"] {
+            XCTAssertTrue(app.buttons[label].exists)
+        }
+        app.buttons["Хорошо"].tap()
+        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Последняя оценка: Хорошо"].exists)
+
+        card.tap()
+        XCTAssertFalse(app.buttons["Снова"].exists)
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Снова"].tap()
+        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
 
         app.terminate()
         app.launch()
         XCTAssertFalse(app.buttons["Почему небо голубое?"].exists)
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
+        XCTAssertFalse(app.staticTexts["Оценок в этом сеансе: 2"].exists)
+        XCTAssertFalse(app.staticTexts["Последняя оценка: Снова"].exists)
     }
 
     func testShellTabsAndPlaceholderNavigation() {
