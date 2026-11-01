@@ -1,8 +1,7 @@
 # Этапы Kanki — [GitHub Issues](https://github.com/EgorYolkin/kanki/issues)
 
-
-- [ ] 1. [Скелет iOS (#2)](https://github.com/EgorYolkin/kanki/issues/2) — исходники и проект созданы, SwiftUI прошёл `swiftc -typecheck`; iOS Simulator runtime установлен, но Xcode блокирует сборку и запуск до принятия лицензии владельцем среды (`sudo xcodebuild -license`). Критерии: сборка `xcodebuild`, запуск и проверка вкладок, переходов и пустых состояний. Зависимости: нет.
-- [ ] 2. [Контракт и Э1 (#3)](https://github.com/EgorYolkin/kanki/issues/3) — UID/GUID/Relations и AnkiDesktop round-trip без дублей/потери прогресса; проверить Э1. Зависимости: нет.
+- [x] 1. [Скелет iOS (#2)](https://github.com/EgorYolkin/kanki/issues/2) — сборка и запуск на iPhone 17e (iOS 26.3.1) выполнены; два UI-теста проверили вкладки, переходы, пустые состояния и пробные карточки текущего сеанса. Импорта, SRS и синхронизации нет.
+- [ ] 2. [Контракт и Э1 (#3)](https://github.com/EgorYolkin/kanki/issues/3) — автоматический round-trip на backend Anki 26.09.3 прошёл: импорт, Good, экспорт с revlog, обновление без дублей/потери прогресса, конфликт типа. Визуальный прогон AnkiDesktop и обратный конвертер в БД Kanki не проверены; нотетайп/контракт не заморожены. Зависимости: нет.
 - [ ] 3. [Публикация и обмен (#4)](https://github.com/EgorYolkin/kanki/issues/4) — публикация двух заметок и идемпотентный экспорт .apkg; проверить повторную публикацию и импорт. Зависимости: этап 2.
 - [ ] 4. [Локальный цикл (#5)](https://github.com/EgorYolkin/kanki/issues/5) — импорт → WKWebView → FSRS → сохранённый review; проверить перезапуск. Зависимости: этапы 2, 3.
 
