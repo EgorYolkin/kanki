@@ -58,9 +58,6 @@ struct SettingsScreen: View {
             Section("О приложении") {
                 LabeledContent("Версия", value: appVersion)
                 LabeledContent("Сборка", value: buildNumber)
-                Text("Пробная сборка: импорт заметок, SRS и синхронизация ещё не реализованы.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Настройки")

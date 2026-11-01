@@ -6,7 +6,9 @@ final class MacShellUITests: XCTestCase {
     @MainActor
     func testSectionsOpenFromKeyboardShortcuts() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        // Без этого macOS может восстановить прошлое состояние «окон нет»
+        // и не открыть новое окно, из-за чего тест не найдёт ни одного Window.
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--reset-store"]
         app.launch()
 
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 60))
