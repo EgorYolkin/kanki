@@ -5,7 +5,8 @@ Presentation only. Behaviour lives in `Kanki/Domain/`; these rules keep the boun
 ## Rules
 
 - No business rules here: no validation, filtering, ordering, counting or date maths.
-  Extract it to `Domain` and test it instead.
+  Extract it to `Domain` and test it instead. Search filtering lives in `CardSearch`;
+  the view only owns the query text.
 - `@State` may hold only presentation state: sheet flags, selected item, revealed answer,
   transient submit guard. Derived values come from a domain model
   (for example `ReviewSessionState`, `CardDraft`, `SessionLog`).

@@ -32,12 +32,13 @@ macOS 14+. The same sources ship on both; a screen must work on both.
 - Types are `internal`, because `KankiTests` uses `@testable import Kanki`. Keep a type
   `private` only when nothing outside its file needs it.
 - User-visible copy is Russian; identifiers, type names and SF Symbol names are English.
-- Never fake sync, SRS, persistence or a successful action. Session data is demo-only and
-  the UI must say so.
+- Never fake sync, SRS, server state or a successful action. Session data is demo-only;
+  it is stored locally by `LocalCardStore`, store failures must surface, and the UI must
+  not imply a server or SRS that does not exist.
 - `Destination` has exhaustive `title` and `symbol` switches: a new case requires both.
 - Interactive elements driven by UI tests need a stable `accessibilityIdentifier`
   (`addSessionCard`, `cardQuestion`, `cardAnswer`, `startReviewSession`, `reviewProgress`,
-  `reviewFinish`, `appearancePicker`).
+  `reviewFinish`, `appearance-system`, `appearance-light`, `appearance-dark`).
 - After adding, renaming or deleting a file run `xcodegen generate` and commit
   `Kanki.xcodeproj`: XcodeGen expands the directory into an explicit source list.
 - XcodeGen turns non-Swift files in a source directory into bundle resources. The

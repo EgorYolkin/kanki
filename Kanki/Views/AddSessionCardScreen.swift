@@ -20,7 +20,7 @@ struct AddSessionCardScreen: View {
                         .accessibilityIdentifier("cardAnswer")
                 }
                 Section {
-                    Text("Карточка доступна только в этом сеансе и не попадает в Anki или на сервер.")
+                    Text("Карточка сохранится на этом устройстве и не попадает в Anki или на сервер.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

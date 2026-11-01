@@ -1,8 +1,13 @@
 import Foundation
 
-/// Журнал оценок текущего сеанса: счётчик и последняя оценка для списка карточек.
+/// Журнал оценок: счётчик и последняя оценка для списка карточек.
+/// Инициализируется сохранёнными записями и пополняется в сеансе.
 struct SessionLog: Equatable {
-    private(set) var reviews: [SessionReview] = []
+    private(set) var reviews: [SessionReview]
+
+    init(reviews: [SessionReview] = []) {
+        self.reviews = reviews
+    }
 
     var count: Int { reviews.count }
 

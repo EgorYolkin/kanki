@@ -6,6 +6,7 @@ final class MacShellUITests: XCTestCase {
     @MainActor
     func testSectionsOpenFromKeyboardShortcuts() {
         let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
         app.launch()
 
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 60))
@@ -21,8 +22,8 @@ final class MacShellUITests: XCTestCase {
         app.typeKey("4", modifierFlags: .command)
         XCTAssertEqual(waitForWindowTitle("Настройки", in: app), .completed)
         // На macOS подпись `Label` попадает в `value`, а не в `label`, поэтому
-        // экран настроек проверяется по accessibilityIdentifier пикера.
-        XCTAssertTrue(app.radioGroups["appearancePicker"].waitForExistence(timeout: 20))
+        // экран настроек проверяется по accessibilityIdentifier кнопки темы.
+        XCTAssertTrue(app.buttons["appearance-system"].waitForExistence(timeout: 20))
 
         app.typeKey("1", modifierFlags: .command)
         XCTAssertEqual(waitForWindowTitle("Обучение", in: app), .completed)

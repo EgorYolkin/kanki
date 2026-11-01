@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppShell: View {
     @Binding var section: AppSection
+    @AppStorage("appearance") private var appearance: AppAppearance = .system
 
     var body: some View {
         TabView(selection: $section) {
@@ -38,5 +39,6 @@ struct AppShell: View {
             .tabItem { Label(AppSection.settings.title, systemImage: AppSection.settings.symbol) }
             .tag(AppSection.settings)
         }
+        .preferredColorScheme(appearance.colorScheme)
     }
 }

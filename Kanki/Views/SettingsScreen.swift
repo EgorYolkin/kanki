@@ -14,13 +14,23 @@ struct SettingsScreen: View {
     var body: some View {
         List {
             Section("Оформление") {
-                Picker("Тема", selection: $appearance) {
-                    ForEach(AppAppearance.allCases) { option in
-                        Text(option.title).tag(option)
+                ForEach(AppAppearance.allCases) { option in
+                    Button {
+                        appearance = option
+                    } label: {
+                        HStack {
+                            Text(option.title)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if appearance == option {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
                     }
+                    .accessibilityIdentifier("appearance-\(option.rawValue)")
+                    .accessibilityAddTraits(appearance == option ? [.isSelected] : [])
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("appearancePicker")
                 Text("Тема сохраняется между запусками и применяется ко всему приложению.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -33,7 +43,7 @@ struct SettingsScreen: View {
                     .foregroundStyle(.secondary)
             }
             Section("Данные") {
-                Text("Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения.")
+                Text("Карточки и оценки хранятся на этом устройстве. Сервер не подключён, синхронизация не настроена.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

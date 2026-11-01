@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Kanki is a native SwiftUI app (Swift 6) built from one shared code base for iOS 17+ and macOS 14+ — one app target, one set of sources — for Markdown-based notes, typed relations, a knowledge graph, spaced repetition and eventual Anki `.apkg` interoperability. **Current code is a navigation shell plus an in-memory demo**: session cards and their ratings live only in `@State` and disappear on relaunch. There are no real notes, persistence, SRS, import or sync. The future server is the source of truth; never present planned behavior as implemented. Read `tasks/plan.md` before changing scope and `tasks/todo.md` for stage status; GitHub issues track stage work (iOS stages #3–#9, macOS stage #14 with the shell slice in #52).
+Kanki is a native SwiftUI app (Swift 6) built from one shared code base for iOS 17+ and macOS 14+ — one app target, one set of sources — for Markdown-based notes, typed relations, a knowledge graph, spaced repetition and eventual Anki `.apkg` interoperability. **Current code is a navigation shell plus a locally stored demo**: session cards, their ratings and the appearance theme persist on device through `LocalCardStore`; there are no real notes, SRS, import, server or sync. The future server is the source of truth; never present planned behavior as implemented. Read `tasks/plan.md` before changing scope and `tasks/todo.md` for stage status; GitHub issues track stage work (iOS stages #3–#9, macOS stage #14 with the shell slice in #52).
 
-Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, persistence or successful actions. Do not freeze database/network contracts or the Anki note type before experiment Э1 (#3).
+Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, server state or successful actions. Local persistence is real (`LocalCardStore`) and its failures are surfaced in the UI. Do not freeze database/network contracts or the Anki note type before experiment Э1 (#3).
 
 ## Gitflow (required)
 
@@ -42,9 +42,9 @@ If two rules conflict, the directory rule wins for files inside that directory; 
 
 ## Architecture & Data Flow
 
-`Kanki/KankiApp.swift` contains only the `@main` entry point and the `@AppStorage("appearance")` theme. `Kanki/Views/AppShell.swift` builds the `TabView` from `AppSection` (`learning`, `notes`, `graph`, `settings`) with four independent `NavigationStack`s. The selected section is bound from `KankiApp`, so the tabs, the ⌘1–⌘4 menu on macOS (`SectionCommands`, compiled only under `#if os(macOS)`) and its `defaultSize` window share one source of truth. `Destination` (`note`, `editor`, `search`, `library`, `merges`, `conflicts`) is the value-based route with exhaustive `title` and `symbol` switches. `NavigationLink(value:)` in the three list-based tabs resolves to `PlaceholderScreen` via `.navigationDestination(for:)`; **Graph has no destination registration**, so register one before adding links there. `SectionIntro` wraps `ContentUnavailableView` for empty states; all leaf destinations are placeholders.
+`Kanki/KankiApp.swift` contains only the `@main` entry point and the `--reset-store` launch hook; the persisted theme lives in `Kanki/Views/AppShell.swift` (`@AppStorage("appearance")` and `.preferredColorScheme`), so changing it in Settings re-renders the whole shell. `AppShell` builds the `TabView` from `AppSection` (`learning`, `notes`, `graph`, `settings`) with four independent `NavigationStack`s. The selected section is bound from `KankiApp`, so the tabs, the ⌘1–⌘4 menu on macOS (`SectionCommands`, compiled only under `#if os(macOS)`) and its `defaultSize` window share one source of truth. `Destination` (`note`, `editor`, `search`, `library`, `merges`, `conflicts`) is the value-based route with exhaustive `title` and `symbol` switches. `NavigationLink(value:)` in the three list-based tabs resolves to `PlaceholderScreen` via `.navigationDestination(for:)`; **Graph has no destination registration**, so register one before adding links there. `SectionIntro` wraps `ContentUnavailableView` for empty states; all leaf destinations are placeholders.
 
-`Kanki/Domain/` holds the only testable state: `SessionCard` (question/answer), `SessionReview` (card, `RecallRating` 1–4, timestamp), `SessionLog` (review count and last rating), `CardDraft` (trimming and submit validation), `ReviewSessionState` (queue index, revealed answer, per-rating counts, summary rows) plus the presentation enums. `LearningScreen` owns cards and a `SessionLog`; `ReviewSessionScreen` walks `ReviewSessionState` one card at a time and ends with a session summary («Сеанс завершён»). Nothing is written to disk; relaunching clears cards, reviews and any running session. Due dates, FSRS, import and sync do not exist.
+`Kanki/Domain/` holds the only testable state: `SessionCard` (question/answer, `createdAt`, `Codable`), `SessionReview` (`cardID`, `RecallRating` 1–4, timestamp), `SessionLog` (review count and last rating, restorable from a snapshot), `LearningSnapshot` (cards + reviews, `Codable`), `CardSearch` (query filtering), `CardDraft` (trimming and submit validation), `ReviewSessionState` (queue index, revealed answer, per-rating counts, summary rows) plus the presentation enums. `LearningScreen` owns cards and a `SessionLog`, loads them from `LocalCardStore` (JSON `LearningSnapshot` in `Application Support/Kanki/cards.json`, written atomically) and saves after every card or rating; read/write failures surface in an alert. `ReviewSessionScreen` walks `ReviewSessionState` one card at a time and ends with a session summary («Сеанс завершён»). The «Обучение» screen shows a floating action stack above the tab bar in the bottom-right corner: `addSessionCard` (44 pt plus) above `startReviewSession` (56 pt play), Liquid Glass on iOS 26 / macOS 26 and `.regularMaterial` below; search filters the list by question and answer. A running review queue is not persisted. Due dates, FSRS, import and sync do not exist.
 
 There are no models beyond the demo, no networking, database, async operations, dependency injection or state container yet. The *planned*, not implemented, path is note import → relations/edges and FTS5 → card display in WKWebView → swift-fsrs scheduling/review log → delta sync and `(guid, ord)` Anki progress mapping. Do not introduce a repository/view-model layer before its feature needs it.
 
@@ -52,7 +52,8 @@ There are no models beyond the demo, no networking, database, async operations, 
 
 | Path | Purpose |
 | --- | --- |
-| `Kanki/KankiApp.swift` | `@main` entry point and the persisted appearance setting. |
+| `Kanki/KankiApp.swift` | `@main` entry point and the `--reset-store` launch hook. |
+| `Kanki/LocalCardStore.swift` | JSON snapshot of cards and reviews in Application Support; reset for UI tests. |
 | `Kanki/Domain/` | Pure value types and state; the unit-test coverage scope. |
 | `Kanki/Views/` | SwiftUI screens, shell, empty state and placeholders. |
 | `Kanki/Assets.xcassets/` | App icon resources. |
@@ -73,7 +74,7 @@ There are no models beyond the demo, no networking, database, async operations, 
 xcodegen generate        # required after adding/removing/renaming a source or resource under Kanki/
 ./scripts/lint.sh        # swiftlint --strict + markdownlint-cli2
 ./scripts/test.sh        # unit tests (KankiTests) + 95 % coverage gate
-./scripts/ui-test.sh     # four KankiUITests on a simulator
+./scripts/ui-test.sh     # five KankiUITests on a simulator
 ./scripts/ci.sh          # full local contour, identical to CI jobs
 xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
   -destination 'platform=macOS' build   # native macOS app, ad-hoc signed
@@ -89,7 +90,7 @@ Simulator selection is automatic (`scripts/simulator_destination.sh` picks a boo
 - Swift 6 project mode; SwiftUI `View` value structs, `var body: some View`, `List { Section }`, `.navigationTitle(...)`; pushed screens use `.toolbarTitleDisplayMode(.inline)` (available in iOS 17 and macOS 14, unlike the iOS-only `.navigationBarTitleDisplayMode`).
 - Layering: behavior in `Kanki/Domain` (pure, tested), rendering in `Kanki/Views`; views hold only presentation `@State` (sheet flags, selected card, transient submit guard). Types are `internal` so `@testable import Kanki` works; keep `private` only when nothing outside the file needs the type.
 - User-visible strings are Russian literals; identifiers and SF Symbol names are English. `Destination` cases require updates to both exhaustive `title` and `symbol` switches. Tab labels and navigation titles are separate literals.
-- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. `SettingsScreen` is a real page: an appearance picker (`appearancePicker`) backed by `@AppStorage("appearance")` (`AppAppearance`: системное/светлое/тёмное, applied in `KankiApp` via `preferredColorScheme`, the only persisted user preference), a non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")` with an explanation of when sync arrives, a note that cards/ratings/sessions are in-memory, version/build from `Info.plist`, and links to merges/conflicts. No fake connect button.
+- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. `SettingsScreen` is a real page: theme buttons (`appearance-system` / `appearance-light` / `appearance-dark`, checkmark plus selected trait) backed by `@AppStorage("appearance")` (`AppAppearance`: системное/светлое/тёмное) and applied in `AppShell` via `preferredColorScheme`, the only persisted user preference besides demo data, a non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")` with an explanation of when sync arrives, a note that cards and ratings are stored on this device, version/build from `Info.plist`, and links to merges/conflicts. No fake connect button.
 - No error-handling, async, DI or app-state convention exists yet. For future actor-crossing models honor Swift 6 isolation/`Sendable`; choose patterns when implementing the actual feature, not as a speculative scaffold.
 - Platform differences stay at the edges: `#if os(...)` is allowed in the app entry point (`KankiApp` scene modifiers), in macOS-only commands (`SectionCommands`) and around a platform-only modifier — never to fork a whole screen or a domain type per platform. Prefer a cross-platform API (`.toolbarTitleDisplayMode`) over a conditional.
 - Determinism in domain code: inject `Date`/`UUID` instead of reading them implicitly. Views never recompute a rule that `Domain` already owns.
@@ -99,12 +100,13 @@ Simulator selection is automatic (`scripts/simulator_destination.sh` picks a boo
 
 | File | Role |
 | --- | --- |
-| `Kanki/KankiApp.swift` | Entry point (`@main`) and persisted appearance. |
+| `Kanki/KankiApp.swift` | Entry point (`@main`) and `--reset-store` hook. |
+| `Kanki/LocalCardStore.swift` | Atomic JSON snapshot of cards and reviews; `--reset-store` support. |
 | `Kanki/Views/AppShell.swift` | Tabs, navigation stacks and destination registration. |
 | `Kanki/Domain/ReviewSessionState.swift` | Review queue: index, revealed answer, counts, summary. |
 | `Kanki/Domain/CardDraft.swift` | New-card trimming and submit validation. |
 | `KankiTests/Domain/` | One `<Type>Tests` file per domain type with behaviour; plain records are covered through their consumers. |
-| `KankiUITests/SessionCardUITests.swift`, `KankiUITests/SettingsUITests.swift` | Four UI tests for navigation, session cards, review queue and settings persistence. |
+| `KankiUITests/SessionCardUITests.swift`, `KankiUITests/SettingsUITests.swift` | Five UI tests for navigation, session cards, search, persistence across relaunch, review queue and settings appearance. |
 | `project.yml` | Sole build specification: one multi-platform app target (iOS/macOS), `KankiTests`, `KankiUITests`, `KankiMacUITests`, the `Kanki` scheme with coverage, the `Kanki macOS` scheme, Swift 6, simulator-only signing off, generated Info.plist. |
 | `.swiftlint.yml`, `.markdownlint-cli2.jsonc` | Linter configuration; rules are explicit and changes need an issue. |
 | `scripts/`, `.github/workflows/ci.yml` | Local and CI quality gates. |
@@ -122,7 +124,7 @@ macOS with Xcode 27.2 (Xcode 26.3 or newer also supported), XcodeGen 2.46.0, Swi
 Two test targets and two linters, all wired through `scripts/` and CI:
 
 - `KankiTests` (XCTest, `@testable import Kanki`) covers `Kanki/Domain`; `scripts/test.sh` enforces **95 % line coverage** over that directory via `scripts/coverage_gate.py` and `xcrun xccov`. Views are excluded from the number on purpose and covered by UI tests instead.
-- `KankiUITests` covers tabs, placeholder navigation, empty states, adding and rating a session card, the review queue with summary, the persistence-free relaunch and the appearance setting.
+- `KankiUITests` covers tabs, placeholder navigation, empty states, adding and rating a session card, card search, persistence of cards and ratings across relaunch, the review queue with summary and the appearance setting.
 - `KankiMacUITests` covers the macOS build via `./scripts/macos-ui-test.sh`: the window opens and ⌘1–⌘4 switch all four sections. The macOS app is signed ad-hoc (`Sign to Run Locally`), so it needs no Team ID; iOS-only `CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]: NO` does not affect it.
 - `.swiftlint.yml` runs with `--strict`; `.markdownlint-cli2.jsonc` lints every `.md`.
 - `.github/workflows/ci.yml` runs Markdown, SwiftLint and the build/unit/coverage/UI job; the commands are identical to `scripts/ci.sh`.

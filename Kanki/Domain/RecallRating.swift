@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Оценка ответа в демо-сеансе. Значения `rawValue` 1–4 совпадают с порядком
 /// кнопок «Снова / Трудно / Хорошо / Легко».
-enum RecallRating: Int, CaseIterable {
+enum RecallRating: Int, CaseIterable, Codable {
     case again = 1
     case hard
     case good

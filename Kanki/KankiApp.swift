@@ -2,14 +2,18 @@ import SwiftUI
 
 @main
 struct KankiApp: App {
-    @AppStorage("appearance") private var appearance: AppAppearance = .system
     @State private var section: AppSection = .learning
+
+    init() {
+        if ProcessInfo.processInfo.arguments.contains(LocalCardStore.resetArgument) {
+            LocalCardStore.reset()
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
             AppShell(section: $section)
                 .tint(.indigo)
-                .preferredColorScheme(appearance.colorScheme)
         }
         #if os(macOS)
         .defaultSize(width: 900, height: 640)

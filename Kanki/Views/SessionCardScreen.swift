@@ -46,7 +46,7 @@ struct SessionCardScreen: View {
                     }
                 }
                 Section {
-                    Text("Оценка останется только в этом сеансе. Срок следующего повтора не рассчитывается.")
+                    Text("Оценка сохранится на устройстве. Срок следующего повтора не рассчитывается.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

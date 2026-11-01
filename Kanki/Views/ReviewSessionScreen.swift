@@ -69,7 +69,7 @@ struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценка остаётся в этом сеансе. Расписание повторения не рассчитывается.")
+                Text("Оценки сохраняются на устройстве. Расписание повторения не рассчитывается.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -88,7 +88,7 @@ struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценки исчезнут при закрытии приложения. Сроки и синхронизация пока не поддерживаются.")
+                Text("Оценки сохранены на устройстве. Сроки повторения и синхронизация пока не поддерживаются.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Готово") { dismiss() }
