@@ -1,9 +1,11 @@
 # Этапы Kanki — [GitHub Issues](https://github.com/EgorYolkin/kanki/issues)
 
+
 - [ ] 1. [Скелет iOS (#2)](https://github.com/EgorYolkin/kanki/issues/2) — исходники и проект созданы, SwiftUI прошёл `swiftc -typecheck`; iOS Simulator runtime установлен, но Xcode блокирует сборку и запуск до принятия лицензии владельцем среды (`sudo xcodebuild -license`). Критерии: сборка `xcodebuild`, запуск и проверка вкладок, переходов и пустых состояний. Зависимости: нет.
 - [ ] 2. [Контракт и Э1 (#3)](https://github.com/EgorYolkin/kanki/issues/3) — UID/GUID/Relations и AnkiDesktop round-trip без дублей/потери прогресса; проверить Э1. Зависимости: нет.
 - [ ] 3. [Публикация и обмен (#4)](https://github.com/EgorYolkin/kanki/issues/4) — публикация двух заметок и идемпотентный экспорт .apkg; проверить повторную публикацию и импорт. Зависимости: этап 2.
 - [ ] 4. [Локальный цикл (#5)](https://github.com/EgorYolkin/kanki/issues/5) — импорт → WKWebView → FSRS → сохранённый review; проверить перезапуск. Зависимости: этапы 2, 3.
+
 - [ ] Контроль: локальный учебный цикл работает офлайн.
 - [ ] 5. [Граф и поиск (#6)](https://github.com/EgorYolkin/kanki/issues/6) — backlinks, FTS5, Canvas; проверить переходы и висячие связи. Зависимости: этап 4.
 - [ ] 6. [Повторение и правки (#7)](https://github.com/EgorYolkin/kanki/issues/7) — Cram, requires, редактор и защита правок; проверить due и конфликт публикации. Зависимости: этапы 4, 5.
