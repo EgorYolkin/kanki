@@ -25,3 +25,7 @@ Package.resolved.bak
 
 # LLVM coverage artifacts
 *.profraw
+
+# Python bytecode
+__pycache__/
+*.pyc
