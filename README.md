@@ -31,7 +31,7 @@ xcodebuild test -project Kanki.xcodeproj -scheme Kanki \
 
 ## Установка на личное устройство без платной подписки
 
-Для Personal Team есть локальный [скрипт переподписи](scripts/personal_team.py) ([issue #40](https://github.com/EgorYolkin/kanki/issues/40)). Он **не** меняет `project.yml`: только для сборки на физическое устройство передаёт Xcode `CODE_SIGNING_ALLOWED=YES`, `CODE_SIGN_STYLE=Automatic`, Team ID и bundle ID. Требуются macOS, установленный Xcode, вход в Apple Account в Xcode, сопряжённый iPhone/iPad и доступная сессия пользователя; 2FA и права Apple на устройство скрипт не обходит.
+Для Personal Team есть локальный [скрипт переподписи](scripts/personal_team.py) ([issue #40](https://github.com/EgorYolkin/kanki/issues/40)); подробные шаги и диагностика — в [руководстве по автоподписи](AUTOSIGN_SCRIPT_GUIDE.md). Он **не** меняет `project.yml`: только для сборки на физическое устройство передаёт Xcode `CODE_SIGNING_ALLOWED=YES`, `CODE_SIGN_STYLE=Automatic`, Team ID и bundle ID. Требуются macOS, установленный Xcode, вход в Apple Account в Xcode, сопряжённый iPhone/iPad и доступная сессия пользователя; 2FA и права Apple на устройство скрипт не обходит.
 
 Сначала узнайте Team ID в Xcode → Settings → Accounts и UDID устройства через `xcrun devicectl list devices`. Установите один раз вручную, когда устройство доступно (используйте **один и тот же bundle ID** при каждом обновлении):
 
