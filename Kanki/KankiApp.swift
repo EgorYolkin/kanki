@@ -36,11 +36,10 @@ private enum AppAppearance: String, CaseIterable, Identifiable {
 }
 
 enum Destination: Hashable {
-    case card, note, editor, search, library, merges, conflicts
+    case note, editor, search, library, merges, conflicts
 
     var title: String {
         switch self {
-        case .card: "Карточка"
         case .note: "Заметка"
         case .editor: "Редактор заметки"
         case .library: "Библиотека"
@@ -52,7 +51,6 @@ enum Destination: Hashable {
 
     var symbol: String {
         switch self {
-        case .card: "rectangle.on.rectangle"
         case .note: "note.text"
         case .editor: "square.and.pencil"
         case .library: "books.vertical"
@@ -153,6 +151,7 @@ private struct LearningScreen: View {
     @State private var cards: [SessionCard] = []
     @State private var reviews: [SessionReview] = []
     @State private var isAddingCard = false
+    @State private var isReviewing = false
     @State private var selectedCard: SessionCard?
 
     var body: some View {
@@ -189,10 +188,18 @@ private struct LearningScreen: View {
                 }
             }
 
-            Section("Предпросмотр экранов") {
-                NavigationLink(value: Destination.card) {
-                    Label("Будущий экран повторения", systemImage: Destination.card.symbol)
+            Section {
+                Button {
+                    isReviewing = true
+                } label: {
+                    Label("Начать повторение", systemImage: "play.fill")
                 }
+                .accessibilityIdentifier("startReviewSession")
+                .disabled(cards.isEmpty)
+            } footer: {
+                Text(cards.isEmpty
+                     ? "Добавьте хотя бы одну карточку, чтобы начать сеанс."
+                     : "Очередь пройдёт по карточкам этого сеанса. Расписание повторения не рассчитывается.")
             }
         }
         .navigationTitle("Обучение")
@@ -213,6 +220,11 @@ private struct LearningScreen: View {
         }
         .sheet(item: $selectedCard) { card in
             SessionCardScreen(card: card) { rating in
+                reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+            }
+        }
+        .sheet(isPresented: $isReviewing) {
+            ReviewSessionScreen(cards: cards) { card, rating in
                 reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
             }
         }
@@ -330,6 +342,115 @@ private struct SessionCardScreen: View {
         }
     }
 
+}
+
+private struct ReviewSessionScreen: View {
+    let cards: [SessionCard]
+    let onReview: (SessionCard, RecallRating) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var index = 0
+    @State private var isAnswerVisible = false
+    @State private var counts: [RecallRating: Int] = [:]
+
+    private var currentCard: SessionCard? {
+        cards.indices.contains(index) ? cards[index] : nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let currentCard {
+                    reviewView(for: currentCard)
+                } else {
+                    summaryView
+                }
+            }
+            .navigationTitle("Повторение")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func reviewView(for card: SessionCard) -> some View {
+        List {
+            Section {
+                Text("Карточка \(index + 1) из \(cards.count)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("reviewProgress")
+            }
+            Section("Вопрос") {
+                Text(card.question)
+            }
+            if isAnswerVisible {
+                Section("Ответ") {
+                    Text(card.answer)
+                }
+                Section("Насколько легко вспомнили?") {
+                    HStack(spacing: 8) {
+                        ForEach(RecallRating.allCases, id: \.self) { rating in
+                            Button(rating.title) {
+                                record(rating, for: card)
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(rating.tint, in: RoundedRectangle(cornerRadius: 10))
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                }
+            } else {
+                Section {
+                    Button("Показать ответ") {
+                        isAnswerVisible = true
+                    }
+                }
+            }
+            Section {
+                Text("Оценка остаётся в этом сеансе. Расписание повторения не рассчитывается.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var summaryView: some View {
+        List {
+            Section {
+                SectionIntro(symbol: "checkmark.circle", title: "Сеанс завершён", detail: "Оценено карточек: \(counts.values.reduce(0, +)).")
+                    .frame(maxWidth: .infinity)
+            }
+            Section("Оценки") {
+                ForEach(RecallRating.allCases, id: \.self) { rating in
+                    if let count = counts[rating], count > 0 {
+                        LabeledContent(rating.title, value: "\(count)")
+                    }
+                }
+            }
+            Section {
+                Text("Оценки исчезнут при закрытии приложения. Сроки и синхронизация пока не поддерживаются.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Готово") { dismiss() }
+                    .accessibilityIdentifier("reviewFinish")
+            }
+        }
+    }
+
+    private func record(_ rating: RecallRating, for card: SessionCard) {
+        counts[rating, default: 0] += 1
+        onReview(card, rating)
+        isAnswerVisible = false
+        index += 1
+    }
 }
 
 private struct NotesScreen: View {
