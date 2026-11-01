@@ -20,3 +20,13 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+  KankiUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: KankiUITests
+    dependencies:
+      - target: Kanki
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
