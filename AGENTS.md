@@ -2,6 +2,8 @@
 
 ## Project Overview
 
+Contributor conduct applies to agents as well as people: read `CODE_OF_CONDUCT.md`. For review and verification expectations, read `CONTRIBUTING.md`; use `docs/agent-task-template.md` when handing off a task and `.github/pull_request_template.md` when opening a PR. The person running an agent remains accountable for its published output. Never expose private notes, credentials, or Anki collections in issues, PRs, or logs.
+
 **Kanki** is a native iOS app (Swift 6 / SwiftUI, minimum iOS 17) for spaced-repetition flashcards built from Markdown notes with typed relations, a local graph, and Anki (`.apkg`) interoperability. The server is the **source of truth**; the app will eventually sync, but never fake it.
 
 Current state: **stage 1 — inert navigation shell**. One source file (`Kanki/KankiApp.swift`, 168 lines), four tabs, placeholder screens. No models, no persistence, no networking, no state, no tests. The 8-stage roadmap lives in `tasks/plan.md` / `tasks/todo.md` (Russian).
@@ -87,7 +89,7 @@ xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
 - **Source inclusion is explicit:** the `Kanki` group lists files individually (no `PBXFileSystemSynchronizedRootGroup`) and there is **no** resources/frameworks build phase. Adding sources, an `Assets.xcassets`, or an `Info.plist` inside `Kanki/` requires `xcodegen generate`; otherwise the file is silently compiled nowhere while typecheck still passes.
 - **Package manager:** none. No SwiftPM dependencies, no `Package.swift`, no `Package.resolved`.
 - **Signing:** disabled project-wide (`CODE_SIGNING_ALLOWED = NO`); target configs still carry XcodeGen's preset `CODE_SIGN_IDENTITY = "iPhone Developer"` and `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` — these come from XcodeGen, not `project.yml`, and there is no `Assets.xcassets` yet. Running on hardware needs signing turned back on plus a `DEVELOPMENT_TEAM` in `project.yml`.
-- Git: no commits yet on `main`; repo remote is `git@github.com:EgorYolkin/kanki.git`.
+- Git: use the current branch and configured `origin`; do not assume a specific remote URL or commit history.
 
 ## Testing & QA
 

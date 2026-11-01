@@ -1,0 +1,46 @@
+name: Задача для агента
+about: Проверяемая задача с границами и контекстом
+labels: []
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Пользовательский результат
+      description: Какое наблюдаемое поведение должно измениться?
+    validations:
+      required: true
+  - type: input
+    id: phase
+    attributes:
+      label: Этап из tasks/plan.md
+      placeholder: 'Например: 1 — скелет iOS'
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Контекст и существующие контракты
+      description: Файлы, зависимости, блокеры; не включайте секреты и личные заметки.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Границы
+      description: Что входит и что явно не входит в задачу?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      description: Проверяемые результат, крайний случай и ожидаемая ошибка.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Сценарий проверки
+      description: Команда или ручной сценарий; как сообщить о недоступной среде.
+    validations:
+      required: true
