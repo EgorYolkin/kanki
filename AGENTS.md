@@ -4,6 +4,13 @@
 
 Contributor conduct applies to agents as well as people: read `CODE_OF_CONDUCT.md`. For review and verification expectations, read `CONTRIBUTING.md`; use `docs/agent-task-template.md` when handing off a task and `.github/pull_request_template.md` when opening a PR. The person running an agent remains accountable for its published output. Never expose private notes, credentials, or Anki collections in issues, PRs, or logs.
 
+## Gitflow (required)
+
+- `main` is release-only. NEVER commit or push directly to `main`; only merge `dev` into `main` through a pull request.
+- `dev` is the integration branch. Start every feature, fix, or documentation change in its own branch from the current `dev` (`feature/<topic>`, `fix/<topic>`, `docs/<topic>`); never implement directly on `dev`.
+- Open each work-branch PR against `dev`, not `main`. After review and verification, merge it into `dev`; release via a separate `dev` → `main` PR. Never force-push shared `dev` or `main`.
+- Before committing, check the current branch. If on `main` or `dev`, create/switch to a work branch first. Existing branches predating this policy may target `dev` without rewriting history.
+
 **Kanki** is a native iOS app (Swift 6 / SwiftUI, minimum iOS 17) for spaced-repetition flashcards built from Markdown notes with typed relations, a local graph, and Anki (`.apkg`) interoperability. The server is the **source of truth**; the app will eventually sync, but never fake it.
 
 Current state: **stage 1 — inert navigation shell**. One source file (`Kanki/KankiApp.swift`, 168 lines), four tabs, placeholder screens. No models, no persistence, no networking, no state, no tests. The 8-stage roadmap lives in `tasks/plan.md` / `tasks/todo.md` (Russian).
