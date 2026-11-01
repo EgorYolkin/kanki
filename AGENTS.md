@@ -33,7 +33,7 @@ There are no models, networking, database, async operations, dependency injectio
 | Path | Purpose |
 |---|---|
 | `Kanki/` | All app Swift sources and `Assets.xcassets` (AppIcon). Add new app sources here. |
-| `KankiUITests/` | XCUITest target `KankiUITests` for the shell and session-card paths; separate from the app target. |
+| `KankiUITests/` | XCUITest target `KankiUITests` for shell, session-card and settings paths; separate from the app target. |
 | `Kanki.xcodeproj/` | Tracked XcodeGen output; never hand-edit. |
 | `tasks/` | Russian roadmap (`plan.md`) and acceptance/status ledger (`todo.md`); stage issues mirror progress. |
 | `experiments/` | Reproducible Anki Э1 scripts and expected `.apkg` contents; outputs stay outside the repo. |
@@ -62,7 +62,7 @@ Build and UI tests are verified on iPhone 17e Simulator (iOS 26.3.1) with Xcode 
 - Swift 6 project mode; SwiftUI `View` value structs, `var body: some View`, `List { Section }`, `.navigationTitle(...)`; pushed placeholders use `.navigationBarTitleDisplayMode(.inline)`.
 - `KankiApp`, `Destination` and `AppShell` have module visibility; screens/helpers are file-private `private struct`. Promote deliberately when sharing or testing. Types use PascalCase; properties and enum cases use camelCase/lowercase.
 - User-visible strings are Russian literals; identifiers and SF Symbol names are English. `Destination` cases require updates to both exhaustive `title` and `symbol` switches. Tab labels and navigation titles are separate literals.
-- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. Settings shows unavailable sync as a secondary, non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")`, not a fake connect button.
+- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. `SettingsScreen` is a real page: an appearance picker (`appearancePicker`) backed by `@AppStorage("appearance")` (`AppAppearance`: системное/светлое/тёмное, applied in `KankiApp` via `preferredColorScheme`, the only persisted user preference), a non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")` with an explanation of when sync arrives, a note that cards/ratings/sessions are in-memory, version/build from `Info.plist`, and links to merges/conflicts. No fake connect button.
 - No error-handling, async, DI or app-state convention exists yet. For future actor-crossing models honor Swift 6 isolation/`Sendable`; choose patterns when implementing the actual feature, not as a speculative scaffold.
 - Keep in-app copy and `tasks/` Russian; commit messages English.
 
