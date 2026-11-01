@@ -87,21 +87,153 @@ private struct SectionIntro: View {
     }
 }
 
+private struct SessionCard: Identifiable {
+    let id = UUID()
+    let question: String
+    let answer: String
+}
+
 private struct LearningScreen: View {
+    @State private var cards: [SessionCard] = []
+    @State private var isAddingCard = false
+    @State private var selectedCard: SessionCard?
+
     var body: some View {
         List {
             Section {
-                SectionIntro(symbol: "rectangle.stack", title: "Пока нет карточек", detail: "Очередь повторения появится после подключения хранилища и импорта заметок.")
-                    .frame(maxWidth: .infinity)
+                Text("Карточки сохраняются только до закрытия приложения. Это пробный режим без повторения и синхронизации.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
+
+            if cards.isEmpty {
+                Section {
+                    SectionIntro(symbol: "rectangle.stack", title: "Карточек пока нет", detail: "Добавьте карточку с вопросом и ответом для просмотра в этом сеансе.")
+                        .frame(maxWidth: .infinity)
+                }
+            } else {
+                Section("Карточки этого сеанса") {
+                    ForEach(cards) { card in
+                        Button {
+                            selectedCard = card
+                        } label: {
+                            Label(card.question, systemImage: "rectangle.on.rectangle")
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
+            }
+
             Section("Предпросмотр экранов") {
                 NavigationLink(value: Destination.card) {
-                    Label("Экран карточки", systemImage: Destination.card.symbol)
+                    Label("Будущий экран повторения", systemImage: Destination.card.symbol)
                 }
             }
         }
         .navigationTitle("Обучение")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isAddingCard = true
+                } label: {
+                    Label("Добавить карточку", systemImage: "plus")
+                }
+                .accessibilityIdentifier("addSessionCard")
+            }
+        }
+        .sheet(isPresented: $isAddingCard) {
+            AddSessionCardScreen { question, answer in
+                cards.append(SessionCard(question: question, answer: answer))
+            }
+        }
+        .sheet(item: $selectedCard) { card in
+            SessionCardScreen(card: card)
+        }
     }
+}
+
+private struct AddSessionCardScreen: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var question = ""
+    @State private var answer = ""
+
+    let onAdd: (String, String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Вопрос") {
+                    TextField("Введите вопрос", text: $question, axis: .vertical)
+                        .lineLimit(2...5)
+                        .accessibilityIdentifier("cardQuestion")
+                }
+                Section("Ответ") {
+                    TextField("Введите ответ", text: $answer, axis: .vertical)
+                        .lineLimit(2...8)
+                        .accessibilityIdentifier("cardAnswer")
+                }
+                Section {
+                    Text("Карточка доступна только в этом сеансе и не попадает в Anki или на сервер.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Карточка")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Добавить") {
+                        onAdd(question.trimmingCharacters(in: .whitespacesAndNewlines),
+                              answer.trimmingCharacters(in: .whitespacesAndNewlines))
+                        dismiss()
+                    }
+                    .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                              answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+private struct SessionCardScreen: View {
+    let card: SessionCard
+    @State private var isAnswerVisible = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Вопрос") {
+                    Text(card.question)
+                }
+                if isAnswerVisible {
+                    Section("Ответ") {
+                        Text(card.answer)
+                    }
+                } else {
+                    Button("Показать ответ") {
+                        isAnswerVisible = true
+                    }
+                }
+                Section {
+                    Text("Просмотр не записывает повторение и не меняет расписание.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Карточка этого сеанса")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Закрыть") { dismiss() }
+                }
+            }
+        }
+    }
+
 }
 
 private struct NotesScreen: View {

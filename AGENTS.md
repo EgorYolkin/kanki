@@ -2,98 +2,71 @@
 
 ## Project Overview
 
-**Kanki** is a native iOS app (Swift 6 / SwiftUI, minimum iOS 17) for spaced-repetition flashcards built from Markdown notes with typed relations, a local graph, and Anki (`.apkg`) interoperability. The server is the **source of truth**; the app will eventually sync, but never fake it.
+Kanki is a native SwiftUI iOS app (Swift 6, iOS 17+) for Markdown-based notes, typed relations, a knowledge graph, spaced repetition and eventual Anki `.apkg` interoperability. **Current code is only a navigation shell**: no real notes, persistence, SRS, import or sync. The future server is the source of truth; never present planned behavior as implemented. Read `tasks/plan.md` before changing scope and `tasks/todo.md` for stage status; GitHub issues track stage work (iOS stages #2–#9, macOS proposal #14).
 
-Current state: **stage 1 — inert navigation shell**. One source file (`Kanki/KankiApp.swift`, 168 lines), four tabs, placeholder screens. No models, no persistence, no networking, no state, no tests. The 8-stage roadmap lives in `tasks/plan.md` / `tasks/todo.md` (Russian).
+Stage-1 constraints: label any sample data as demo; do not fake sync, SRS, persistence or successful actions. Do not freeze database/network contracts or the Anki note type before experiment Э1 (#3).
 
-Hard rules from `tasks/plan.md` that constrain all future work:
+## Gitflow (required)
 
-- Do not imitate sync, SRS, or persistence before their stage.
-- All stage-1 data must be explicitly demo data.
-- Unimplemented actions must **not** report success (no fake confirmation, no silent no-op presented as done).
-- No rigid DB models or network contracts before exchange format **Э1** is frozen (stage 2).
+- `main` is release-only. Never commit/push directly to `main`; release through a `dev` → `main` PR.
+- `dev` is integration-only. Start **each** feature, fix or documentation change in a separate `feature/<topic>`, `fix/<topic>` or `docs/<topic>` branch from current `origin/dev`, then PR into `dev`. Never commit/push directly to `dev`; never force-push shared branches.
+- Check your branch before committing. Use `git fetch origin` then `git switch -c docs/<topic> origin/dev` (substitute type); local `dev` may lag. Existing branches created before this policy may target `dev` without history rewrites.
+- Read `CODE_OF_CONDUCT.md` and `CONTRIBUTING.md`; the human running an agent is accountable for published output. Do not put secrets, private notes or Anki collections in issues, PRs or logs. Use `docs/agent-task-template.md` for handoffs and `.github/pull_request_template.md` for PRs.
 
 ## Architecture & Data Flow
 
-```
-KankiApp (@main, WindowGroup, .tint(.indigo))
-└── AppShell  ── TabView
-    ├── NavigationStack → LearningScreen  ┐
-    ├── NavigationStack → NotesScreen     ├ .navigationDestination(for: Destination.self)
-    ├── NavigationStack → GraphScreen     │        → PlaceholderScreen
-    └── NavigationStack → SettingsScreen  ┘
-```
+`Kanki/KankiApp.swift` currently contains the entire app: `KankiApp` → `AppShell` (`TabView`) → four independent `NavigationStack`s for Learning, Notes, Graph and Settings. `Destination: Hashable` is the value-based route (`card`, `note`, `editor`, `search`, `library`, `merges`, `conflicts`), with exhaustive `title` and `symbol` switches. `NavigationLink(value:)` in the three list-based tabs resolves to `PlaceholderScreen` via `.navigationDestination(for:)`; **Graph has no destination registration**, so register one before adding links there. `SectionIntro` wraps `ContentUnavailableView` for empty states; all leaf destinations are placeholders.
 
-- **Value-based navigation.** `enum Destination: Hashable` (`card, note, editor, search, library, merges, conflicts`) is the only navigation value. It carries both `title` (Russian) and `symbol` (SF Symbol), so a leaf screen renders from `destination` alone.
-- **Leaf screens are stubs.** Every `Destination` resolves to `PlaceholderScreen`. `NavigationLink(value:)` in list sections is the only navigation trigger.
-- **`SectionIntro`** (`private struct`) wraps `ContentUnavailableView { Label } description: { Text }` — the single empty-state primitive. It has no action button; extend it before adding CTAs.
-- **Graph tab registers no `navigationDestination`** (`Kanki/KankiApp.swift:133-138`). Adding a `NavigationLink(value:)` there does nothing and logs a runtime warning; either push onto its own stack or add the destination modifier.
-- Planned data flow (later stages, not implemented): note import → `edges`/backlinks index + FTS5 → card rendered in `WKWebView` → `swift-fsrs` scheduling → `review_log` → delta pull/push with `(guid, ord)` merge.
+There are no models, networking, database, async operations, dependency injection or state container yet. The *planned*, not implemented, path is note import → relations/edges and FTS5 → card display in WKWebView → swift-fsrs scheduling/review log → delta sync and `(guid, ord)` Anki progress mapping. Do not introduce a repository/view-model layer before its feature needs it.
 
 ## Key Directories
 
 | Path | Purpose |
 |---|---|
-| `Kanki/` | All app sources. Flat, single target. **Every new `.swift` file goes here.** |
-| `Kanki.xcodeproj/` | Generated by XcodeGen from `project.yml`. Committed but must never be hand-edited. |
-| `tasks/` | Canonical tracker, in Russian: `plan.md` (rationale, stage order, checkpoints, risks), `todo.md` (checkbox ledger with per-stage dependencies). |
-| `project.yml` | Sole build definition (XcodeGen spec). |
+| `Kanki/` | All app Swift sources; currently one file. Add new app sources here. |
+| `Kanki.xcodeproj/` | Tracked XcodeGen output; never hand-edit. |
+| `tasks/` | Russian roadmap (`plan.md`) and acceptance/status ledger (`todo.md`); stage issues mirror progress. |
+| `docs/`, `.github/` | Agent handoff and GitHub issue/PR templates; no CI workflow exists yet. |
 
 ## Development Commands
 
 ```bash
-# Regenerate the Xcode project after adding/removing/renaming ANY file under Kanki/
-xcodegen generate
-
-# Verification that actually works today — always pass -parse-as-library, or @main errors out
+xcodegen generate  # required after adding/removing/renaming a source or resource under Kanki/
 xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
   -target arm64-apple-ios17.0-simulator Kanki/KankiApp.swift
-
-# Full build — currently BLOCKED: no iOS platform/runtime installed
 xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-- `-scheme Kanki` resolves locally (Xcode auto-creates the scheme); **no shared scheme is committed** (`xcshareddata/` is empty). If scheme discovery breaks, use `-target Kanki` or add `schemes:` to `project.yml`.
-- `xcodebuild` fails today with `Ineligible destinations … iOS 26.2 is not installed` and `Found no destinations for the scheme 'Kanki'`. `xcrun simctl list runtimes` is empty. Installing the iOS platform is a prerequisite; until then typecheck is the only gate and the build stays unverified — record that explicitly rather than claiming a build.
-- `xcodegen generate` is idempotent on the current tree (verified: zero diff after regeneration).
+`-parse-as-library` is required for `@main`. When adding Swift files, typecheck all `Kanki/*.swift` together and regenerate the project: XcodeGen expands the directory into an **explicit** source list, so a new file can pass standalone typecheck yet be absent from the build. Scheme `Kanki` is discovered locally but no shared scheme is committed; if discovery fails, use `-target Kanki` or define a scheme in `project.yml`.
+
+**Observed environment blocker:** the iOS Simulator runtime was downloaded, but `xcrun simctl`/`xcodebuild` now stop on an unaccepted Xcode license. The environment owner must review/accept it with `sudo xcodebuild -license`; do not accept legal terms on their behalf. Build and simulator run remain unverified (issue #2). Do not claim them from typecheck alone.
 
 ## Code Conventions & Common Patterns
 
-- **Swift 6 language mode, project-wide.** Strict concurrency applies. Nothing in the codebase crosses isolation yet; keep new UI work `@MainActor` (implicit for `View`) and mark cross-actor models `Sendable`.
-- **Access levels:** only `KankiApp`, `Destination`, `AppShell` are internal (module-visible). Every screen and helper view is `private struct` at file scope. A type needed by a second file or by tests must be promoted deliberately — and screens are not testable while `private`.
-- **View style:** value structs, `var body: some View`, `List { Section }` for screens, `.navigationTitle(...)` on every screen, `.navigationBarTitleDisplayMode(.inline)` on pushed placeholders.
-- **Switches map over enum cases exhaustively** with single-expression implicit returns (`case .card: "Карточка"`). `Destination` has two separate switches (`title`, `symbol`) — a new case requires both (compiler-enforced).
-- **Copy:** all user-facing strings are **Russian literals**, unlocalized (no `Localizable.strings`, no `String(localized:)`). Identifiers, SF Symbol names, and doc filenames stay English. Tab labels duplicate `navigationTitle` strings — retitling takes two edits.
-- **Naming:** PascalCase types, camelCase members, enum cases lowercase (`Destination`). SF Symbols are literal names, resolved through `Destination.symbol`.
-- **No DI, no state management, no async precedent.** Do not invent an architecture (view models, reducers, repositories) ahead of the stage that needs it; stage 1 is deliberately model-free because Э1 may change the schema.
-- **Settings affordances show reality:** e.g. `Label("Сервер не подключён", systemImage: "icloud.slash").foregroundStyle(.secondary)` — a non-interactive, secondary-styled status line, not a button that pretends to connect.
-- Keep commits/messages English; keep `tasks/` and in-app copy Russian.
+- Swift 6 project mode; SwiftUI `View` value structs, `var body: some View`, `List { Section }`, `.navigationTitle(...)`; pushed placeholders use `.navigationBarTitleDisplayMode(.inline)`.
+- `KankiApp`, `Destination` and `AppShell` have module visibility; screens/helpers are file-private `private struct`. Promote deliberately when sharing or testing. Types use PascalCase; properties and enum cases use camelCase/lowercase.
+- User-visible strings are Russian literals; identifiers and SF Symbol names are English. `Destination` cases require updates to both exhaustive `title` and `symbol` switches. Tab labels and navigation titles are separate literals.
+- `SectionIntro(symbol:title:detail:)` is the current empty-state pattern; it has no CTA. Settings shows unavailable sync as a secondary, non-interactive `Label("Сервер не подключён", systemImage: "icloud.slash")`, not a fake connect button.
+- No error-handling, async, DI or app-state convention exists yet. For future actor-crossing models honor Swift 6 isolation/`Sendable`; choose patterns when implementing the actual feature, not as a speculative scaffold.
+- Keep in-app copy and `tasks/` Russian; commit messages English.
 
 ## Important Files
 
 | File | Role |
 |---|---|
-| `Kanki/KankiApp.swift` | Entire app: entry point (`:1-11`), `Destination` (`:13-39`), `AppShell` TabView (`:41-74`), `SectionIntro` (`:76-88`), `LearningScreen` (`:90-105`), `NotesScreen` (`:107-131`), `GraphScreen` (`:133-138`), `SettingsScreen` (`:140-158`), `PlaceholderScreen` (`:160-168`). |
-| `project.yml` | Name, iOS 17.0 target, Swift 6.0, device family `1,2`, bundle id `app.kanki.ios`, `CODE_SIGNING_ALLOWED: NO`, `GENERATE_INFOPLIST_FILE: YES`, target `Kanki` with `sources: [path: Kanki]`. |
-| `tasks/plan.md` | Decision record, 8 ordered stages, 4 checkpoints, risks. Read before any scoped work. |
-| `tasks/todo.md` | Status ledger — flip the stage checkbox and refresh its status sentence when a stage lands. |
-| `.gitignore` | Standard Xcode/SwiftPM ignores; the `.xcodeproj` **is** tracked. |
+| `Kanki/KankiApp.swift` | Entry point, routes, tabs, empty state and placeholder screens. |
+| `project.yml` | Sole build specification: app target `Kanki`, iOS 17, Swift 6, signing disabled, generated Info.plist. |
+| `tasks/plan.md`, `tasks/todo.md` | Eight-stage plan and current stage acceptance ledger; cross-check stage issues. |
+| `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | Review/verification process and participant/agent conduct. |
+| `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/agent-task.yml` | PR evidence and structured agent work requests. |
 
 ## Runtime/Tooling Preferences
 
-- **Platform:** macOS + Xcode **26.3** (build 17C529), Swift 6.2.4 toolchain, iOS SDK 26.2 present.
-- **Project generation:** XcodeGen **2.46.0** (`/opt/homebrew/bin/xcodegen`) is required — `project.yml` is the only spec. Generated `project.pbxproj` uses `objectVersion = 77`, so it needs Xcode 16+ to open.
-- **Source inclusion is explicit:** the `Kanki` group lists files individually (no `PBXFileSystemSynchronizedRootGroup`) and there is **no** resources/frameworks build phase. Adding sources, an `Assets.xcassets`, or an `Info.plist` inside `Kanki/` requires `xcodegen generate`; otherwise the file is silently compiled nowhere while typecheck still passes.
-- **Package manager:** none. No SwiftPM dependencies, no `Package.swift`, no `Package.resolved`.
-- **Signing:** disabled project-wide (`CODE_SIGNING_ALLOWED = NO`); target configs still carry XcodeGen's preset `CODE_SIGN_IDENTITY = "iPhone Developer"` and `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` — these come from XcodeGen, not `project.yml`, and there is no `Assets.xcassets` yet. Running on hardware needs signing turned back on plus a `DEVELOPMENT_TEAM` in `project.yml`.
-- Git: no commits yet on `main`; repo remote is `git@github.com:EgorYolkin/kanki.git`.
+macOS with Xcode 26.3 and XcodeGen 2.46.0. `project.yml` generates the committed `.xcodeproj` (objectVersion 77; Xcode 16+). No SwiftPM dependencies, package manager, resource catalog or checked-in Info.plist. Set Info.plist keys in `project.yml`; regenerate when adding resources. `CODE_SIGNING_ALLOWED: NO` supports simulator builds but not device distribution without signing configuration.
 
 ## Testing & QA
 
-- **There is no test infrastructure**: no XCTest/Swift Testing target, no CI workflow, no linter/formatter config, no scripts, no Makefile, no git hooks.
-- **Verification today** = `swiftc -typecheck -parse-as-library` (passes) + `xcodebuild` (blocked on the missing iOS platform) + manual simulator run (blocked the same way). Report the build/run status honestly; never claim a build that did not run.
-- **Adding tests** requires editing `project.yml`: a sibling top-level directory (e.g. `KankiTests/`) with `type: bundle.unit-test` and `dependencies: [target: Kanki]`, then `xcodegen generate`. Do **not** put tests under `Kanki/` — the app target's source path would compile them into the app.
-- Tests can only reach internal types (`KankiApp`, `Destination`, `AppShell`); screens and `SectionIntro` are `private` and need access changes to be exercised.
-- Behavioral expectations for UI work: tabs reachable, every `NavigationLink` lands on a working screen, empty states are self-explanatory, and no affordance implies functionality that does not exist.
-- Update `tasks/todo.md` when a stage's acceptance criteria are actually met; leave unchecked with the blocking reason stated otherwise.
+There is no test target, test suite, CI, linter, formatter or test runner. Current static gate is the `swiftc -typecheck -parse-as-library` command above; build/run must be attempted when the Xcode license is resolved. Verify changed user paths on a simulator: tab access, destination navigation, explanatory empty states and no misleading affordances. Report actual commands/results and blockers; never equate typecheck with a successful build.
+
+When tests become necessary, create a sibling test directory/target in `project.yml`, **not under `Kanki/`** (its entire path belongs to the app target), then regenerate. Private screens require an intentional visibility change for direct tests. Update both `tasks/todo.md` and the relevant stage issue when acceptance criteria actually land; leave blocked work unchecked with the reason.
