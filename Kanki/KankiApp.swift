@@ -107,6 +107,15 @@ private enum RecallRating: Int, CaseIterable {
         case .easy: "Легко"
         }
     }
+
+    var tint: Color {
+        switch self {
+        case .again: .red
+        case .hard: .orange
+        case .good: .green
+        case .easy: .blue
+        }
+    }
 }
 
 private struct SessionReview {
@@ -255,19 +264,25 @@ private struct SessionCardScreen: View {
                 }
                 if isAnswerVisible {
                     Section("Насколько легко вспомнили?") {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        HStack(spacing: 8) {
                             ForEach(RecallRating.allCases, id: \.self) { rating in
-                                Button(rating.title) {
+                                Button {
                                     guard !didSubmitRating else { return }
                                     didSubmitRating = true
                                     onReview(rating)
                                     dismiss()
+                                } label: {
+                                    Text(rating.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(rating.tint, in: RoundedRectangle(cornerRadius: 10))
                                 }
-                                .buttonStyle(.bordered)
-                                .frame(maxWidth: .infinity)
+                                .buttonStyle(.plain)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
                 Section {
@@ -278,6 +293,10 @@ private struct SessionCardScreen: View {
             }
             .navigationTitle("Карточка этого сеанса")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                isAnswerVisible = false
+                didSubmitRating = false
+            }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Закрыть") { dismiss() }
