@@ -46,12 +46,17 @@ final class SettingsUITests: XCTestCase {
         guard let source = image.cgImage else { return -1 }
         var pixel = [UInt8](repeating: 0, count: 4)
         let context = CGContext(
-            data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            data: &pixel,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         )
         context?.interpolationQuality = .medium
-        context?.draw(source, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        context?.draw(source, in: rect)
         return (CGFloat(pixel[0]) + CGFloat(pixel[1]) + CGFloat(pixel[2])) / (3 * 255)
     }
 }

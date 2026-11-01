@@ -22,6 +22,7 @@ final class CardSearchTests: XCTestCase {
     }
 
     func testNoMatchReturnsEmpty() {
-        XCTAssertTrue(CardSearch.filter(cards, matching: "граф").isEmpty)
+        let result = CardSearch.filter(cards, matching: "граф")
+        XCTAssertTrue(result.isEmpty)
     }
 }
