@@ -93,15 +93,38 @@ private struct SessionCard: Identifiable {
     let answer: String
 }
 
+private enum RecallRating: Int, CaseIterable {
+    case again = 1
+    case hard
+    case good
+    case easy
+
+    var title: String {
+        switch self {
+        case .again: "Снова"
+        case .hard: "Трудно"
+        case .good: "Хорошо"
+        case .easy: "Легко"
+        }
+    }
+}
+
+private struct SessionReview {
+    let cardID: UUID
+    let rating: RecallRating
+    let reviewedAt: Date
+}
+
 private struct LearningScreen: View {
     @State private var cards: [SessionCard] = []
+    @State private var reviews: [SessionReview] = []
     @State private var isAddingCard = false
     @State private var selectedCard: SessionCard?
 
     var body: some View {
         List {
             Section {
-                Text("Карточки сохраняются только до закрытия приложения. Это пробный режим без повторения и синхронизации.")
+                Text("Карточки и оценки сохраняются только до закрытия приложения. Расписание повторения и синхронизация пока недоступны.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -112,6 +135,14 @@ private struct LearningScreen: View {
                         .frame(maxWidth: .infinity)
                 }
             } else {
+                Section {
+                    Text("Оценок в этом сеансе: \(reviews.count)")
+                        .foregroundStyle(.secondary)
+                    if let lastReview = reviews.last {
+                        Text("Последняя оценка: \(lastReview.rating.title)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section("Карточки этого сеанса") {
                     ForEach(cards) { card in
                         Button {
@@ -147,7 +178,9 @@ private struct LearningScreen: View {
             }
         }
         .sheet(item: $selectedCard) { card in
-            SessionCardScreen(card: card)
+            SessionCardScreen(card: card) { rating in
+                reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+            }
         }
     }
 }
@@ -201,7 +234,9 @@ private struct AddSessionCardScreen: View {
 private struct SessionCardScreen: View {
     let card: SessionCard
     @State private var isAnswerVisible = false
+    @State private var didSubmitRating = false
     @Environment(\.dismiss) private var dismiss
+    let onReview: (RecallRating) -> Void
 
     var body: some View {
         NavigationStack {
@@ -218,8 +253,25 @@ private struct SessionCardScreen: View {
                         isAnswerVisible = true
                     }
                 }
+                if isAnswerVisible {
+                    Section("Насколько легко вспомнили?") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(RecallRating.allCases, id: \.self) { rating in
+                                Button(rating.title) {
+                                    guard !didSubmitRating else { return }
+                                    didSubmitRating = true
+                                    onReview(rating)
+                                    dismiss()
+                                }
+                                .buttonStyle(.bordered)
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
                 Section {
-                    Text("Просмотр не записывает повторение и не меняет расписание.")
+                    Text("Оценка останется только в этом сеансе. Срок следующего повтора не рассчитывается.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
