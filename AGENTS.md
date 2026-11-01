@@ -79,7 +79,7 @@ Build and UI tests are verified on iPhone 17e Simulator (iOS 26.3.1) with Xcode 
 
 ## Runtime/Tooling Preferences
 
-macOS with Xcode 27.2 (Xcode 26.3 or newer also supported) and XcodeGen 2.46.0. `project.yml` generates the committed `.xcodeproj` (objectVersion 77; Xcode 16+). No SwiftPM dependencies, package manager, resource catalog or checked-in Info.plist. Set Info.plist keys in `project.yml`; regenerate when adding resources. `CODE_SIGNING_ALLOWED: NO` supports simulator builds but not device distribution without signing configuration.
+macOS with Xcode 27.2 (Xcode 26.3 or newer also supported) and XcodeGen 2.46.0. `project.yml` generates the committed `.xcodeproj` (objectVersion 77; Xcode 16+). No SwiftPM dependencies, package manager, resource catalog or checked-in Info.plist. Set Info.plist keys in `project.yml`; regenerate when adding resources. `CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]: NO` keeps simulator builds and UI tests signing-free while device builds keep normal signing: running from Xcode on a connected iPhone needs a Team selected on the Signing page, and `xcodegen generate` rewrites `project.pbxproj`, so re-select it or pass `DEVELOPMENT_TEAM=<id>` on the `xcodebuild` command line as `scripts/personal_team.py` does. Never commit team IDs, UDIDs or provisioning profiles.
 
 ## Testing & QA
 

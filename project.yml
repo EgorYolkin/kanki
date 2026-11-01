@@ -8,7 +8,9 @@ settings:
     TARGETED_DEVICE_FAMILY: '1,2'
     GENERATE_INFOPLIST_FILE: YES
     PRODUCT_BUNDLE_IDENTIFIER: app.kanki.ios
-    CODE_SIGNING_ALLOWED: NO
+    # Симулятору подпись не нужна; на устройстве ключ остаётся YES, иначе
+    # Xcode собирает неподписанный .app и отказывается его запускать.
+    'CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]': NO
 targets:
   Kanki:
     type: application
