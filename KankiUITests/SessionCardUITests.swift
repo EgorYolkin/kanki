@@ -52,27 +52,42 @@ final class SessionCardUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
-        app.buttons["Будущий экран повторения"].tap()
-        XCTAssertTrue(app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."].exists)
+        let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
+        XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
+        let futureReview = app.buttons["Будущий экран повторения"]
+        XCTAssertTrue(futureReview.waitForExistence(timeout: 5))
+        futureReview.tap()
+        XCTAssertTrue(placeholder.waitForExistence(timeout: 5))
         app.navigationBars.buttons["Обучение"].tap()
+        XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
 
         app.tabBars.buttons["Заметки"].tap()
-        XCTAssertTrue(app.staticTexts["Заметок пока нет"].exists)
+        let emptyNotes = app.staticTexts["Заметок пока нет"]
+        XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5))
         for label in ["Поиск", "Экран заметки", "Редактор", "Библиотека"] {
-            app.buttons[label].tap()
-            XCTAssertTrue(app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."].exists)
-            app.navigationBars.buttons["Заметки"].tap()
+            let destination = app.buttons[label]
+            XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
+            destination.tap()
+            XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
+            let back = app.navigationBars.buttons["Заметки"]
+            XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Заметки»")
+            back.tap()
+            XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5), "Не вернулись на вкладку «Заметки» после «\(label)»")
         }
 
         app.tabBars.buttons["Граф"].tap()
-        XCTAssertTrue(app.staticTexts["Граф пуст"].exists)
+        XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
+        XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5))
         for label in ["Очередь мержей", "Конфликты"] {
-            app.buttons[label].tap()
-            XCTAssertTrue(app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."].exists)
-            app.navigationBars.buttons["Настройки"].tap()
+            let destination = app.buttons[label]
+            XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
+            destination.tap()
+            XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
+            let back = app.navigationBars.buttons["Настройки"]
+            XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Настройки»")
+            back.tap()
+            XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
         }
     }
 
