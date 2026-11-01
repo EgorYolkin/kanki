@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		07AF579290417D019A9855BC /* KankiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */; };
+		D1108B1F5BD6837BD01A0962 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF15689DA2A920F45308E742 /* Assets.xcassets */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,7 @@
 		08A1350F44A56F3BE86B85CD /* Kanki.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kanki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KankiApp.swift; sourceTree = "<group>"; };
+		CF15689DA2A920F45308E742 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,6 +34,7 @@
 		0553AB699CD3C1D2268B6F3B /* Kanki */ = {
 			isa = PBXGroup;
 			children = (
+				CF15689DA2A920F45308E742 /* Assets.xcassets */,
 				B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */,
 			);
 			path = Kanki;
@@ -89,6 +92,7 @@
 			buildConfigurationList = 37C88A4E3842F5B524F4749F /* Build configuration list for PBXNativeTarget "Kanki" */;
 			buildPhases = (
 				47743D8AEACEABC7399FB2C3 /* Sources */,
+				533FA798BD0512D2B4512BCC /* Resources */,
 			);
 			buildRules = (
 			);
@@ -134,6 +138,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		533FA798BD0512D2B4512BCC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1108B1F5BD6837BD01A0962 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		47743D8AEACEABC7399FB2C3 /* Sources */ = {

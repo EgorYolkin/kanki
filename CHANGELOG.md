@@ -6,11 +6,11 @@
 
 ### Добавлено
 - SwiftUI-оболочка iOS 17+: вкладки «Обучение», «Заметки», «Граф», «Настройки» и переходы к экранам-заготовкам. Данных, повторения и синхронизации пока нет.
+- Иконка Kanki из предоставленного изображения: iPhone/iPad 1024 px и комплект прозрачных размеров macOS для будущего macOS target.
 - Конфигурация XcodeGen (`project.yml`) и план восьми этапов в `tasks/`.
 - Правила поведения и участия (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `AGENTS.md`), шаблоны задач агента, GitHub issue и PR.
 - Gitflow: рабочие ветки от `dev`, PR в `dev`, выпуск через PR `dev` → `main`.
 
 ### Проверка и ограничения
-- SwiftUI-исходник прошёл `swiftc -typecheck`; это не заменяет сборку и запуск.
-- iOS Simulator runtime установлен, но `xcodebuild` останавливается на непринятой лицензии Xcode. Сборка и запуск скелета не проверены и отслеживаются в [issue #2](https://github.com/EgorYolkin/kanki/issues/2); этап 1 не закрыт.
+- Скелет и пробное добавление карточек собраны и проверены на iPhone 17e Simulator (iOS 26.3.1): два UI-теста прошли. Этап 1 завершён, [issue #2](https://github.com/EgorYolkin/kanki/issues/2) закрыт.
 - Эксперимент Э1 с Anki и состав нотетайпа остаются открытыми: [issue #3](https://github.com/EgorYolkin/kanki/issues/3).
