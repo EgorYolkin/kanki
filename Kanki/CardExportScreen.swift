@@ -4,9 +4,9 @@ import UniformTypeIdentifiers
 struct CardExportDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
 
-    let archive: CardArchive
+    let archive: CardExportArchive
 
-    init(archive: CardArchive) {
+    init(archive: CardExportArchive) {
         self.archive = archive
     }
 
@@ -14,7 +14,7 @@ struct CardExportDocument: FileDocument {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        archive = try CardArchive.decode(data)
+        archive = try CardExportArchive.decode(data)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
@@ -31,12 +31,7 @@ struct CardExportScreen: View {
 
     var body: some View {
         NavigationStack {
-            List(selection: $selection) {
-                ForEach(cards) { card in
-                    Text(card.question)
-                }
-            }
-            .environment(\.editMode, .constant(.active))
+            selectionList
             .safeAreaInset(edge: .bottom) {
                 Button("Экспортировать выбранные") {
                     onExport(selection)
@@ -48,12 +43,25 @@ struct CardExportScreen: View {
                 .padding()
             }
             .navigationTitle("Выбор карточек")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Отмена") { dismiss() }
                 }
             }
         }
+    }
+
+    private var selectionList: some View {
+        let list = List(selection: $selection) {
+            ForEach(cards) { card in
+                Text(card.question)
+            }
+        }
+        #if os(macOS)
+        return list
+        #else
+        return list.environment(\.editMode, .constant(.active))
+        #endif
     }
 }
