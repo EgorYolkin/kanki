@@ -59,4 +59,35 @@ final class LearningSnapshotTests: XCTestCase {
 
         XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: data))
     }
+
+    func testRemovingCardAlsoRemovesItsHistoryAndScheduleWithoutChangingOtherCards() {
+        let other = SessionCard(question: "Другой", answer: "Ответ")
+        let review = SessionReview(cardID: card.id, rating: .good, reviewedAt: Date(timeIntervalSince1970: 300))
+        let otherReview = SessionReview(cardID: other.id, rating: .easy, reviewedAt: Date(timeIntervalSince1970: 400))
+        let schedule = CardSchedule(
+            due: Date(timeIntervalSince1970: 500),
+            stability: 4.5,
+            difficulty: 6,
+            elapsedDays: 2,
+            scheduledDays: 4,
+            learningSteps: 1,
+            reps: 3,
+            lapses: 1,
+            state: .review,
+            lastReview: Date(timeIntervalSince1970: 400)
+        )
+        var snapshot = LearningSnapshot(
+            cards: [card, other],
+            reviews: [review, otherReview],
+            schedules: [card.id: schedule, other.id: schedule]
+        )
+
+        XCTAssertTrue(snapshot.removeCard(id: card.id))
+        XCTAssertEqual(snapshot.cards, [other])
+        XCTAssertEqual(snapshot.reviews, [otherReview])
+        XCTAssertEqual(snapshot.schedules, [other.id: schedule])
+        XCTAssertFalse(snapshot.removeCard(id: card.id))
+        XCTAssertEqual(snapshot.reviews, [otherReview])
+    }
+
 }

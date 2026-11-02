@@ -17,6 +17,15 @@ struct LearningSnapshot: Codable, Equatable {
         self.schedules = schedules
     }
 
+    @discardableResult
+    mutating func removeCard(id: UUID) -> Bool {
+        guard cards.contains(where: { $0.id == id }) else { return false }
+        cards.removeAll { $0.id == id }
+        reviews.removeAll { $0.cardID == id }
+        schedules.removeValue(forKey: id)
+        return true
+    }
+
     private enum CodingKeys: String, CodingKey {
         case cards
         case reviews

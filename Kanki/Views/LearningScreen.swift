@@ -138,9 +138,12 @@ struct LearningScreen: View {
             }
         }
         .sheet(item: $selectedCard) { card in
-            SessionCardScreen(card: card, history: log.history(for: card.id)) { rating in
-                try record(card, rating: rating)
-            }
+            SessionCardScreen(
+                card: card,
+                history: log.history(for: card.id),
+                onReview: { rating in try record(card, rating: rating) },
+                onDelete: { try deleteCard(card) }
+            )
         }
         .sheet(isPresented: $isReviewing) {
             ReviewSessionScreen(cards: dueCards) { card, rating in
@@ -292,6 +295,17 @@ struct LearningScreen: View {
             cards.removeLast()
             throw error
         }
+    }
+
+    private func deleteCard(_ card: SessionCard) throws {
+        var updated = snapshot
+        guard updated.removeCard(id: card.id) else { return }
+        try LocalCardStore.save(updated)
+        cards = updated.cards
+        log = SessionLog(reviews: updated.reviews)
+        schedules = updated.schedules
+        selectedCard = nil
+        schedulePush()
     }
 }
 

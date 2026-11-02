@@ -47,6 +47,40 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Хорошо"].exists)
     }
 
+    func testDeletingCardRequiresConfirmationAndPersistsWithoutOtherCardHistory() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+        addCard(in: app, question: "Удаляемая карточка", answer: "Ответ А")
+        addCard(in: app, question: "Оставшаяся карточка", answer: "Ответ Б")
+
+        app.buttons["Оставшаяся карточка"].tap()
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Хорошо"].tap()
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
+
+        app.buttons["Удаляемая карточка"].tap()
+        app.buttons["deleteSessionCard"].tap()
+        let confirmation = app.alerts["Удалить карточку и историю повторений?"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Отмена"].tap()
+        XCTAssertTrue(app.navigationBars["Карточка"].exists)
+        app.buttons["deleteSessionCard"].tap()
+        app.alerts["Удалить карточку и историю повторений?"].buttons["Удалить карточку"].tap()
+
+        XCTAssertFalse(app.buttons["Удаляемая карточка"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["Оставшаяся карточка"].exists)
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].exists)
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        XCTAssertFalse(app.buttons["Удаляемая карточка"].exists)
+        XCTAssertTrue(app.buttons["Оставшаяся карточка"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].exists)
+    }
+
     func testReviewSessionCoversQueueAndSummarizes() {
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store"]
