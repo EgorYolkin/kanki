@@ -52,6 +52,9 @@ targets:
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.productivity
         NSAppTransportSecurity:
+          # Сервер синхронизации — self-hosted по http:// (Tailscale 100.x не
+          # считается local networking), URL вводится пользователем.
+          NSAllowsArbitraryLoads: true
           NSAllowsLocalNetworking: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
