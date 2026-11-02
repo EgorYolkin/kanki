@@ -67,11 +67,17 @@ struct AllCardsScreen: View {
         }
         .navigationTitle("Все карточки")
         .toolbarTitleDisplayMode(.inline)
+        #if os(iOS)
+        // На iOS 26 поиск по умолчанию сворачивается и не находится в иерархии,
+        // пока экран не прокрутят; в drawer он виден сразу.
         .searchable(
             text: $searchQuery,
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Поиск по карточкам"
         )
+        #else
+        .searchable(text: $searchQuery, prompt: "Поиск по карточкам")
+        #endif
     }
 
     private func deckChip(title: String, value: String?) -> some View {
