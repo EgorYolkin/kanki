@@ -172,6 +172,7 @@ struct SettingsScreen: View {
         guard !trimmed.isEmpty else {
             throw ServerInputError.missingToken
         }
+        try ServerTokenStore.save(trimmed)
         return ServerClient(configuration: configuration, token: trimmed)
     }
 
