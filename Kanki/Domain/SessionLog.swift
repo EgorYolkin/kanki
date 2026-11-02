@@ -16,4 +16,13 @@ struct SessionLog: Equatable {
     mutating func record(_ card: SessionCard, rating: RecallRating, at date: Date = Date()) {
         reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: date))
     }
+
+    func history(for cardID: UUID) -> [SessionReview] {
+        reviews.reversed().filter { $0.cardID == cardID }
+    }
+
+    /// Откат записи только после неудачного сохранения на диск.
+    mutating func discardLastRecord() {
+        reviews.removeLast()
+    }
 }

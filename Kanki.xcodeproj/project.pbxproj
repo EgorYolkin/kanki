@@ -19,6 +19,7 @@
 		2976CC1F5E58046B5F7A1D2C /* ServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8BE689FAA18093026126C5 /* ServerClient.swift */; };
 		2BECA0763E524F5C2EC2507C /* ServerClientIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992D0672A4A7313F1A3E9E12 /* ServerClientIntegrationTests.swift */; };
 		31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */; };
+		3BBB7520F81E426AB0590089 /* CardExportArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89D2E911F1BB1A0DE1DE33E6 /* CardExportArchive.swift */; };
 		3EBB1F16D86E39C36A32D96E /* ServerClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889A3D893F4A7E23D0D50569 /* ServerClientTests.swift */; };
 		3FAEE456BE886530D1044886 /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78083BD8306FF6E06837F69 /* AppShell.swift */; };
 		40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */; };
@@ -36,11 +37,13 @@
 		793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */; };
 		7C4B54AC72903FE1FC95EF08 /* AddSessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */; };
 		7F5CBE66DAB1FF45E1824EE8 /* ServerConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206D429002831316316C7E60 /* ServerConfigurationTests.swift */; };
+		7F675AD32EC39DB2667D083D /* CardExportArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8329926384A17781F614E660 /* CardExportArchiveTests.swift */; };
 		8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */; };
 		94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B9A60F2B13C0AFD8FE7597 /* PlaceholderScreen.swift */; };
 		A49D5534F3D1D81E8EFC3CF9 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */; };
 		A83D5F95586A1F21B0C8CF8A /* CardDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690B4C72A928A06894F3ADDB /* CardDraft.swift */; };
 		B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */; };
+		B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */; };
 		BC9EB485791353F110750C94 /* ServerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A937E6E66EAC7934CABF325D /* ServerModels.swift */; };
 		C3D75FF8CCCF06BEBD697B3A /* ReviewSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */; };
 		CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */; };
@@ -110,8 +113,10 @@
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		6EE0D609C81D308B2B202E60 /* SectionIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionIntro.swift; sourceTree = "<group>"; };
 		77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSessionCardScreen.swift; sourceTree = "<group>"; };
+		8329926384A17781F614E660 /* CardExportArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportArchiveTests.swift; sourceTree = "<group>"; };
 		889A3D893F4A7E23D0D50569 /* ServerClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClientTests.swift; sourceTree = "<group>"; };
 		895DE69FECE0431295FFC150 /* GraphScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphScreen.swift; sourceTree = "<group>"; };
+		89D2E911F1BB1A0DE1DE33E6 /* CardExportArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportArchive.swift; sourceTree = "<group>"; };
 		992D0672A4A7313F1A3E9E12 /* ServerClientIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClientIntegrationTests.swift; sourceTree = "<group>"; };
 		9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionScreen.swift; sourceTree = "<group>"; };
 		9E3252F25729C7B4B4471BF2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -124,6 +129,7 @@
 		BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionState.swift; sourceTree = "<group>"; };
 		CF15689DA2A920F45308E742 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportScreen.swift; sourceTree = "<group>"; };
 		D5298CF1C1CD9C6617351780 /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
 		DB8BE689FAA18093026126C5 /* ServerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClient.swift; sourceTree = "<group>"; };
 		DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardTests.swift; sourceTree = "<group>"; };
@@ -136,6 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				CF15689DA2A920F45308E742 /* Assets.xcassets */,
+				D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */,
 				9E3252F25729C7B4B4471BF2 /* Info.plist */,
 				B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */,
 				2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */,
@@ -152,6 +159,7 @@
 				110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */,
 				248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */,
 				32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */,
+				8329926384A17781F614E660 /* CardExportArchiveTests.swift */,
 				115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */,
 				48706187509E815F62681E73 /* DestinationTests.swift */,
 				5B91454A611902605A7BD438 /* RecallRatingTests.swift */,
@@ -254,6 +262,7 @@
 				5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */,
 				D5298CF1C1CD9C6617351780 /* AppSection.swift */,
 				690B4C72A928A06894F3ADDB /* CardDraft.swift */,
+				89D2E911F1BB1A0DE1DE33E6 /* CardExportArchive.swift */,
 				3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */,
 				1B2E736179A418F50CB67EBB /* Destination.swift */,
 				51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */,
@@ -401,6 +410,7 @@
 				40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */,
 				31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */,
 				B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */,
+				7F675AD32EC39DB2667D083D /* CardExportArchiveTests.swift in Sources */,
 				793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */,
 				6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */,
 				1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */,
@@ -423,6 +433,8 @@
 				E899C275914FBF2E1848C731 /* AppSection.swift in Sources */,
 				3FAEE456BE886530D1044886 /* AppShell.swift in Sources */,
 				A83D5F95586A1F21B0C8CF8A /* CardDraft.swift in Sources */,
+				3BBB7520F81E426AB0590089 /* CardExportArchive.swift in Sources */,
+				B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */,
 				04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */,
 				01CEB24A2815331C4773EFDF /* Destination.swift in Sources */,
 				2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */,

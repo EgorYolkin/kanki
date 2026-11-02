@@ -3,7 +3,7 @@ import SwiftUI
 struct LearningScreen: View {
     @State private var cards: [SessionCard]
     @State private var log: SessionLog
-    @State private var storageError: String?
+    @State private var loadError: String?
     @State private var isAddingCard = false
     @State private var isReviewing = false
     @AppStorage("serverRevision") private var serverRevision = 0
@@ -11,6 +11,11 @@ struct LearningScreen: View {
     @State private var searchQuery = ""
     @State private var pushTask: Task<Void, Never>?
     @State private var syncError: String?
+    @State private var isChoosingCards = false
+    @State private var exportDocument: CardExportDocument?
+    @State private var isExporting = false
+    @State private var pendingSelectedExport = false
+    @State private var exportError: String?
 
     private var filteredCards: [SessionCard] {
         CardSearch.filter(cards, matching: searchQuery)
@@ -26,12 +31,17 @@ struct LearningScreen: View {
         }
         _cards = State(initialValue: snapshot.cards)
         _log = State(initialValue: SessionLog(reviews: snapshot.reviews))
-        _storageError = State(initialValue: loadMessage)
+        _loadError = State(initialValue: loadMessage)
     }
 
     var body: some View {
         List {
-            if cards.isEmpty {
+            if let loadError {
+                Section("Не удалось открыть карточки") {
+                    Text(loadError)
+                    Button("Повторить чтение") { reload() }
+                }
+            } else if cards.isEmpty {
                 Section {
                     SectionIntro(
                         symbol: "rectangle.stack",
@@ -75,6 +85,21 @@ struct LearningScreen: View {
         }
         .contentMargins(.bottom, 160, for: .scrollContent)
         .navigationTitle("Обучение")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("Выбрать карточки") { isChoosingCards = true }
+                    Button("Экспортировать все") {
+                        exportDocument = CardExportDocument(archive: CardExportArchive(snapshot: snapshot))
+                        isExporting = true
+                    }
+                } label: {
+                    Label("Экспорт", systemImage: "square.and.arrow.up")
+                }
+                .disabled(loadError != nil || cards.isEmpty)
+                .accessibilityIdentifier("cardExportMenu")
+            }
+        }
         .searchable(text: $searchQuery, prompt: "Поиск по карточкам")
         .overlay(alignment: .bottomTrailing) {
             VStack(alignment: .trailing, spacing: 12) {
@@ -86,20 +111,17 @@ struct LearningScreen: View {
         }
         .sheet(isPresented: $isAddingCard) {
             AddSessionCardScreen { question, answer in
-                cards.append(SessionCard(question: question, answer: answer))
-                persist()
+                try addCard(question: question, answer: answer)
             }
         }
         .sheet(item: $selectedCard) { card in
-            SessionCardScreen(card: card) { rating in
-                log.record(card, rating: rating)
-                persist()
+            SessionCardScreen(card: card, history: log.history(for: card.id)) { rating in
+                try record(card, rating: rating)
             }
         }
         .sheet(isPresented: $isReviewing) {
             ReviewSessionScreen(cards: cards) { card, rating in
-                log.record(card, rating: rating)
-                persist()
+                try record(card, rating: rating)
             }
         }
         .onAppear(perform: reload)
@@ -109,10 +131,39 @@ struct LearningScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()
         }
-        .alert("Ошибка сохранения", isPresented: isStorageErrorPresented) {
-            Button("OK", role: .cancel) {}
+        .sheet(
+            isPresented: $isChoosingCards,
+            onDismiss: {
+                if pendingSelectedExport {
+                    pendingSelectedExport = false
+                    isExporting = true
+                }
+            },
+            content: {
+                CardExportScreen(cards: cards) { selection in
+                    exportDocument = CardExportDocument(
+                        archive: CardExportArchive(snapshot: snapshot, selectedIDs: selection)
+                    )
+                    pendingSelectedExport = true
+                }
+            }
+        )
+        .fileExporter(isPresented: $isExporting,
+                      document: exportDocument,
+                      contentType: .json,
+                      defaultFilename: "kanki-cards") { result in
+            if case .failure(let error) = result,
+               (error as? CocoaError)?.code != .userCancelled {
+                exportError = error.localizedDescription
+            }
+        }
+        .alert("Не удалось экспортировать", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("Закрыть", role: .cancel) { exportError = nil }
         } message: {
-            Text(storageError ?? "")
+            Text(exportError ?? "")
         }
         .alert("Синхронизация", isPresented: isSyncErrorPresented) {
             Button("OK", role: .cancel) {}
@@ -135,6 +186,7 @@ struct LearningScreen: View {
         .background { FloatingCircleBackground(size: 44) }
         .accessibilityLabel("Добавить карточку")
         .accessibilityIdentifier("addSessionCard")
+        .disabled(loadError != nil)
     }
 
     private var reviewButton: some View {
@@ -143,7 +195,7 @@ struct LearningScreen: View {
         } label: {
             Image(systemName: "play.fill")
                 .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(cards.isEmpty ? Color.secondary : Color.primary)
+                .foregroundStyle(loadError != nil || cards.isEmpty ? Color.secondary : Color.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
@@ -151,8 +203,12 @@ struct LearningScreen: View {
         .background { FloatingCircleBackground(size: 56) }
         .accessibilityLabel("Начать повторение")
         .accessibilityIdentifier("startReviewSession")
-        .disabled(cards.isEmpty)
+        .disabled(loadError != nil || cards.isEmpty)
         .animation(.easeInOut(duration: 0.2), value: cards.isEmpty)
+    }
+
+    private var snapshot: LearningSnapshot {
+        LearningSnapshot(cards: cards, reviews: log.reviews)
     }
 
     private func reload() {
@@ -161,24 +217,31 @@ struct LearningScreen: View {
             cards = snapshot.cards
             log = SessionLog(reviews: snapshot.reviews)
             selectedCard = nil
+            loadError = nil
         } catch {
-            storageError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
+            loadError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
         }
     }
 
-    private var isStorageErrorPresented: Binding<Bool> {
-        Binding(
-            get: { storageError != nil },
-            set: { if !$0 { storageError = nil } }
-        )
-    }
-
-    private func persist() {
+    private func addCard(question: String, answer: String) throws {
+        cards.append(SessionCard(question: question, answer: answer))
         do {
-            try LocalCardStore.save(LearningSnapshot(cards: cards, reviews: log.reviews))
+            try LocalCardStore.save(snapshot)
             schedulePush()
         } catch {
-            storageError = "Не удалось сохранить данные: \(error.localizedDescription)"
+            cards.removeLast()
+            throw error
+        }
+    }
+
+    private func record(_ card: SessionCard, rating: RecallRating) throws {
+        log.record(card, rating: rating)
+        do {
+            try LocalCardStore.save(snapshot)
+            schedulePush()
+        } catch {
+            log.discardLastRecord()
+            throw error
         }
     }
 

@@ -9,6 +9,10 @@ final class SettingsUITests: XCTestCase {
 
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.buttons["appearance-dark"].exists)
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Карточки и история оценок'"))
+                .firstMatch.exists
+        )
 
         app.buttons["appearance-dark"].tap()
         XCTAssertTrue(app.buttons["appearance-dark"].isSelected)

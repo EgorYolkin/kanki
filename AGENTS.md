@@ -77,7 +77,7 @@ xcodegen generate        # required after adding/removing/renaming a source or r
 ./scripts/lint.sh        # swiftlint --strict + markdownlint-cli2
 ./scripts/test.sh        # unit tests (KankiTests) + 95 % coverage gate
 ./scripts/ui-test.sh     # five KankiUITests on a simulator
-./scripts/ci.sh          # full local contour, identical to CI jobs
+./scripts/ci.sh          # full local contour, including iOS UI tests
 xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
   -destination 'platform=macOS' build   # native macOS app, ad-hoc signed
 ./scripts/macos-ui-test.sh             # macOS UI test: window and ⌘1–⌘4
@@ -113,7 +113,7 @@ Simulator selection is automatic (`scripts/simulator_destination.sh` picks a boo
 | `Kanki/Domain/ReviewSessionState.swift` | Review queue: index, revealed answer, counts, summary. |
 | `Kanki/Domain/CardDraft.swift` | New-card trimming and submit validation. |
 | `KankiTests/Domain/` | One `<Type>Tests` file per domain type with behaviour; plain records are covered through their consumers. |
-| `KankiUITests/` | Five UI tests for navigation, cards, search, persistence, review and settings. |
+| `KankiUITests/SessionCardUITests.swift`, `KankiUITests/SettingsUITests.swift` | UI tests for navigation, session cards, search, persistence across relaunch, review queue, export, server settings and appearance. |
 | `project.yml` | Sole build specification: one multi-platform app target (iOS/macOS), `KankiTests`, `KankiUITests`, `KankiMacUITests`, the `Kanki` scheme with coverage, the `Kanki macOS` scheme, Swift 6, simulator-only signing off, generated Info.plist. |
 | `.swiftlint.yml`, `.markdownlint-cli2.jsonc` | Linter configuration; rules are explicit and changes need an issue. |
 | `scripts/`, `.github/workflows/ci.yml` | Local and CI quality gates. |
@@ -135,6 +135,6 @@ Two test targets and two linters, all wired through `scripts/` and CI:
 - `KankiMacUITests` covers the macOS build via `./scripts/macos-ui-test.sh`: the window opens and ⌘1–⌘4 switch all four sections. The macOS app is signed ad-hoc (`Sign to Run Locally`), so it needs no Team ID; iOS-only `CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]: NO` does not affect it.
 - `.swiftlint.yml` runs with `--strict`; `.markdownlint-cli2.jsonc` lints every `.md`.
 - `server/`: `./scripts/server-test.sh` runs `pytest` for FastAPI, SQLite WAL, token auth, revision conflicts and MCP tools; CI has a separate `Server and MCP tests` job.
-- `.github/workflows/ci.yml` runs Markdown, SwiftLint, server tests and the build/unit/coverage/UI job; local steps are mirrored by `scripts/ci.sh`.
+- `.github/workflows/ci.yml` runs Markdown, SwiftLint, server tests, build/unit/coverage and the macOS job. iOS UI tests stay out of per-PR CI for speed; run `./scripts/ui-test.sh` locally for user-facing changes and before a release. `scripts/ci.sh` remains the full local contour including UI tests.
 
-Gates for a change: `xcodegen generate` when sources/resources move, `./scripts/lint.sh`, `./scripts/server-test.sh`, `./scripts/test.sh`, `./scripts/ui-test.sh` (or `./scripts/ci.sh` once). Verify changed user paths on the simulator; report actual commands/results and blockers, never equate typecheck with a successful build or test. Keep test directories siblings of `Kanki/` in `project.yml` (the whole `Kanki/` path belongs to the app target) and regenerate. Update both `tasks/todo.md` and the relevant stage issue when acceptance criteria actually land; leave blocked work unchecked with the reason.
+Gates for a change: `xcodegen generate` when sources/resources move, `./scripts/lint.sh`, `./scripts/server-test.sh`, `./scripts/test.sh`; add `./scripts/ui-test.sh` for user-facing changes and before release (or run `./scripts/ci.sh` once locally). Verify changed user paths on the simulator; report actual commands/results and blockers, never equate typecheck with a successful build or test. Keep test directories siblings of `Kanki/` in `project.yml` (the whole `Kanki/` path belongs to the app target) and regenerate. Update both `tasks/todo.md` and the relevant stage issue when acceptance criteria actually land; leave blocked work unchecked with the reason.

@@ -40,6 +40,10 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Оценок: 2"].exists)
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
         XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
+        card.tap()
+        XCTAssertTrue(app.staticTexts["История повторений"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Снова"].exists)
+        XCTAssertTrue(app.staticTexts["Хорошо"].exists)
     }
 
     func testReviewSessionCoversQueueAndSummarizes() {
@@ -111,6 +115,7 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        assertFloatingActions(in: app)
         XCTAssertTrue(app.searchFields.firstMatch.exists)
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
@@ -148,6 +153,57 @@ final class SessionCardUITests: XCTestCase {
             if element.isHittable { return }
             app.swipeUp()
         }
+    }
+
+    func testExportMenuSavesSelectedAndAllCards() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+        addCard(in: app, question: "Экспорт Альфа", answer: "Ответ А")
+        addCard(in: app, question: "Экспорт Бета", answer: "Ответ Б")
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Выбрать карточки"].tap()
+        XCTAssertTrue(app.navigationBars["Выбор карточек"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["exportSelectedCards"].isEnabled)
+        app.staticTexts["Экспорт Альфа"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["exportSelectedCards"].isEnabled)
+        app.buttons["exportSelectedCards"].tap()
+
+        let filename = app.textFields["DOCPicker.filenameTextField"]
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        let suffix = UUID().uuidString.prefix(8)
+        filename.tap()
+        filename.typeText("-\(suffix)-selected")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Экспортировать все"].tap()
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        filename.tap()
+        filename.typeText("-\(suffix)-all")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+    }
+
+    /// Обе плавающие кнопки постоянно стоят в правом нижнем углу над таб-баром:
+    /// повторение 56 pt под кнопкой «плюс» 44 pt, без перекрытий.
+    private func assertFloatingActions(in app: XCUIApplication) {
+        let add = app.buttons["addSessionCard"]
+        let review = app.buttons["startReviewSession"]
+        let tabBar = app.tabBars.firstMatch
+
+        XCTAssertTrue(add.exists && review.exists, "Обе плавающие кнопки должны быть видны одновременно")
+        XCTAssertEqual(add.frame.width, 44, accuracy: 1)
+        XCTAssertEqual(add.frame.height, 44, accuracy: 1)
+        XCTAssertEqual(review.frame.width, 56, accuracy: 1)
+        XCTAssertEqual(review.frame.height, 56, accuracy: 1)
+        for button in [add, review] {
+            XCTAssertGreaterThan(button.frame.midX, app.frame.midX, "Кнопка должна быть в правой половине экрана")
+            XCTAssertLessThanOrEqual(button.frame.maxY, tabBar.frame.minY, "Кнопка не должна перекрывать таб-бар")
+        }
+        XCTAssertLessThanOrEqual(add.frame.maxY, review.frame.minY, "Кнопка «плюс» должна быть над повторением")
     }
 
     private func addCard(in app: XCUIApplication, question: String, answer: String) {

@@ -2,10 +2,13 @@ import SwiftUI
 
 struct SessionCardScreen: View {
     let card: SessionCard
+    let history: [SessionReview]
     @State private var isAnswerVisible = false
     @State private var didSubmitRating = false
+    @State private var saveError = ""
+    @State private var showSaveError = false
     @Environment(\.dismiss) private var dismiss
-    let onReview: (RecallRating) -> Void
+    let onReview: (RecallRating) throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -29,8 +32,14 @@ struct SessionCardScreen: View {
                                 Button {
                                     guard !didSubmitRating else { return }
                                     didSubmitRating = true
-                                    onReview(rating)
-                                    dismiss()
+                                    do {
+                                        try onReview(rating)
+                                        dismiss()
+                                    } catch {
+                                        didSubmitRating = false
+                                        saveError = error.localizedDescription
+                                        showSaveError = true
+                                    }
                                 } label: {
                                     Text(rating.title)
                                         .font(.subheadline.weight(.semibold))
@@ -45,6 +54,18 @@ struct SessionCardScreen: View {
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
+                Section("История повторений") {
+                    if history.isEmpty {
+                        Text("Оценок пока нет")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(history.indices, id: \.self) { index in
+                            let review = history[index]
+                            LabeledContent(review.rating.title,
+                                           value: review.reviewedAt.formatted(date: .abbreviated, time: .standard))
+                        }
+                    }
+                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
@@ -57,6 +78,11 @@ struct SessionCardScreen: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+        }
+        .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
         }
     }
 }
