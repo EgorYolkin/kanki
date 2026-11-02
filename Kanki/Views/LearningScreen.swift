@@ -16,6 +16,7 @@ struct LearningScreen: View {
     @State private var searchQuery = ""
     @State var pushTask: Task<Void, Never>?
     @State var syncError: String?
+    @State var lastSyncFailed = false
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
@@ -52,14 +53,7 @@ struct LearningScreen: View {
                     Button("Повторить чтение") { reload() }
                 }
             } else if cards.isEmpty {
-                Section {
-                    SectionIntro(
-                        symbol: "rectangle.stack",
-                        title: "Карточек пока нет",
-                        detail: "Добавьте карточку с вопросом и ответом кнопкой «плюс»."
-                    )
-                    .frame(maxWidth: .infinity)
-                }
+                emptyCardsSection
             } else {
                 Section {
                     Text("К повторению: \(dueCards.count)")
@@ -71,17 +65,15 @@ struct LearningScreen: View {
                         Text("Последняя оценка: \(lastRating.title)")
                             .foregroundStyle(.secondary)
                     }
+                    if let syncStatusText {
+                        Text(syncStatusText)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("syncStatus")
+                    }
                 }
 
                 if filteredCards.isEmpty {
-                    Section {
-                        SectionIntro(
-                            symbol: "magnifyingglass",
-                            title: "Ничего не найдено",
-                            detail: "Измените запрос или добавьте новую карточку."
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
+                    emptySearchSection
                 } else {
                     Section("Карточки") {
                         ForEach(filteredCards) { card in

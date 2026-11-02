@@ -40,6 +40,41 @@ extension LearningScreen {
         }
     }
 
+    @ViewBuilder
+    var emptyCardsSection: some View {
+        Section {
+            SectionIntro(
+                symbol: "rectangle.stack",
+                title: "Карточек пока нет",
+                detail: "Добавьте карточку с вопросом и ответом кнопкой «плюс»."
+            )
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    var emptySearchSection: some View {
+        Section {
+            SectionIntro(
+                symbol: "magnifyingglass",
+                title: "Ничего не найдено",
+                detail: "Измените запрос или добавьте новую карточку."
+            )
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Честный текст статуса синхронизации; `nil` — сервер не настроен, строки нет.
+    var syncStatusText: String? {
+        SyncStatus.text(
+            isConfigured: serverClient() != nil,
+            hasConflict: syncError != nil,
+            lastSyncFailed: lastSyncFailed,
+            hasUnsyncedChanges: hasUnsyncedChanges,
+            knownRevision: serverRevision
+        )
+    }
+
     /// Отправляет текущий снимок на сервер; успех фиксирует ревизию и чистоту локала.
     func pushNow(client: ServerClient) async {
         let localSnapshot = snapshot
@@ -51,11 +86,13 @@ extension LearningScreen {
             )
             serverRevision = result.revision
             hasUnsyncedChanges = false
+            lastSyncFailed = false
         } catch let error as ServerError {
             if case .conflict(let current) = error {
                 syncError = "Конфликт ревизий: на сервере \(current). Разрешите в настройках."
             }
         } catch {
+            lastSyncFailed = true
             // Сеть недоступна; правки останутся помеченными до следующей попытки.
         }
     }
@@ -68,6 +105,7 @@ extension LearningScreen {
         do {
             let remote = try await client.fetchSnapshot()
             pushTask?.cancel()
+            lastSyncFailed = false
             switch SnapshotSyncPlan.action(
                 localDirty: hasUnsyncedChanges,
                 knownRevision: serverRevision,
@@ -96,6 +134,7 @@ extension LearningScreen {
                 syncError = "Конфликт ревизий: на сервере \(remote.revision). Разрешите в настройках."
             }
         } catch {
+            lastSyncFailed = true
             // Сервер недоступен: тихо, повтор при следующей активации.
         }
     }
