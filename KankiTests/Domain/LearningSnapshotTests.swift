@@ -43,6 +43,38 @@ final class LearningSnapshotTests: XCTestCase {
         XCTAssertEqual(decoded, LearningSnapshot())
     }
 
+    func testSnapshotV2EncodesVersionDeckAndRenames() throws {
+        let snapshot = LearningSnapshot(
+            cards: [SessionCard(question: "Вопрос", answer: "Ответ", deck: "Математика")],
+            deckRenames: [DeckRename(from: "Старое", to: "Математика")]
+        )
+
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(snapshot)) as? [String: Any]
+        )
+        let cards = try XCTUnwrap(object["cards"] as? [[String: Any]])
+        let renames = try XCTUnwrap(object["deck_renames"] as? [[String: String]])
+
+        XCTAssertEqual(object["snapshot_version"] as? Int, 2)
+        XCTAssertEqual(renames, [["from": "Старое", "to": "Математика"]])
+        XCTAssertEqual(cards.first?["deck"] as? String, "Математика")
+    }
+
+    func testLegacyV1SnapshotDecodesWithDeckDefaults() throws {
+        let data = Data(
+            """
+            {"cards":[{"id":"2621F15A-306C-435A-9680-AEEB602F272D",
+            "question":"annals","answer":"bsbs","createdAt":730000}]}
+            """.utf8
+        )
+
+        let decoded = try JSONDecoder().decode(LearningSnapshot.self, from: data)
+
+        XCTAssertEqual(decoded.snapshotVersion, LearningSnapshot.currentSnapshotVersion)
+        XCTAssertTrue(decoded.deckRenames.isEmpty)
+        XCTAssertEqual(decoded.cards.map(\.deck), [nil])
+    }
+
     func testEmptyObjectDecodesToEmptySnapshot() throws {
         let decoded = try JSONDecoder().decode(LearningSnapshot.self, from: Data("{}".utf8))
 

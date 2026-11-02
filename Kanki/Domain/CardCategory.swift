@@ -53,7 +53,7 @@ enum CardCategory {
         guard let trimmed = trimmedDeck(name) else {
             return "Введите имя категории"
         }
-        if trimmed.range(of: "\(hierarchySeparator)") != nil {
+        if trimmed.contains(hierarchySeparator) {
             return "Имя не может содержать «::» — вложенность появится позже"
         }
         if trimmed == noCategoryTitle {
@@ -104,7 +104,9 @@ enum CardCategory {
                     newCount: members.filter { !reviewedIDs.contains($0.id) }.count
                 )
             }
-            .sorted { $0.deck!.localizedCaseInsensitiveCompare($1.deck!) == .orderedAscending }
+            .sorted {
+                ($0.deck ?? "").localizedCaseInsensitiveCompare($1.deck ?? "") == .orderedAscending
+            }
 
         let uncategorized = cards(snapshot.cards, inDeck: nil)
         if !uncategorized.isEmpty || summaries.isEmpty {
@@ -131,6 +133,9 @@ extension LearningSnapshot {
             throw CardCategoryError.invalidName
         }
         let currentDecks = Set(cards.compactMap(\.deck))
+        guard currentDecks.contains(old) else {
+            throw CardCategoryError(message: "Категория «\(old)» не найдена")
+        }
         if let error = CardCategory.validationError(for: new, existingDecks: currentDecks) {
             throw CardCategoryError(message: error)
         }
@@ -188,7 +193,7 @@ extension LearningSnapshot {
             .filter { deck, count in
                 !remoteDecks.contains(deck)
                     && !renamedAway.contains(deck)
-                    && !remoteDecks.contains(where: { $0.hasPrefix(deck + CardCategory.hierarchySeparator) })
+                    && !remoteDecks.contains { $0.hasPrefix(deck + CardCategory.hierarchySeparator) }
                     && count > 0
             }
             .sorted { $0.key < $1.key }
@@ -202,10 +207,6 @@ extension LearningSnapshot {
 
 struct CardCategoryError: Error, Equatable {
     let message: String
-
-    init(message: String) {
-        self.message = message
-    }
 
     static let invalidName = CardCategoryError(message: "Недопустимое имя категории")
 }

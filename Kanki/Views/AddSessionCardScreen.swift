@@ -5,8 +5,22 @@ struct AddSessionCardScreen: View {
     @State private var draft = CardDraft()
     @State private var saveError = ""
     @State private var showSaveError = false
+    @State private var selectedDeck: String?
 
-    let onAdd: (String, String) throws -> Void
+    let availableDecks: [String]
+    let initialDeck: String?
+    let onAdd: (String, String, String?) throws -> Void
+
+    init(
+        availableDecks: [String],
+        initialDeck: String? = nil,
+        onAdd: @escaping (String, String, String?) throws -> Void
+    ) {
+        self.availableDecks = availableDecks
+        self.initialDeck = initialDeck
+        self.onAdd = onAdd
+        _selectedDeck = State(initialValue: initialDeck)
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,6 +35,15 @@ struct AddSessionCardScreen: View {
                         .lineLimit(2...8)
                         .accessibilityIdentifier("cardAnswer")
                 }
+                Section("Категория") {
+                    Picker("Категория", selection: $selectedDeck) {
+                        Text(CardCategory.noCategoryTitle).tag(String?.none)
+                        ForEach(availableDecks, id: \.self) { deck in
+                            Text(deck).tag(String?.some(deck))
+                        }
+                    }
+                    .accessibilityIdentifier("cardDeckPicker")
+                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
@@ -32,7 +55,7 @@ struct AddSessionCardScreen: View {
                     Button("Добавить") {
                         if let card = draft.makeCard() {
                             do {
-                                try onAdd(card.question, card.answer)
+                                try onAdd(card.question, card.answer, selectedDeck)
                                 dismiss()
                             } catch {
                                 saveError = error.localizedDescription
