@@ -7,8 +7,10 @@ struct SessionCardScreen: View {
     @State private var didSubmitRating = false
     @State private var saveError = ""
     @State private var showSaveError = false
+    @State private var isConfirmingDeletion = false
     @Environment(\.dismiss) private var dismiss
     let onReview: (RecallRating) throws -> Void
+    let onDelete: () throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -66,6 +68,12 @@ struct SessionCardScreen: View {
                         }
                     }
                 }
+                Section {
+                    Button("Удалить карточку", role: .destructive) {
+                        isConfirmingDeletion = true
+                    }
+                    .accessibilityIdentifier("deleteSessionCard")
+                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
@@ -79,7 +87,19 @@ struct SessionCardScreen: View {
                 }
             }
         }
-        .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
+        .alert("Удалить карточку и историю повторений?", isPresented: $isConfirmingDeletion) {
+            Button("Удалить карточку", role: .destructive) {
+                do {
+                    try onDelete()
+                    dismiss()
+                } catch {
+                    saveError = error.localizedDescription
+                    showSaveError = true
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        }
+        .alert("Не удалось сохранить изменение", isPresented: $showSaveError) {
             Button("Закрыть", role: .cancel) {}
         } message: {
             Text(saveError)
