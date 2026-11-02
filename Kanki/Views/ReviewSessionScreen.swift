@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct ReviewSessionScreen: View {
-    let onReview: (SessionCard, RecallRating) -> Void
+    let onReview: (SessionCard, RecallRating) throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var session: ReviewSessionState
+    @State private var saveError = ""
+    @State private var showSaveError = false
 
-    init(cards: [SessionCard], onReview: @escaping (SessionCard, RecallRating) -> Void) {
+    init(cards: [SessionCard], onReview: @escaping (SessionCard, RecallRating) throws -> Void) {
         self.onReview = onReview
         _session = State(initialValue: ReviewSessionState(cards: cards))
     }
@@ -27,6 +29,11 @@ struct ReviewSessionScreen: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+        }
+        .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
         }
     }
 
@@ -90,7 +97,13 @@ struct ReviewSessionScreen: View {
     }
 
     private func record(_ rating: RecallRating, for card: SessionCard) {
-        guard session.record(rating) != nil else { return }
-        onReview(card, rating)
+        guard session.currentCard?.id == card.id, session.isAnswerVisible else { return }
+        do {
+            try onReview(card, rating)
+            _ = session.record(rating)
+        } catch {
+            saveError = error.localizedDescription
+            showSaveError = true
+        }
     }
 }
