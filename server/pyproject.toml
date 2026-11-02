@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kanki-server"
+version = "0.1.0"
+description = "Kanki sync server: revisioned snapshots, bearer tokens and MCP tools"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.116,<1.0",
+    "httpx>=0.28,<1.0",
+    "mcp>=2.0,<3.0",
+    "uvicorn[standard]>=0.35,<1.0",
+]
+
+[project.scripts]
+kanki-mcp = "kanki_server.mcp_server:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.24,<2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.setuptools.packages.find]
+include = ["kanki_server*"]

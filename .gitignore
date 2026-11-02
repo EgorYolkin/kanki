@@ -22,3 +22,17 @@ Package.resolved.bak
 *.moved-aside
 *.hmap
 *.xcconfig.local
+
+# LLVM coverage artifacts
+*.profraw
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Kanki server local state
+server/.venv/
+server/data/
+server/.env
+.pytest_cache/
+*.egg-info/
