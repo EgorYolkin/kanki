@@ -45,13 +45,8 @@ struct SessionCardScreen: View {
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
-                Section {
-                    Text("Оценка сохранится на устройстве. Срок следующего повтора не рассчитывается.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
-            .navigationTitle("Карточка этого сеанса")
+            .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
             .onAppear {
                 isAnswerVisible = false

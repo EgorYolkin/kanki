@@ -19,11 +19,6 @@ struct AddSessionCardScreen: View {
                         .lineLimit(2...8)
                         .accessibilityIdentifier("cardAnswer")
                 }
-                Section {
-                    Text("Карточка сохранится на этом устройстве и не попадает в Anki или на сервер.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
