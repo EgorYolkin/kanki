@@ -25,7 +25,9 @@ iOS-приложению пришлось бы хранить SSH-ключи и 
 - `GET /v1/health` — без токена: `{status, version, time}`.
 - `GET /v1/me` — `{label, role}` для проверки токена.
 - `GET /v1/snapshot` — `{revision, schema_version, data, updated_at}`;
-  при отсутствии данных `revision = 0`, `data = null`.
+  при отсутствии данных `revision = 0`, `data = null`. Ответ содержит
+  `ETag: "<revision>"`; запрос с `If-None-Match` этой ревизии (или `*`,
+  включая слабый `W/`-вариант) отвечает `304` без тела.
 - `PUT /v1/snapshot` — `{schema_version, base_revision, data}`.
   Успех возвращает новую ревизию; несовпадение `base_revision` — `409` с
   `detail.current_revision`. Запись атомарная, лимит 10 МиБ.
