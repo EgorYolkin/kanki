@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  markdown:
+    name: Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: markdownlint-cli2
+        run: ./scripts/lint.sh markdown
+
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: swiftlint --strict
+        run: ./scripts/lint.sh swift
+
+  tests:
+    name: Build, unit tests, coverage ≥95%, UI tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Committed project is up to date
+        run: git diff --exit-code -- Kanki.xcodeproj
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+      - name: Unit tests and coverage gate
+        run: ./scripts/test.sh
+      - name: UI tests
+        run: ./scripts/ui-test.sh
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/*.xcresult
+          retention-days: 7
+
+  macos:
+    name: macOS build, ⌘1–⌘4 UI test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Committed project is up to date
+        run: git diff --exit-code -- Kanki.xcodeproj
+      - name: Build native macOS app
+        run: >-
+          xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug
+          -destination 'platform=macOS' build
+      - name: macOS UI tests
+        run: ./scripts/macos-ui-test.sh
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-results
+          path: build/MacUITest.xcresult
+          retention-days: 7

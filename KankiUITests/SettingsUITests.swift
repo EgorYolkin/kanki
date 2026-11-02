@@ -8,22 +8,55 @@ final class SettingsUITests: XCTestCase {
 
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
-        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения."].exists)
+        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся на этом устройстве. Сервер не подключён, синхронизация не настроена."].exists)
 
-        app.buttons["Тёмное"].tap()
-        XCTAssertTrue(app.buttons["Тёмное"].isSelected)
-        XCTAssertTrue(app.buttons["Системное"].exists)
+        app.buttons["appearance-dark"].tap()
+        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
+        XCTAssertLessThan(averageBrightness(app), 0.4, "Тёмная тема должна затемнять интерфейс")
+
+        app.buttons["appearance-light"].tap()
+        XCTAssertTrue(app.buttons["appearance-light"].isSelected)
+        XCTAssertGreaterThan(averageBrightness(app), 0.6, "Светлая тема должна осветлять интерфейс")
+
+        app.buttons["appearance-dark"].tap()
+        XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
+        XCTAssertLessThan(averageBrightness(app), 0.4, "Повторное переключение на тёмную тему должно работать")
+
+        app.buttons["appearance-light"].tap()
+        XCTAssertTrue(app.buttons["appearance-light"].isSelected)
+        XCTAssertGreaterThan(averageBrightness(app), 0.6, "Повторное переключение на светлую тему должно работать")
 
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["О приложении"].exists)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Версия'")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Пробная сборка'")).firstMatch.exists)
 
         app.terminate()
         app.launch()
         app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.buttons["Тёмное"].isSelected)
+        XCTAssertTrue(app.buttons["appearance-light"].isSelected)
+        XCTAssertGreaterThan(averageBrightness(app), 0.6, "Светлая тема должна сохраняться после перезапуска")
 
-        app.buttons["Системное"].tap()
-        XCTAssertTrue(app.buttons["Системное"].isSelected)
+        app.buttons["appearance-system"].tap()
+        XCTAssertTrue(app.buttons["appearance-system"].isSelected)
+    }
+
+    private func averageBrightness(_ app: XCUIApplication) -> CGFloat {
+        let image = app.screenshot().image
+        guard let source = image.cgImage else { return -1 }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let context = CGContext(
+            data: &pixel,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        context?.interpolationQuality = .medium
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        context?.draw(source, in: rect)
+        return (CGFloat(pixel[0]) + CGFloat(pixel[1]) + CGFloat(pixel[2])) / (3 * 255)
     }
 }
