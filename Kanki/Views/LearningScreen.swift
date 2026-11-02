@@ -28,12 +28,6 @@ struct LearningScreen: View {
 
     var body: some View {
         List {
-            Section {
-                Text("Карточки и оценки хранятся на этом устройстве. Расписание повторения и синхронизация пока недоступны.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
             if cards.isEmpty {
                 Section {
                     SectionIntro(
