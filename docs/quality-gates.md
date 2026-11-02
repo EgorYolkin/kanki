@@ -11,7 +11,7 @@
 | Swift | `./scripts/lint.sh swift` | `swiftlint lint --strict` по `.swiftlint.yml` |
 | Markdown | `./scripts/lint.sh markdown` | `markdownlint-cli2` по `.markdownlint-cli2.jsonc` |
 | Unit + покрытие | `./scripts/test.sh` | `xcodegen generate`, тесты `KankiTests`, порог покрытия |
-| UI | `./scripts/ui-test.sh` | Четыре UI-теста `KankiUITests` на симуляторе |
+| UI | `./scripts/ui-test.sh` | UI-тесты `KankiUITests` на симуляторе |
 | macOS | `./scripts/macos-ui-test.sh` | Сборка native macOS-приложения и `KankiMacUITests`: окно и ⌘1–⌘4 |
 | Покрытие отдельно | `python3 scripts/coverage_gate.py` | Разбор `build/Test.xcresult` через `xcrun xccov` |
 

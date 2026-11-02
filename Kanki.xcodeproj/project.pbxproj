@@ -15,8 +15,11 @@
 		18000D5D18FABA38A7C40F42 /* ReviewSessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */; };
 		1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B91454A611902605A7BD438 /* RecallRatingTests.swift */; };
 		1F16E47FEE8079660AFD8F08 /* SettingsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */; };
+		22F508FFEC1633672259DE7E /* CardSchedulingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */; };
 		2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895DE69FECE0431295FFC150 /* GraphScreen.swift */; };
+		2C649C8AAF58860A24E62615 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = DE3AF4CA9A74379C41649CA8 /* FSRS */; };
 		31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */; };
+		3BAAFA1E294FE5025AFA5C5D /* CardScheduling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B4D4B014206400D470D862 /* CardScheduling.swift */; };
 		3FAEE456BE886530D1044886 /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78083BD8306FF6E06837F69 /* AppShell.swift */; };
 		40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */; };
 		46251EEC490136F2319692F9 /* SessionCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */; };
@@ -26,12 +29,15 @@
 		5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283B368D15032ED87CD7B9CD /* NotesScreen.swift */; };
 		655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4F72F29D01441D198664F1 /* SessionLogTests.swift */; };
 		6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48706187509E815F62681E73 /* DestinationTests.swift */; };
+		730325471BB3C3EB7A66AA04 /* ReviewQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */; };
 		738AB8DFF25CDBC497363B8A /* LearningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B576BC0D00A4522D761422A /* LearningScreen.swift */; };
 		7503E6A97B9795F4FCA97EA9 /* SectionIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE0D609C81D308B2B202E60 /* SectionIntro.swift */; };
 		793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */; };
 		7C4B54AC72903FE1FC95EF08 /* AddSessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */; };
 		8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */; };
+		9167A03C01060599ED9C5267 /* LearningSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906EE9A0C9A3C9D7C67AFB9F /* LearningSnapshotTests.swift */; };
 		94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B9A60F2B13C0AFD8FE7597 /* PlaceholderScreen.swift */; };
+		9B3E7394067D9782CBAC8BC1 /* CardSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0DF748B7190069AF02E069E /* CardSchedule.swift */; };
 		A49D5534F3D1D81E8EFC3CF9 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */; };
 		A83D5F95586A1F21B0C8CF8A /* CardDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690B4C72A928A06894F3ADDB /* CardDraft.swift */; };
 		B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */; };
@@ -41,9 +47,12 @@
 		D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */; };
 		D9EE570D6F392F7EEECF4528 /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9D099E1E9DFE214E983738 /* SessionLog.swift */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
+		DEDE77EFAB2B93BF6930BAF0 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = FFCF1B1BCF68255D61B88DDB /* FSRS */; };
+		E526A974456CAF35D98C3825 /* ReviewQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1297976B3B0A769446205BE /* ReviewQueue.swift */; };
 		E899C275914FBF2E1848C731 /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5298CF1C1CD9C6617351780 /* AppSection.swift */; };
 		EBC1F4E9A527DC9DE6304C0A /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEC30D666EB98EA77B4071C /* SettingsScreen.swift */; };
 		EDD6C5C2C34183F5B24279A0 /* SectionCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93939D720A954E833FEE568 /* SectionCommands.swift */; };
+		F54CB52ACFCDBECD46C57F98 /* CardScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,24 +104,50 @@
 		5B576BC0D00A4522D761422A /* LearningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningScreen.swift; sourceTree = "<group>"; };
 		5B91454A611902605A7BD438 /* RecallRatingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecallRatingTests.swift; sourceTree = "<group>"; };
 		635944F7D7BBBF4DB591A2C5 /* MacShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacShellUITests.swift; sourceTree = "<group>"; };
+		63B4D4B014206400D470D862 /* CardScheduling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduling.swift; sourceTree = "<group>"; };
 		690B4C72A928A06894F3ADDB /* CardDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDraft.swift; sourceTree = "<group>"; };
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		6EE0D609C81D308B2B202E60 /* SectionIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionIntro.swift; sourceTree = "<group>"; };
 		77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSessionCardScreen.swift; sourceTree = "<group>"; };
+		78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSchedulingTests.swift; sourceTree = "<group>"; };
 		895DE69FECE0431295FFC150 /* GraphScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphScreen.swift; sourceTree = "<group>"; };
+		906EE9A0C9A3C9D7C67AFB9F /* LearningSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningSnapshotTests.swift; sourceTree = "<group>"; };
 		9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionScreen.swift; sourceTree = "<group>"; };
+		9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduleTests.swift; sourceTree = "<group>"; };
 		A93939D720A954E833FEE568 /* SectionCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCommands.swift; sourceTree = "<group>"; };
+		B1297976B3B0A769446205BE /* ReviewQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueue.swift; sourceTree = "<group>"; };
 		B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KankiApp.swift; sourceTree = "<group>"; };
 		BB4F72F29D01441D198664F1 /* SessionLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLogTests.swift; sourceTree = "<group>"; };
 		BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionStateTests.swift; sourceTree = "<group>"; };
 		BCEC30D666EB98EA77B4071C /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionState.swift; sourceTree = "<group>"; };
+		C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueTests.swift; sourceTree = "<group>"; };
 		CF15689DA2A920F45308E742 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0DF748B7190069AF02E069E /* CardSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSchedule.swift; sourceTree = "<group>"; };
 		D5298CF1C1CD9C6617351780 /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
 		DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardTests.swift; sourceTree = "<group>"; };
 		E78083BD8306FF6E06837F69 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		125E070459BBA2117512049D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DEDE77EFAB2B93BF6930BAF0 /* FSRS in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		93E40816651A4CA0FA8AEB99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C649C8AAF58860A24E62615 /* FSRS in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0553AB699CD3C1D2268B6F3B /* Kanki */ = {
@@ -133,9 +168,13 @@
 				110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */,
 				248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */,
 				32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */,
+				9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */,
+				78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */,
 				115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */,
 				48706187509E815F62681E73 /* DestinationTests.swift */,
+				906EE9A0C9A3C9D7C67AFB9F /* LearningSnapshotTests.swift */,
 				5B91454A611902605A7BD438 /* RecallRatingTests.swift */,
+				C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */,
 				BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */,
 				DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */,
 				BB4F72F29D01441D198664F1 /* SessionLogTests.swift */,
@@ -214,10 +253,13 @@
 				5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */,
 				D5298CF1C1CD9C6617351780 /* AppSection.swift */,
 				690B4C72A928A06894F3ADDB /* CardDraft.swift */,
+				D0DF748B7190069AF02E069E /* CardSchedule.swift */,
+				63B4D4B014206400D470D862 /* CardScheduling.swift */,
 				3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */,
 				1B2E736179A418F50CB67EBB /* Destination.swift */,
 				51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */,
 				54B3EFF5EE7F649EA9F3D241 /* RecallRating.swift */,
+				B1297976B3B0A769446205BE /* ReviewQueue.swift */,
 				BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */,
 				1A0A4013C1076D774BBD30F1 /* SessionCard.swift */,
 				2B9D099E1E9DFE214E983738 /* SessionLog.swift */,
@@ -252,6 +294,7 @@
 			buildConfigurationList = 38AB25A6070CDD3D572642EA /* Build configuration list for PBXNativeTarget "KankiTests" */;
 			buildPhases = (
 				3D57410808E3057D572E012C /* Sources */,
+				125E070459BBA2117512049D /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -260,6 +303,7 @@
 			);
 			name = KankiTests;
 			packageProductDependencies = (
+				FFCF1B1BCF68255D61B88DDB /* FSRS */,
 			);
 			productName = KankiTests;
 			productReference = 2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */;
@@ -289,6 +333,7 @@
 			buildPhases = (
 				47743D8AEACEABC7399FB2C3 /* Sources */,
 				533FA798BD0512D2B4512BCC /* Resources */,
+				93E40816651A4CA0FA8AEB99 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -296,6 +341,7 @@
 			);
 			name = Kanki;
 			packageProductDependencies = (
+				DE3AF4CA9A74379C41649CA8 /* FSRS */,
 			);
 			productName = Kanki;
 			productReference = 08A1350F44A56F3BE86B85CD /* Kanki.app */;
@@ -327,6 +373,9 @@
 			);
 			mainGroup = E72D2FABB970C7AF2704FE5B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A391310A17803DA0F932D4BE /* Products */;
 			projectDirPath = "";
@@ -359,9 +408,13 @@
 				40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */,
 				31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */,
 				B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */,
+				F54CB52ACFCDBECD46C57F98 /* CardScheduleTests.swift in Sources */,
+				22F508FFEC1633672259DE7E /* CardSchedulingTests.swift in Sources */,
 				793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */,
 				6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */,
+				9167A03C01060599ED9C5267 /* LearningSnapshotTests.swift in Sources */,
 				1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */,
+				730325471BB3C3EB7A66AA04 /* ReviewQueueTests.swift in Sources */,
 				CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */,
 				46251EEC490136F2319692F9 /* SessionCardTests.swift in Sources */,
 				655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */,
@@ -377,6 +430,8 @@
 				E899C275914FBF2E1848C731 /* AppSection.swift in Sources */,
 				3FAEE456BE886530D1044886 /* AppShell.swift in Sources */,
 				A83D5F95586A1F21B0C8CF8A /* CardDraft.swift in Sources */,
+				9B3E7394067D9782CBAC8BC1 /* CardSchedule.swift in Sources */,
+				3BAAFA1E294FE5025AFA5C5D /* CardScheduling.swift in Sources */,
 				04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */,
 				01CEB24A2815331C4773EFDF /* Destination.swift in Sources */,
 				2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */,
@@ -387,6 +442,7 @@
 				5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */,
 				94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */,
 				037B39E0BD011C0960ECF264 /* RecallRating.swift in Sources */,
+				E526A974456CAF35D98C3825 /* ReviewQueue.swift in Sources */,
 				18000D5D18FABA38A7C40F42 /* ReviewSessionScreen.swift in Sources */,
 				C3D75FF8CCCF06BEBD697B3A /* ReviewSessionState.swift in Sources */,
 				EDD6C5C2C34183F5B24279A0 /* SectionCommands.swift in Sources */,
@@ -757,6 +813,30 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/open-spaced-repetition/swift-fsrs.git";
+			requirement = {
+				kind = revision;
+				revision = 4fbaf20184d62f82a9f44f343337c61a2c5483e9;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DE3AF4CA9A74379C41649CA8 /* FSRS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */;
+			productName = FSRS;
+		};
+		FFCF1B1BCF68255D61B88DDB /* FSRS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */;
+			productName = FSRS;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9423A96F92E9FCAC34FA7861 /* Project object */;
 }
