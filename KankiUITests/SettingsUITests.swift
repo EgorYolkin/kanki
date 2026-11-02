@@ -4,10 +4,11 @@ import XCTest
 final class SettingsUITests: XCTestCase {
     func testAppearancePersistsAndStatusesStayHonest() {
         let app = XCUIApplication()
+        app.launchArguments = ["--reset-server"]
         app.launch()
 
         app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
+        XCTAssertTrue(app.buttons["appearance-dark"].exists)
         XCTAssertTrue(
             app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Карточки и история оценок'"))
                 .firstMatch.exists
@@ -29,6 +30,20 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["appearance-light"].isSelected)
         XCTAssertGreaterThan(averageBrightness(app), 0.6, "Повторное переключение на светлую тему должно работать")
 
+        let serverURL = app.textFields["serverURL"]
+        let serverCheck = app.buttons["serverCheck"]
+        scrollTo(serverCheck, in: app)
+        XCTAssertTrue(serverURL.exists)
+        XCTAssertTrue(app.secureTextFields["serverToken"].exists)
+        XCTAssertTrue(app.buttons["serverPush"].exists)
+        XCTAssertTrue(app.buttons["serverPull"].exists)
+        XCTAssertEqual(app.staticTexts["serverStatus"].label, "Не подключён")
+
+        serverCheck.tap()
+        let invalidURL = app.staticTexts["Укажите адрес вида http://100.x.y.z:8000"]
+        XCTAssertTrue(invalidURL.waitForExistence(timeout: 5))
+
+        app.swipeUp()
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["О приложении"].exists)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Версия'")).firstMatch.exists)
@@ -42,6 +57,14 @@ final class SettingsUITests: XCTestCase {
 
         app.buttons["appearance-system"].tap()
         XCTAssertTrue(app.buttons["appearance-system"].isSelected)
+    }
+
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5))
+        for _ in 0..<4 {
+            if element.isHittable { return }
+            app.swipeUp()
+        }
     }
 
     private func averageBrightness(_ app: XCUIApplication) -> CGFloat {

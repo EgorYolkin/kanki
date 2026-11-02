@@ -10,6 +10,7 @@ the gates themselves are in `docs/quality-gates.md`.
 | `KankiApp.swift` | `@main` entry point only |
 | `Domain/` | Pure value types and state, covered by unit tests |
 | `Views/` | SwiftUI screens and presentation-only helpers |
+| `Server/` | HTTP client and token storage; no business rules |
 | `Assets.xcassets/` | App icon resources |
 
 ## Platforms
@@ -34,11 +35,13 @@ macOS 14+. The same sources ship on both; a screen must work on both.
 - User-visible copy is Russian; identifiers, type names and SF Symbol names are English.
 - Never fake sync, SRS, server state or a successful action. Session data is demo-only;
   it is stored locally by `LocalCardStore`, store failures must surface, and the UI must
-  not imply a server or SRS that does not exist.
+  not imply a server or SRS that does not exist. The manual server check and snapshot
+  push/pull are real; a revision conflict must be shown, never merged silently.
 - `Destination` has exhaustive `title` and `symbol` switches: a new case requires both.
 - Interactive elements driven by UI tests need a stable `accessibilityIdentifier`
   (`addSessionCard`, `cardQuestion`, `cardAnswer`, `startReviewSession`, `reviewProgress`,
-  `reviewFinish`, `appearance-system`, `appearance-light`, `appearance-dark`).
+  `reviewFinish`, `appearance-system`, `appearance-light`, `appearance-dark`,
+  `serverURL`, `serverToken`, `serverCheck`, `serverStatus`, `serverPush`, `serverPull`).
 - After adding, renaming or deleting a file run `xcodegen generate` and commit
   `Kanki.xcodeproj`: XcodeGen expands the directory into an explicit source list.
 - XcodeGen turns non-Swift files in a source directory into bundle resources. The

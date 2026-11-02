@@ -158,16 +158,24 @@ final class SessionCardUITests: XCTestCase {
         app.tabBars.buttons["Граф"].tap()
         XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Не подключён"].waitForExistence(timeout: 5))
         for label in ["Очередь мержей", "Конфликты"] {
             let destination = app.buttons[label]
+            scrollTo(destination, in: app)
             XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
             destination.tap()
             XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
             let back = app.navigationBars.buttons["Настройки"]
             XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Настройки»")
             back.tap()
-            XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
+            XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
+        }
+    }
+
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<5 {
+            if element.isHittable { return }
+            app.swipeUp()
         }
     }
 

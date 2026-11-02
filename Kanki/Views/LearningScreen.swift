@@ -9,8 +9,11 @@ struct LearningScreen: View {
     @State private var loadError: String?
     @State private var isAddingCard = false
     @State private var isReviewing = false
+    @AppStorage("serverRevision") private var serverRevision = 0
     @State private var selectedCard: SessionCard?
     @State private var searchQuery = ""
+    @State private var pushTask: Task<Void, Never>?
+    @State private var syncError: String?
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
@@ -144,6 +147,13 @@ struct LearningScreen: View {
                 try record(card, rating: rating)
             }
         }
+        .onAppear(perform: reload)
+        .task {
+            await pullIfLocalEmpty()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
+            reload()
+        }
         .sheet(
             isPresented: $isChoosingCards,
             onDismiss: {
@@ -177,6 +187,11 @@ struct LearningScreen: View {
             Button("Закрыть", role: .cancel) { exportError = nil }
         } message: {
             Text(exportError ?? "")
+        }
+        .alert("Синхронизация", isPresented: isSyncErrorPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(syncError ?? "")
         }
     }
 
@@ -229,6 +244,7 @@ struct LearningScreen: View {
                 at: Date()
             )
             try LocalCardStore.save(snapshot)
+            schedulePush()
         } catch {
             log.discardLastRecord()
             schedules[card.id] = previousSchedule
@@ -259,6 +275,7 @@ struct LearningScreen: View {
             let snapshot = try LocalCardStore.load()
             cards = snapshot.cards
             log = SessionLog(reviews: snapshot.reviews)
+            selectedCard = nil
             schedules = snapshot.schedules
             loadError = nil
         } catch {
@@ -270,12 +287,80 @@ struct LearningScreen: View {
         cards.append(SessionCard(question: question, answer: answer))
         do {
             try LocalCardStore.save(snapshot)
+            schedulePush()
         } catch {
             cards.removeLast()
             throw error
         }
     }
+}
 
+extension LearningScreen {
+    private var isSyncErrorPresented: Binding<Bool> {
+        Binding(
+            get: { syncError != nil },
+            set: { if !$0 { syncError = nil } }
+        )
+    }
+
+    private func serverClient() -> ServerClient? {
+        guard let rawURL = UserDefaults.standard.string(forKey: "serverURL"),
+              let configuration = ServerConfiguration(rawValue: rawURL)
+        else {
+            return nil
+        }
+        do {
+            guard let stored = try ServerTokenStore.load() else { return nil }
+            let token = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else { return nil }
+            return ServerClient(configuration: configuration, token: token)
+        } catch {
+            return nil
+        }
+    }
+
+    /// Отправляет снимок на сервер после локального изменения с коротким debounce.
+    private func schedulePush() {
+        guard let client = serverClient() else { return }
+        let localSnapshot = snapshot
+        let baseRevision = serverRevision
+        pushTask?.cancel()
+        pushTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled else { return }
+            do {
+                let result = try await client.push(
+                    snapshot: localSnapshot,
+                    baseRevision: baseRevision
+                )
+                serverRevision = result.revision
+            } catch let error as ServerError {
+                if case .conflict(let current) = error {
+                    syncError = "Конфликт ревизий: на сервере \(current). Загрузите снимок в настройках."
+                }
+            } catch {
+                // Сеть недоступна; ручная синхронизация покажет ошибку.
+            }
+        }
+    }
+
+    /// Первый запуск на пустом устройстве подтягивает серверный снимок.
+    private func pullIfLocalEmpty() async {
+        guard cards.isEmpty, log.reviews.isEmpty, let client = serverClient() else { return }
+        do {
+            let remote = try await client.fetchSnapshot()
+            guard let snapshot = remote.data else { return }
+            try LocalCardStore.save(snapshot)
+            serverRevision = remote.revision
+            reload()
+        } catch let error as ServerError {
+            if case .conflict(let current) = error {
+                syncError = "Конфликт ревизий: на сервере \(current)."
+            }
+        } catch {
+            // Офлайн или сервер недоступен — локальные данные остаются.
+        }
+    }
 }
 
 struct FloatingCircleBackground: View {

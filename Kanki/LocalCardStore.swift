@@ -46,3 +46,7 @@ enum LocalCardStore {
         try? FileManager.default.removeItem(at: fileURL)
     }
 }
+
+extension Notification.Name {
+    static let kankiSnapshotReloaded = Notification.Name("kanki.snapshotReloaded")
+}

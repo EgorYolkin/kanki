@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ./scripts/lint.sh
+./scripts/server-test.sh
 ./scripts/test.sh
 ./scripts/ui-test.sh
 ./scripts/macos-ui-test.sh
