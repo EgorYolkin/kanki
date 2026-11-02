@@ -40,5 +40,10 @@ struct AppShell: View {
             .tag(AppSection.settings)
         }
         .preferredColorScheme(appearance.colorScheme)
+        .onChange(of: section) { _, newSection in
+            if newSection == .learning {
+                NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
+            }
+        }
     }
 }

@@ -5,8 +5,14 @@ struct KankiApp: App {
     @State private var section: AppSection = .learning
 
     init() {
-        if ProcessInfo.processInfo.arguments.contains(LocalCardStore.resetArgument) {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains(LocalCardStore.resetArgument) {
             LocalCardStore.reset()
+        }
+        if arguments.contains("--reset-server") {
+            try? ServerTokenStore.delete()
+            UserDefaults.standard.removeObject(forKey: "serverURL")
+            UserDefaults.standard.removeObject(forKey: "serverRevision")
         }
     }
 

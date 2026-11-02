@@ -99,6 +99,10 @@ struct LearningScreen: View {
                 persist()
             }
         }
+        .onAppear(perform: reload)
+        .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
+            reload()
+        }
         .alert("Ошибка сохранения", isPresented: isStorageErrorPresented) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -138,6 +142,17 @@ struct LearningScreen: View {
         .accessibilityIdentifier("startReviewSession")
         .disabled(cards.isEmpty)
         .animation(.easeInOut(duration: 0.2), value: cards.isEmpty)
+    }
+
+    private func reload() {
+        do {
+            let snapshot = try LocalCardStore.load()
+            cards = snapshot.cards
+            log = SessionLog(reviews: snapshot.reviews)
+            selectedCard = nil
+        } catch {
+            storageError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
+        }
     }
 
     private var isStorageErrorPresented: Binding<Bool> {

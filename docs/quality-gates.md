@@ -7,15 +7,16 @@
 
 | Проверка | Команда | Что означает |
 | --- | --- | --- |
-| Всё сразу | `./scripts/ci.sh` | Полный контур: линтеры, unit-тесты с порогом, iOS UI-тесты, macOS UI-тест |
+| Всё сразу | `./scripts/ci.sh` | Полный контур: линтеры, серверные тесты, unit-тесты с порогом, iOS UI-тесты, macOS UI-тест |
 | Swift | `./scripts/lint.sh swift` | `swiftlint lint --strict` по `.swiftlint.yml` |
 | Markdown | `./scripts/lint.sh markdown` | `markdownlint-cli2` по `.markdownlint-cli2.jsonc` |
 | Unit + покрытие | `./scripts/test.sh` | `xcodegen generate`, тесты `KankiTests`, порог покрытия |
-| UI | `./scripts/ui-test.sh` | Четыре UI-теста `KankiUITests` на симуляторе |
+| UI | `./scripts/ui-test.sh` | Пять обязательных UI-тестов `KankiUITests` на симуляторе |
+| Сервер | `./scripts/server-test.sh` | FastAPI, SQLite WAL, токены, ревизии и MCP |
 | macOS | `./scripts/macos-ui-test.sh` | Сборка native macOS-приложения и `KankiMacUITests`: окно и ⌘1–⌘4 |
 | Покрытие отдельно | `python3 scripts/coverage_gate.py` | Разбор `build/Test.xcresult` через `xcrun xccov` |
 
-Требования к среде: macOS, Xcode с iOS Simulator runtime, XcodeGen 2.46.0,
+Требования к среде: macOS, Xcode с iOS Simulator runtime, XcodeGen 2.46.0, uv,
 SwiftLint 0.65.1 или новее (`brew install swiftlint`), Node 22 для `npx` (Markdown),
 Python 3 (скрипты без сторонних пакетов).
 
