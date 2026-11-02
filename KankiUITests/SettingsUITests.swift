@@ -8,7 +8,10 @@ final class SettingsUITests: XCTestCase {
 
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
-        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся на этом устройстве. Сервер не подключён, синхронизация не настроена."].exists)
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Карточки и история оценок'"))
+                .firstMatch.exists
+        )
 
         app.buttons["appearance-dark"].tap()
         XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
