@@ -70,7 +70,7 @@ final class CardExportArchiveTests: XCTestCase {
         XCTAssertThrowsError(try CardExportArchive.decode(unsupported))
     }
 
-    func testDamagedOrOrphanedStoreCannotBeReadAsEmpty() throws {
+    func testDamagedStoreFailsWithoutReplacingFile() throws {
         let (directory, fileURL) = makeStoreLocation()
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -78,11 +78,37 @@ final class CardExportArchiveTests: XCTestCase {
         try damaged.write(to: fileURL)
         XCTAssertThrowsError(try LocalCardStore.load(from: fileURL))
         XCTAssertEqual(try Data(contentsOf: fileURL), damaged)
+    }
 
-        let orphan = LearningSnapshot(cards: [], reviews: [
-            SessionReview(cardID: UUID(), rating: .good, reviewedAt: Date())
-        ])
-        try LocalCardStore.save(orphan, to: fileURL)
+    func testOrphanReviewsDoNotHideCardsOrDisappearAfterSave() throws {
+        let (directory, fileURL) = makeStoreLocation()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let card = SessionCard(question: "Карточка", answer: "Ответ", createdAt: Date(timeIntervalSince1970: 100))
+        let orphan = SessionReview(
+            cardID: UUID(),
+            rating: .good,
+            reviewedAt: Date(timeIntervalSince1970: 200)
+        )
+        let snapshot = LearningSnapshot(cards: [card], reviews: [orphan])
+        try LocalCardStore.save(snapshot, to: fileURL)
+
+        var loaded = try LocalCardStore.load(from: fileURL)
+        XCTAssertEqual(loaded, snapshot)
+        loaded.cards.append(SessionCard(
+            question: "Следующая",
+            answer: "Ответ",
+            createdAt: Date(timeIntervalSince1970: 300)
+        ))
+        try LocalCardStore.save(loaded, to: fileURL)
+        XCTAssertEqual(try LocalCardStore.load(from: fileURL), loaded)
+        XCTAssertEqual(loaded.reviews, [orphan])
+    }
+
+    func testDuplicateCardIDsAreStillRejected() throws {
+        let (directory, fileURL) = makeStoreLocation()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let card = SessionCard(question: "Карточка", answer: "Ответ")
+        try LocalCardStore.save(LearningSnapshot(cards: [card, card]), to: fileURL)
         XCTAssertThrowsError(try LocalCardStore.load(from: fileURL))
     }
 

@@ -24,8 +24,7 @@ enum LocalCardStore {
         decoder.dateDecodingStrategy = .iso8601
         let snapshot = try decoder.decode(LearningSnapshot.self, from: Data(contentsOf: url))
         let cardIDs = Set(snapshot.cards.map(\.id))
-        guard cardIDs.count == snapshot.cards.count,
-              snapshot.reviews.allSatisfy({ cardIDs.contains($0.cardID) }) else {
+        guard cardIDs.count == snapshot.cards.count else {
             throw CocoaError(.fileReadCorruptFile)
         }
         return snapshot

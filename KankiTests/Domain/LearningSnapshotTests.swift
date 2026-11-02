@@ -64,6 +64,7 @@ final class LearningSnapshotTests: XCTestCase {
         let other = SessionCard(question: "Другой", answer: "Ответ")
         let review = SessionReview(cardID: card.id, rating: .good, reviewedAt: Date(timeIntervalSince1970: 300))
         let otherReview = SessionReview(cardID: other.id, rating: .easy, reviewedAt: Date(timeIntervalSince1970: 400))
+        let orphanReview = SessionReview(cardID: UUID(), rating: .hard, reviewedAt: Date(timeIntervalSince1970: 200))
         let schedule = CardSchedule(
             due: Date(timeIntervalSince1970: 500),
             stability: 4.5,
@@ -78,16 +79,16 @@ final class LearningSnapshotTests: XCTestCase {
         )
         var snapshot = LearningSnapshot(
             cards: [card, other],
-            reviews: [review, otherReview],
+            reviews: [orphanReview, review, otherReview],
             schedules: [card.id: schedule, other.id: schedule]
         )
 
         XCTAssertTrue(snapshot.removeCard(id: card.id))
         XCTAssertEqual(snapshot.cards, [other])
-        XCTAssertEqual(snapshot.reviews, [otherReview])
+        XCTAssertEqual(snapshot.reviews, [orphanReview, otherReview])
         XCTAssertEqual(snapshot.schedules, [other.id: schedule])
         XCTAssertFalse(snapshot.removeCard(id: card.id))
-        XCTAssertEqual(snapshot.reviews, [otherReview])
+        XCTAssertEqual(snapshot.reviews, [orphanReview, otherReview])
     }
 
 }
