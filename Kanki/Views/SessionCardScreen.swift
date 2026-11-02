@@ -66,11 +66,6 @@ struct SessionCardScreen: View {
                         }
                     }
                 }
-                Section {
-                    Text("Оценка сохранится на устройстве. Срок следующего повтора не рассчитывается.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)

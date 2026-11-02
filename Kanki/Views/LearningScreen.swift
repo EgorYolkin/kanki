@@ -33,12 +33,6 @@ struct LearningScreen: View {
 
     var body: some View {
         List {
-            Section {
-                Text("Карточки и оценки хранятся на этом устройстве. Расписание повторения и синхронизация пока недоступны.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
             if let loadError {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)

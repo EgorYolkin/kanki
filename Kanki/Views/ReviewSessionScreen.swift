@@ -75,11 +75,6 @@ struct ReviewSessionScreen: View {
                     }
                 }
             }
-            Section {
-                Text("Оценки сохраняются на устройстве. Расписание повторения не рассчитывается.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -95,9 +90,6 @@ struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценки сохранены на устройстве. Сроки повторения и синхронизация пока не поддерживаются.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
                 Button("Готово") { dismiss() }
                     .accessibilityIdentifier("reviewFinish")
             }
