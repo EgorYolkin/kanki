@@ -1,7 +1,8 @@
 # Контур качества Kanki
 
-Единственный регламент проверок. Локально и в CI выполняются одни и те же команды;
-если команда здесь отсутствует, она не является обязательной.
+Единственный регламент проверок. Локальный `./scripts/ci.sh` остаётся полным контуром;
+per-PR CI намеренно не запускает iOS UI-тесты, чтобы не тратить ~13 минут на каждый пуш.
+Если команда здесь отсутствует, она не является обязательной.
 
 ## Команды
 
@@ -11,7 +12,7 @@
 | Swift | `./scripts/lint.sh swift` | `swiftlint lint --strict` по `.swiftlint.yml` |
 | Markdown | `./scripts/lint.sh markdown` | `markdownlint-cli2` по `.markdownlint-cli2.jsonc` |
 | Unit + покрытие | `./scripts/test.sh` | `xcodegen generate`, тесты `KankiTests`, порог покрытия |
-| UI | `./scripts/ui-test.sh` | Четыре UI-теста `KankiUITests` на симуляторе |
+| UI | `./scripts/ui-test.sh` | UI-тесты `KankiUITests` на симуляторе; локально и перед релизом, не в per-PR CI |
 | macOS | `./scripts/macos-ui-test.sh` | Сборка native macOS-приложения и `KankiMacUITests`: окно и ⌘1–⌘4 |
 | Покрытие отдельно | `python3 scripts/coverage_gate.py` | Разбор `build/Test.xcresult` через `xcrun xccov` |
 
@@ -69,17 +70,18 @@ Python 3 (скрипты без сторонних пакетов).
 
 ## CI
 
-`.github/workflows/ci.yml` — три задания:
+`.github/workflows/ci.yml` — четыре задания:
 
 | Задание | Раннер | Шаги |
 | --- | --- | --- |
 | Markdown | `ubuntu-latest` | `./scripts/lint.sh markdown` |
 | SwiftLint | `macos-latest` | `brew install swiftlint`, `./scripts/lint.sh swift` |
-| Tests | `macos-latest` | `brew install xcodegen`, `xcodegen generate`, `git diff --exit-code -- Kanki.xcodeproj`, `./scripts/test.sh`, `./scripts/ui-test.sh` |
+| Tests | `macos-latest` | `brew install xcodegen`, `xcodegen generate`, `git diff --exit-code -- Kanki.xcodeproj`, `./scripts/test.sh` |
 | macOS | `macos-latest` | `brew install xcodegen`, `xcodegen generate`, `git diff --exit-code -- Kanki.xcodeproj`, `xcodebuild build -destination 'platform=macOS'`, `./scripts/macos-ui-test.sh` |
 
 - Запуск: `pull_request` в `dev`/`main`, `push` в `dev`; `concurrency` отменяет
   устаревшие прогоны той же ветки.
+- iOS UI-тесты (`./scripts/ui-test.sh`) не входят в per-PR CI: они долгие и нестабильны на общем раннере. Запускайте их локально при изменениях пользовательских путей и перед релизом `dev` → `main`.
 - Права минимальные (`contents: read`), секреты не используются.
 - При падении сохраняются `build/*.xcresult` как артефакт (7 дней).
 - Зелёный CI обязателен перед merge. Отключение шага, `continue-on-error` или
