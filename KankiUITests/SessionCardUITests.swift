@@ -41,6 +41,10 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        card.tap()
+        XCTAssertTrue(app.staticTexts["История повторений"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Снова"].exists)
+        XCTAssertTrue(app.staticTexts["Хорошо"].exists)
     }
 
     func testReviewSessionCoversQueueAndSummarizes() {
@@ -164,6 +168,38 @@ final class SessionCardUITests: XCTestCase {
             back.tap()
             XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
         }
+    }
+
+    func testExportMenuSavesSelectedAndAllCards() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+        addCard(in: app, question: "Экспорт Альфа", answer: "Ответ А")
+        addCard(in: app, question: "Экспорт Бета", answer: "Ответ Б")
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Выбрать карточки"].tap()
+        XCTAssertTrue(app.navigationBars["Выбор карточек"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["exportSelectedCards"].isEnabled)
+        app.staticTexts["Экспорт Альфа"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["exportSelectedCards"].isEnabled)
+        app.buttons["exportSelectedCards"].tap()
+
+        let filename = app.textFields["DOCPicker.filenameTextField"]
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        let suffix = UUID().uuidString.prefix(8)
+        filename.tap()
+        filename.typeText("-\(suffix)-selected")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Экспортировать все"].tap()
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        filename.tap()
+        filename.typeText("-\(suffix)-all")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
     }
 
     private func addCard(in app: XCUIApplication, question: String, answer: String) {

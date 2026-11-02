@@ -3,8 +3,10 @@ import SwiftUI
 struct AddSessionCardScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = CardDraft()
+    @State private var saveError = ""
+    @State private var showSaveError = false
 
-    let onAdd: (String, String) -> Void
+    let onAdd: (String, String) throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -29,13 +31,23 @@ struct AddSessionCardScreen: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Добавить") {
                         if let card = draft.makeCard() {
-                            onAdd(card.question, card.answer)
+                            do {
+                                try onAdd(card.question, card.answer)
+                                dismiss()
+                            } catch {
+                                saveError = error.localizedDescription
+                                showSaveError = true
+                            }
                         }
-                        dismiss()
                     }
                     .disabled(!draft.canSubmit)
                 }
             }
+        }
+        .alert("Не удалось сохранить карточку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
         }
     }
 }

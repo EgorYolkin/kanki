@@ -27,4 +27,24 @@ final class SessionLogTests: XCTestCase {
             SessionReview(cardID: other.id, rating: .again, reviewedAt: secondDate)
         ])
     }
+
+    func testCardHistoryAndFailedWriteRollback() {
+        let card = SessionCard(question: "Вопрос", answer: "Ответ")
+        let other = SessionCard(question: "Другой", answer: "Ответ")
+        let first = Date(timeIntervalSince1970: 1_000)
+        let second = Date(timeIntervalSince1970: 2_000)
+        let third = Date(timeIntervalSince1970: 3_000)
+        var log = SessionLog()
+
+        log.record(card, rating: .good, at: first)
+        log.record(other, rating: .hard, at: second)
+        log.record(card, rating: .again, at: third)
+        XCTAssertEqual(log.history(for: card.id).map(\.rating), [.again, .good])
+        XCTAssertEqual(log.history(for: card.id).map(\.reviewedAt), [third, first])
+
+        log.discardLastRecord()
+        XCTAssertEqual(log.count, 2)
+        XCTAssertEqual(log.lastRating, .hard)
+        XCTAssertEqual(log.history(for: card.id).map(\.rating), [.good])
+    }
 }

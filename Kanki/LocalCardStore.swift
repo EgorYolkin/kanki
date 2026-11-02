@@ -18,22 +18,28 @@ enum LocalCardStore {
             .appending(path: fileName)
     }
 
-    static func load() throws -> LearningSnapshot {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return LearningSnapshot() }
+    static func load(from url: URL = fileURL) throws -> LearningSnapshot {
+        guard FileManager.default.fileExists(atPath: url.path) else { return LearningSnapshot() }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(LearningSnapshot.self, from: Data(contentsOf: fileURL))
+        let snapshot = try decoder.decode(LearningSnapshot.self, from: Data(contentsOf: url))
+        let cardIDs = Set(snapshot.cards.map(\.id))
+        guard cardIDs.count == snapshot.cards.count,
+              snapshot.reviews.allSatisfy({ cardIDs.contains($0.cardID) }) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        return snapshot
     }
 
-    static func save(_ snapshot: LearningSnapshot) throws {
+    static func save(_ snapshot: LearningSnapshot, to url: URL = fileURL) throws {
         try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
+            at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys]
-        try encoder.encode(snapshot).write(to: fileURL, options: .atomic)
+        try encoder.encode(snapshot).write(to: url, options: .atomic)
     }
 
     static func reset() {
