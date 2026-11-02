@@ -2,8 +2,8 @@ import XCTest
 
 @MainActor
 final class SessionCardUITests: XCTestCase {
-    func testCardIsAddedViewedAndLostAfterRestart() {
-        let app = XCUIApplication()
+    func testCardAndItsReviewHistorySurviveRestart() {
+        let app = isolatedApp()
         app.launch()
 
         app.buttons["addSessionCard"].tap()
@@ -30,28 +30,29 @@ final class SessionCardUITests: XCTestCase {
             XCTAssertTrue(app.buttons[label].exists)
         }
         app.buttons["Хорошо"].tap()
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Всего оценок: 1"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Хорошо"].exists)
 
         card.tap()
         XCTAssertFalse(app.buttons["Снова"].exists)
         app.buttons["Показать ответ"].tap()
         app.buttons["Снова"].tap()
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Всего оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
 
         app.terminate()
         app.launch()
-        XCTAssertFalse(app.buttons["Почему небо голубое?"].exists)
-        XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
-        XCTAssertFalse(app.staticTexts["Оценок в этом сеансе: 2"].exists)
-        XCTAssertFalse(app.staticTexts["Последняя оценка: Снова"].exists)
+        XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Всего оценок: 2"].exists)
+        card.tap()
+        XCTAssertTrue(app.staticTexts["История повторений"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Снова"].exists)
+        XCTAssertTrue(app.staticTexts["Хорошо"].exists)
     }
 
     func testReviewSessionCoversQueueAndSummarizes() {
-        let app = XCUIApplication()
+        let app = isolatedApp()
         app.launch()
-
         addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
         addCard(in: app, question: "Что растёт у конкурентного ингибитора?", answer: "Растёт Km")
 
@@ -74,7 +75,7 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Снова"].exists)
         app.buttons["reviewFinish"].tap()
 
-        XCTAssertTrue(app.staticTexts["Оценок в этом сеансе: 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Всего оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
     }
 
@@ -89,8 +90,38 @@ final class SessionCardUITests: XCTestCase {
         app.buttons["Добавить"].tap()
     }
 
+    func testExportMenuOpensSelectedAndAllFileDialogs() {
+        let app = isolatedApp()
+        app.launch()
+        addCard(in: app, question: "Экспорт Альфа", answer: "Ответ А")
+        addCard(in: app, question: "Экспорт Бета", answer: "Ответ Б")
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Выбрать карточки"].tap()
+        XCTAssertTrue(app.navigationBars["Выбор карточек"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["exportSelectedCards"].isEnabled)
+        app.staticTexts["Экспорт Альфа"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["exportSelectedCards"].isEnabled)
+        app.buttons["exportSelectedCards"].tap()
+        let filename = app.textFields["DOCPicker.filenameTextField"]
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        let uniqueName = UUID().uuidString.prefix(8)
+        filename.tap()
+        filename.typeText("-\(uniqueName)-selected")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+
+        app.buttons["cardExportMenu"].tap()
+        app.buttons["Экспортировать все"].tap()
+        XCTAssertTrue(filename.waitForExistence(timeout: 5))
+        filename.tap()
+        filename.typeText("-\(uniqueName)-all")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+    }
+
     func testShellTabsAndPlaceholderNavigation() {
-        let app = XCUIApplication()
+        let app = isolatedApp()
         app.launch()
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
@@ -126,4 +157,9 @@ final class SessionCardUITests: XCTestCase {
         }
     }
 
+    private func isolatedApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["KANKI_CARD_LIBRARY_TEST_ID"] = UUID().uuidString
+        return app
+    }
 }

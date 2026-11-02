@@ -4,11 +4,10 @@ import XCTest
 final class SettingsUITests: XCTestCase {
     func testAppearancePersistsAndStatusesStayHonest() {
         let app = XCUIApplication()
-        app.launch()
+        app.launchEnvironment["KANKI_CARD_LIBRARY_TEST_ID"] = UUID().uuidString
 
         app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.staticTexts["Сервер не подключён"].exists)
-        XCTAssertTrue(app.staticTexts["Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения."].exists)
+        XCTAssertTrue(app.staticTexts["Сервер не подключён"].waitForExistence(timeout: 5))
 
         app.buttons["Тёмное"].tap()
         XCTAssertTrue(app.buttons["Тёмное"].isSelected)

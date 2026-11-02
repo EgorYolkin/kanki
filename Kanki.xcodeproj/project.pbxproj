@@ -9,11 +9,21 @@
 /* Begin PBXBuildFile section */
 		07AF579290417D019A9855BC /* KankiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */; };
 		1F16E47FEE8079660AFD8F08 /* SettingsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */; };
+		9931F436DABB11B8DFA1F4C5 /* CardLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7760CF05C4617543ECFA8FD8 /* CardLibraryTests.swift */; };
+		B6027476DA97A8A07EFB6153 /* CardLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9170F899CF13776690455C3E /* CardLibrary.swift */; };
+		B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */; };
 		D1108B1F5BD6837BD01A0962 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF15689DA2A920F45308E742 /* Assets.xcassets */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		E0033A58DA030EFFD459C929 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9423A96F92E9FCAC34FA7861 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F0B68E82BEF2032A426A67C8;
+			remoteInfo = Kanki;
+		};
 		F9D6142B71CACCB35784B8A8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9423A96F92E9FCAC34FA7861 /* Project object */;
@@ -25,11 +35,15 @@
 
 /* Begin PBXFileReference section */
 		08A1350F44A56F3BE86B85CD /* Kanki.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kanki.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsUITests.swift; sourceTree = "<group>"; };
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
+		7760CF05C4617543ECFA8FD8 /* CardLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardLibraryTests.swift; sourceTree = "<group>"; };
+		9170F899CF13776690455C3E /* CardLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardLibrary.swift; sourceTree = "<group>"; };
 		B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KankiApp.swift; sourceTree = "<group>"; };
 		CF15689DA2A920F45308E742 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -37,6 +51,8 @@
 			isa = PBXGroup;
 			children = (
 				CF15689DA2A920F45308E742 /* Assets.xcassets */,
+				D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */,
+				9170F899CF13776690455C3E /* CardLibrary.swift */,
 				B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */,
 			);
 			path = Kanki;
@@ -51,10 +67,19 @@
 			path = KankiUITests;
 			sourceTree = "<group>";
 		};
+		A15D0F813DB9F71F88DE360E /* KankiTests */ = {
+			isa = PBXGroup;
+			children = (
+				7760CF05C4617543ECFA8FD8 /* CardLibraryTests.swift */,
+			);
+			path = KankiTests;
+			sourceTree = "<group>";
+		};
 		A391310A17803DA0F932D4BE /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				08A1350F44A56F3BE86B85CD /* Kanki.app */,
+				2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */,
 				CFDAD4FFC87C0BF999D8E207 /* KankiUITests.xctest */,
 			);
 			name = Products;
@@ -64,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				0553AB699CD3C1D2268B6F3B /* Kanki */,
+				A15D0F813DB9F71F88DE360E /* KankiTests */,
 				735E615811A651D363DD6972 /* KankiUITests */,
 				A391310A17803DA0F932D4BE /* Products */,
 			);
@@ -72,6 +98,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		C5E1ED0D700F75DC63E01DF2 /* KankiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 38AB25A6070CDD3D572642EA /* Build configuration list for PBXNativeTarget "KankiTests" */;
+			buildPhases = (
+				3D57410808E3057D572E012C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FA067B9ECDCA2ADB60DEF962 /* PBXTargetDependency */,
+			);
+			name = KankiTests;
+			packageProductDependencies = (
+			);
+			productName = KankiTests;
+			productReference = 2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		D9EEDE399456879E71B5E570 /* KankiUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5D4B6A8B8194B0277A8B8565 /* Build configuration list for PBXNativeTarget "KankiUITests" */;
@@ -137,6 +181,7 @@
 			projectRoot = "";
 			targets = (
 				F0B68E82BEF2032A426A67C8 /* Kanki */,
+				C5E1ED0D700F75DC63E01DF2 /* KankiTests */,
 				D9EEDE399456879E71B5E570 /* KankiUITests */,
 			);
 		};
@@ -154,10 +199,20 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3D57410808E3057D572E012C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9931F436DABB11B8DFA1F4C5 /* CardLibraryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		47743D8AEACEABC7399FB2C3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */,
+				B6027476DA97A8A07EFB6153 /* CardLibrary.swift in Sources */,
 				07AF579290417D019A9855BC /* KankiApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -178,6 +233,11 @@
 			isa = PBXTargetDependency;
 			target = F0B68E82BEF2032A426A67C8 /* Kanki */;
 			targetProxy = F9D6142B71CACCB35784B8A8 /* PBXContainerItemProxy */;
+		};
+		FA067B9ECDCA2ADB60DEF962 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F0B68E82BEF2032A426A67C8 /* Kanki */;
+			targetProxy = E0033A58DA030EFFD459C929 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -213,6 +273,22 @@
 				);
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		51C9B2D478D8B0FF66BFFCEB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kanki.app/Kanki";
 			};
 			name = Release;
 		};
@@ -359,6 +435,22 @@
 			};
 			name = Debug;
 		};
+		B7627BE0EC8091A3D39E3FCC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kanki.app/Kanki";
+			};
+			name = Debug;
+		};
 		FC256BFA693CF1C0DE12626B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -383,6 +475,15 @@
 			buildConfigurations = (
 				30A684E1D5770D8C30F58B3A /* Debug */,
 				4966382DADFC12AA1ED43668 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		38AB25A6070CDD3D572642EA /* Build configuration list for PBXNativeTarget "KankiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7627BE0EC8091A3D39E3FCC /* Debug */,
+				51C9B2D478D8B0FF66BFFCEB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

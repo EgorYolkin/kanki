@@ -3,10 +3,11 @@ import SwiftUI
 @main
 struct KankiApp: App {
     @AppStorage("appearance") private var appearance: AppAppearance = .system
+    @State private var library = CardLibrary()
 
     var body: some Scene {
         WindowGroup {
-            AppShell()
+            AppShell(library: library)
                 .tint(.indigo)
                 .preferredColorScheme(appearance.colorScheme)
         }
@@ -62,10 +63,11 @@ enum Destination: Hashable {
 }
 
 struct AppShell: View {
+    let library: CardLibrary
     var body: some View {
         TabView {
             NavigationStack {
-                LearningScreen()
+                LearningScreen(library: library)
                     .navigationDestination(for: Destination.self) { destination in
                         PlaceholderScreen(destination: destination)
                     }
@@ -110,27 +112,7 @@ private struct SectionIntro: View {
     }
 }
 
-private struct SessionCard: Identifiable {
-    let id = UUID()
-    let question: String
-    let answer: String
-}
-
-private enum RecallRating: Int, CaseIterable {
-    case again = 1
-    case hard
-    case good
-    case easy
-
-    var title: String {
-        switch self {
-        case .again: "Снова"
-        case .hard: "Трудно"
-        case .good: "Хорошо"
-        case .easy: "Легко"
-        }
-    }
-
+private extension RecallRating {
     var tint: Color {
         switch self {
         case .again: .red
@@ -141,43 +123,46 @@ private enum RecallRating: Int, CaseIterable {
     }
 }
 
-private struct SessionReview {
-    let cardID: UUID
-    let rating: RecallRating
-    let reviewedAt: Date
-}
-
 private struct LearningScreen: View {
-    @State private var cards: [SessionCard] = []
-    @State private var reviews: [SessionReview] = []
+    let library: CardLibrary
     @State private var isAddingCard = false
     @State private var isReviewing = false
+    @State private var isChoosingCards = false
     @State private var selectedCard: SessionCard?
+    @State private var exportDocument: CardExportDocument?
+    @State private var isExporting = false
+    @State private var pendingSelectedExport = false
+    @State private var exportError: String?
 
     var body: some View {
         List {
             Section {
-                Text("Карточки и оценки сохраняются только до закрытия приложения. Расписание повторения и синхронизация пока недоступны.")
+                Text("Карточки и история оценок сохраняются на этом устройстве. Расписание повторения и синхронизация пока недоступны.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            if cards.isEmpty {
+            if let loadError = library.loadError {
+                Section("Не удалось открыть карточки") {
+                    Text(loadError)
+                    Button("Повторить чтение") { library.reload() }
+                }
+            } else if library.cards.isEmpty {
                 Section {
-                    SectionIntro(symbol: "rectangle.stack", title: "Карточек пока нет", detail: "Добавьте карточку с вопросом и ответом для просмотра в этом сеансе.")
+                    SectionIntro(symbol: "rectangle.stack", title: "Карточек пока нет", detail: "Добавьте карточку с вопросом и ответом для хранения на этом устройстве.")
                         .frame(maxWidth: .infinity)
                 }
             } else {
                 Section {
-                    Text("Оценок в этом сеансе: \(reviews.count)")
+                    Text("Всего оценок: \(library.reviews.count)")
                         .foregroundStyle(.secondary)
-                    if let lastReview = reviews.last {
+                    if let lastReview = library.reviews.last {
                         Text("Последняя оценка: \(lastReview.rating.title)")
                             .foregroundStyle(.secondary)
                     }
                 }
-                Section("Карточки этого сеанса") {
-                    ForEach(cards) { card in
+                Section("Мои карточки") {
+                    ForEach(library.cards) { card in
                         Button {
                             selectedCard = card
                         } label: {
@@ -195,38 +180,80 @@ private struct LearningScreen: View {
                     Label("Начать повторение", systemImage: "play.fill")
                 }
                 .accessibilityIdentifier("startReviewSession")
-                .disabled(cards.isEmpty)
+                .disabled(library.loadError != nil || library.cards.isEmpty)
             } footer: {
-                Text(cards.isEmpty
+                Text(library.cards.isEmpty
                      ? "Добавьте хотя бы одну карточку, чтобы начать сеанс."
-                     : "Очередь пройдёт по карточкам этого сеанса. Расписание повторения не рассчитывается.")
+                     : "Очередь пройдёт по сохранённым карточкам. Расписание повторения не рассчитывается.")
             }
         }
         .navigationTitle("Обучение")
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("Выбрать карточки") { isChoosingCards = true }
+                    Button("Экспортировать все") {
+                        exportDocument = CardExportDocument(archive: library.export())
+                        isExporting = true
+                    }
+                } label: {
+                    Label("Экспорт", systemImage: "square.and.arrow.up")
+                }
+                .disabled(library.loadError != nil || library.cards.isEmpty)
+                .accessibilityIdentifier("cardExportMenu")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isAddingCard = true
                 } label: {
                     Label("Добавить карточку", systemImage: "plus")
                 }
+                .disabled(library.loadError != nil)
                 .accessibilityIdentifier("addSessionCard")
             }
         }
         .sheet(isPresented: $isAddingCard) {
             AddSessionCardScreen { question, answer in
-                cards.append(SessionCard(question: question, answer: answer))
+                try library.add(question: question, answer: answer)
             }
         }
         .sheet(item: $selectedCard) { card in
-            SessionCardScreen(card: card) { rating in
-                reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+            SessionCardScreen(card: card, history: library.history(for: card.id)) { rating in
+                try library.record(card, rating: rating)
             }
         }
         .sheet(isPresented: $isReviewing) {
-            ReviewSessionScreen(cards: cards) { card, rating in
-                reviews.append(SessionReview(cardID: card.id, rating: rating, reviewedAt: Date()))
+            ReviewSessionScreen(cards: library.cards) { card, rating in
+                try library.record(card, rating: rating)
             }
+        }
+        .sheet(isPresented: $isChoosingCards, onDismiss: {
+            if pendingSelectedExport {
+                pendingSelectedExport = false
+                isExporting = true
+            }
+        }) {
+            CardExportScreen(cards: library.cards) { selection in
+                exportDocument = CardExportDocument(archive: library.export(selectedIDs: selection))
+                pendingSelectedExport = true
+            }
+        }
+        .fileExporter(isPresented: $isExporting,
+                      document: exportDocument,
+                      contentType: .json,
+                      defaultFilename: "kanki-cards") { result in
+            if case .failure(let error) = result,
+               (error as? CocoaError)?.code != .userCancelled {
+                exportError = error.localizedDescription
+            }
+        }
+        .alert("Не удалось экспортировать", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("Закрыть", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
     }
 }
@@ -235,8 +262,10 @@ private struct AddSessionCardScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var question = ""
     @State private var answer = ""
+    @State private var saveError = ""
+    @State private var showSaveError = false
 
-    let onAdd: (String, String) -> Void
+    let onAdd: (String, String) throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -252,7 +281,7 @@ private struct AddSessionCardScreen: View {
                         .accessibilityIdentifier("cardAnswer")
                 }
                 Section {
-                    Text("Карточка доступна только в этом сеансе и не попадает в Anki или на сервер.")
+                    Text("Карточка сохранится на этом устройстве, но не попадёт в Anki или на сервер.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -265,24 +294,37 @@ private struct AddSessionCardScreen: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Добавить") {
-                        onAdd(question.trimmingCharacters(in: .whitespacesAndNewlines),
-                              answer.trimmingCharacters(in: .whitespacesAndNewlines))
-                        dismiss()
+                        do {
+                            try onAdd(question.trimmingCharacters(in: .whitespacesAndNewlines),
+                                      answer.trimmingCharacters(in: .whitespacesAndNewlines))
+                            dismiss()
+                        } catch {
+                            saveError = error.localizedDescription
+                            showSaveError = true
+                        }
                     }
                     .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                               answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
+        .alert("Не удалось сохранить карточку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
+        }
     }
 }
 
 private struct SessionCardScreen: View {
     let card: SessionCard
+    let history: [SessionReview]
     @State private var isAnswerVisible = false
     @State private var didSubmitRating = false
+    @State private var saveError = ""
+    @State private var showSaveError = false
     @Environment(\.dismiss) private var dismiss
-    let onReview: (RecallRating) -> Void
+    let onReview: (RecallRating) throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -306,8 +348,14 @@ private struct SessionCardScreen: View {
                                 Button {
                                     guard !didSubmitRating else { return }
                                     didSubmitRating = true
-                                    onReview(rating)
-                                    dismiss()
+                                    do {
+                                        try onReview(rating)
+                                        dismiss()
+                                    } catch {
+                                        didSubmitRating = false
+                                        saveError = error.localizedDescription
+                                        showSaveError = true
+                                    }
                                 } label: {
                                     Text(rating.title)
                                         .font(.subheadline.weight(.semibold))
@@ -322,13 +370,24 @@ private struct SessionCardScreen: View {
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
+                Section("История повторений") {
+                    if history.isEmpty {
+                        Text("Оценок пока нет")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(history) { review in
+                            LabeledContent(review.rating.title,
+                                           value: review.reviewedAt.formatted(date: .abbreviated, time: .standard))
+                        }
+                    }
+                }
                 Section {
-                    Text("Оценка останется только в этом сеансе. Срок следующего повтора не рассчитывается.")
+                    Text("История сохраняется на устройстве. Срок следующего повтора не рассчитывается.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Карточка этого сеанса")
+            .navigationTitle("Карточка")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 isAnswerVisible = false
@@ -340,18 +399,25 @@ private struct SessionCardScreen: View {
                 }
             }
         }
+        .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
+        }
     }
 
 }
 
 private struct ReviewSessionScreen: View {
     let cards: [SessionCard]
-    let onReview: (SessionCard, RecallRating) -> Void
+    let onReview: (SessionCard, RecallRating) throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var index = 0
     @State private var isAnswerVisible = false
     @State private var counts: [RecallRating: Int] = [:]
+    @State private var saveError = ""
+    @State private var showSaveError = false
 
     private var currentCard: SessionCard? {
         cards.indices.contains(index) ? cards[index] : nil
@@ -373,6 +439,11 @@ private struct ReviewSessionScreen: View {
                     Button("Закрыть") { dismiss() }
                 }
             }
+        }
+        .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
+            Button("Закрыть", role: .cancel) {}
+        } message: {
+            Text(saveError)
         }
     }
 
@@ -415,7 +486,7 @@ private struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценка остаётся в этом сеансе. Расписание повторения не рассчитывается.")
+                Text("Оценка сохранится на устройстве. Расписание повторения не рассчитывается.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -436,7 +507,7 @@ private struct ReviewSessionScreen: View {
                 }
             }
             Section {
-                Text("Оценки исчезнут при закрытии приложения. Сроки и синхронизация пока не поддерживаются.")
+                Text("История оценок сохранена на устройстве. Сроки и синхронизация пока не поддерживаются.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Готово") { dismiss() }
@@ -446,10 +517,15 @@ private struct ReviewSessionScreen: View {
     }
 
     private func record(_ rating: RecallRating, for card: SessionCard) {
-        counts[rating, default: 0] += 1
-        onReview(card, rating)
-        isAnswerVisible = false
-        index += 1
+        do {
+            try onReview(card, rating)
+            counts[rating, default: 0] += 1
+            isAnswerVisible = false
+            index += 1
+        } catch {
+            saveError = error.localizedDescription
+            showSaveError = true
+        }
     }
 }
 
@@ -519,7 +595,7 @@ private struct SettingsScreen: View {
                     .foregroundStyle(.secondary)
             }
             Section("Данные") {
-                Text("Карточки и оценки хранятся только в памяти текущего сеанса и исчезают после закрытия приложения.")
+                Text("Карточки и история оценок сохраняются на устройстве; JSON-экспорт доступен в меню «Экспорт» вкладки «Обучение». SRS и синхронизации нет.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
