@@ -67,7 +67,11 @@ struct AllCardsScreen: View {
         }
         .navigationTitle("Все карточки")
         .toolbarTitleDisplayMode(.inline)
-        .searchable(text: $searchQuery, prompt: "Поиск по карточкам")
+        .searchable(
+            text: $searchQuery,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Поиск по карточкам"
+        )
     }
 
     private func deckChip(title: String, value: String?) -> some View {

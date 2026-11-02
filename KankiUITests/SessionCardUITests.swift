@@ -1,7 +1,7 @@
 import XCTest
 
 @MainActor
-final class SessionCardUITests: XCTestCase {
+final class SessionCardUITests: UITestCase {
     func testCardAndReviewsPersistAfterRestart() {
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store"]
@@ -9,6 +9,7 @@ final class SessionCardUITests: XCTestCase {
 
         addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
 
+        openAllCards(in: app)
         let card = app.buttons["Почему небо голубое?"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         card.tap()
@@ -22,13 +23,18 @@ final class SessionCardUITests: XCTestCase {
         ratingScreen.lifetime = .keepAlways
         add(ratingScreen)
         app.buttons["Хорошо"].tap()
+
+        backToLearning(in: app)
         XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Хорошо"].exists)
 
-        card.tap()
+        openAllCards(in: app)
+        app.buttons["Почему небо голубое?"].tap()
         XCTAssertFalse(app.buttons["Снова"].exists)
         app.buttons["Показать ответ"].tap()
         app.buttons["Снова"].tap()
+
+        backToLearning(in: app)
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
 
@@ -36,12 +42,14 @@ final class SessionCardUITests: XCTestCase {
         app.launchArguments = []
         app.launch()
 
-        XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Оценок: 2"].exists)
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
-        card.tap()
+
+        openAllCards(in: app)
+        XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
+        app.buttons["Почему небо голубое?"].tap()
         XCTAssertTrue(app.staticTexts["История повторений"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Снова"].exists)
         XCTAssertTrue(app.staticTexts["Хорошо"].exists)
@@ -54,11 +62,14 @@ final class SessionCardUITests: XCTestCase {
         addCard(in: app, question: "Удаляемая карточка", answer: "Ответ А")
         addCard(in: app, question: "Оставшаяся карточка", answer: "Ответ Б")
 
+        openAllCards(in: app)
         app.buttons["Оставшаяся карточка"].tap()
         app.buttons["Показать ответ"].tap()
         app.buttons["Хорошо"].tap()
+        backToLearning(in: app)
         XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
 
+        openAllCards(in: app)
         app.buttons["Удаляемая карточка"].tap()
         app.buttons["deleteSessionCard"].tap()
         let confirmation = app.alerts["Удалить карточку и историю повторений?"]
@@ -70,15 +81,19 @@ final class SessionCardUITests: XCTestCase {
 
         XCTAssertFalse(app.buttons["Удаляемая карточка"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.buttons["Оставшаяся карточка"].exists)
+
+        backToLearning(in: app)
         XCTAssertTrue(app.staticTexts["Оценок: 1"].exists)
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
 
         app.terminate()
         app.launchArguments = []
         app.launch()
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
+
+        openAllCards(in: app)
         XCTAssertFalse(app.buttons["Удаляемая карточка"].exists)
         XCTAssertTrue(app.buttons["Оставшаяся карточка"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Оценок: 1"].exists)
     }
 
     func testReviewSessionCoversQueueAndSummarizes() {
@@ -94,14 +109,16 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "addSessionCard").count, 1)
         XCTAssertTrue(startReview.isEnabled)
         XCTAssertTrue(startReview.isHittable)
+        XCTAssertEqual(startReview.label, "Учить: 2 к повторению")
         let tabBar = app.tabBars.firstMatch
         XCTAssertLessThanOrEqual(startReview.frame.maxY, tabBar.frame.minY, "Кнопка перекрывает таб-бар")
-        XCTAssertGreaterThan(startReview.frame.midX, app.frame.midX, "Кнопка не в правой половине экрана")
-        XCTAssertEqual(startReview.frame.width, 56, accuracy: 1)
-        XCTAssertEqual(startReview.frame.height, 56, accuracy: 1)
+        XCTAssertLessThan(startReview.frame.minX, app.frame.midX, "Кнопка обучения должна быть широкой")
+        XCTAssertGreaterThan(startReview.frame.maxX, app.frame.midX, "Кнопка обучения должна быть широкой")
+        XCTAssertTrue(app.staticTexts["+2 новых"].exists)
 
         startReview.tap()
         XCTAssertTrue(app.staticTexts["Карточка 1 из 2"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["reviewDeck"].label, "Без категории")
         XCTAssertFalse(app.staticTexts["Концентрация при половине Vmax"].exists)
         app.buttons["Показать ответ"].tap()
         XCTAssertTrue(app.staticTexts["Концентрация при половине Vmax"].exists)
@@ -143,6 +160,8 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["dueCount"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+
+        openAllCards(in: app)
         XCTAssertTrue(app.buttons["Что такое FSRS?"].exists)
     }
 
@@ -154,6 +173,7 @@ final class SessionCardUITests: XCTestCase {
         addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
         addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
 
+        openAllCards(in: app)
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
@@ -171,10 +191,22 @@ final class SessionCardUITests: XCTestCase {
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
-        assertFloatingActions(in: app)
+        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 0)
+        XCTAssertEqual(app.searchFields.count, 0)
+        XCTAssertFalse(app.buttons["Все карточки"].exists)
+        assertAddButton(in: app)
+
+        addCard(in: app, question: "Проверка оболочки", answer: "Ответ")
+        XCTAssertFalse(app.searchFields.firstMatch.exists, "Поиска на главном экране больше нет")
+        XCTAssertFalse(app.buttons["Проверка оболочки"].exists, "Список карточек переехал в «Все карточки»")
+        let allCards = app.buttons["Все карточки"]
+        XCTAssertTrue(allCards.waitForExistence(timeout: 5))
+        allCards.tap()
+        XCTAssertTrue(app.navigationBars["Все карточки"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.searchFields.firstMatch.exists)
+        XCTAssertTrue(app.buttons["Проверка оболочки"].exists)
+        backToLearning(in: app)
+
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
         XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5))
@@ -193,24 +225,22 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.staticTexts["Не подключён"].waitForExistence(timeout: 5))
-        for label in ["Очередь мержей", "Конфликты"] {
-            let destination = app.buttons[label]
-            scrollTo(destination, in: app)
-            XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
-            destination.tap()
-            XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
-            let back = app.navigationBars.buttons["Настройки"]
-            XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Настройки»")
-            back.tap()
-            XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5), "Не вернулись на вкладку «Настройки»")
-        }
-    }
 
-    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<5 {
-            if element.isHittable { return }
-            app.swipeUp()
-        }
+        let merges = app.buttons["Очередь мержей"]
+        scrollTo(merges, in: app)
+        XCTAssertTrue(merges.waitForExistence(timeout: 5), "Кнопка «Очередь мержей» не появилась")
+        merges.tap()
+        XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «Очередь мержей»")
+        app.navigationBars.buttons["Настройки"].tap()
+        XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
+
+        let conflicts = app.buttons["Конфликты"]
+        scrollTo(conflicts, in: app)
+        XCTAssertTrue(conflicts.waitForExistence(timeout: 5), "Кнопка «Конфликты» не появилась")
+        conflicts.tap()
+        XCTAssertTrue(app.staticTexts["Конфликтов нет"].waitForExistence(timeout: 5), "Экран «Конфликты» больше не заглушка")
+        app.navigationBars.buttons["Настройки"].tap()
+        XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
     }
 
     func testExportMenuSavesSelectedAndAllCards() {
@@ -243,35 +273,5 @@ final class SessionCardUITests: XCTestCase {
         filename.typeText("-\(suffix)-all")
         app.buttons["Save"].tap()
         XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
-    }
-
-    /// Обе плавающие кнопки постоянно стоят в правом нижнем углу над таб-баром:
-    /// повторение 56 pt под кнопкой «плюс» 44 pt, без перекрытий.
-    private func assertFloatingActions(in app: XCUIApplication) {
-        let add = app.buttons["addSessionCard"]
-        let review = app.buttons["startReviewSession"]
-        let tabBar = app.tabBars.firstMatch
-
-        XCTAssertTrue(add.exists && review.exists, "Обе плавающие кнопки должны быть видны одновременно")
-        XCTAssertEqual(add.frame.width, 44, accuracy: 1)
-        XCTAssertEqual(add.frame.height, 44, accuracy: 1)
-        XCTAssertEqual(review.frame.width, 56, accuracy: 1)
-        XCTAssertEqual(review.frame.height, 56, accuracy: 1)
-        for button in [add, review] {
-            XCTAssertGreaterThan(button.frame.midX, app.frame.midX, "Кнопка должна быть в правой половине экрана")
-            XCTAssertLessThanOrEqual(button.frame.maxY, tabBar.frame.minY, "Кнопка не должна перекрывать таб-бар")
-        }
-        XCTAssertLessThanOrEqual(add.frame.maxY, review.frame.minY, "Кнопка «плюс» должна быть над повторением")
-    }
-
-    private func addCard(in app: XCUIApplication, question: String, answer: String) {
-        app.buttons["addSessionCard"].tap()
-        let questionField = app.descendants(matching: .any)["cardQuestion"]
-        let answerField = app.descendants(matching: .any)["cardAnswer"]
-        questionField.tap()
-        questionField.typeText(question)
-        answerField.tap()
-        answerField.typeText(answer)
-        app.buttons["Добавить"].tap()
     }
 }

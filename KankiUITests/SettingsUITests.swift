@@ -9,10 +9,6 @@ final class SettingsUITests: XCTestCase {
 
         app.tabBars.buttons["Настройки"].tap()
         XCTAssertTrue(app.buttons["appearance-dark"].exists)
-        XCTAssertTrue(
-            app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Карточки и история оценок'"))
-                .firstMatch.exists
-        )
 
         app.buttons["appearance-dark"].tap()
         XCTAssertTrue(app.buttons["appearance-dark"].isSelected)
@@ -33,15 +29,23 @@ final class SettingsUITests: XCTestCase {
         let serverURL = app.textFields["serverURL"]
         let serverCheck = app.buttons["serverCheck"]
         scrollTo(serverCheck, in: app)
+        XCTAssertTrue(serverCheck.exists)
         XCTAssertTrue(serverURL.exists)
         XCTAssertTrue(app.secureTextFields["serverToken"].exists)
-        XCTAssertTrue(app.buttons["serverPush"].exists)
-        XCTAssertTrue(app.buttons["serverPull"].exists)
         XCTAssertEqual(app.staticTexts["serverStatus"].label, "Не подключён")
 
         serverCheck.tap()
         let invalidURL = app.staticTexts["Укажите адрес вида http://100.x.y.z:8000"]
         XCTAssertTrue(invalidURL.waitForExistence(timeout: 5))
+
+        scrollTo(app.buttons["serverPull"], in: app)
+        XCTAssertTrue(app.buttons["serverPush"].exists)
+        XCTAssertTrue(app.buttons["serverPull"].exists)
+
+        let dataNote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Карточки и история оценок'"))
+            .firstMatch
+        scrollTo(dataNote, in: app)
+        XCTAssertTrue(dataNote.exists, "Нет пояснения о хранении карточек и истории оценок")
 
         app.swipeUp()
         app.swipeUp()
@@ -59,10 +63,11 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["appearance-system"].isSelected)
     }
 
+    /// Прокручивает список вниз, пока элемент не отрисуется; List ленивый,
+    /// поэтому `exists` до прокрутки может быть ложным.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
-        XCTAssertTrue(element.waitForExistence(timeout: 5))
-        for _ in 0..<4 {
-            if element.isHittable { return }
+        for _ in 0..<6 {
+            if element.exists && element.isHittable { return }
             app.swipeUp()
         }
     }
