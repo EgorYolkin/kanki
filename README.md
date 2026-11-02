@@ -1,5 +1,7 @@
 # Kanki
 
+<p align="center"><img src="docs/images/kanki-icon.png" alt="Иконка Kanki" width="112"></p>
+
 [![CI](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml/badge.svg)](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml)
 
 Kanki — личное приложение для интервального повторения: карточки с вопросом и ответом, расписание по FSRS, история оценок и синхронизация снимка с собственным сервером. Нативный Swift 6 / SwiftUI, один код для iOS 17+ и macOS 14+. Приложение уже используется для ежедневного повторения собственных карточек: оценки, сроки и история сохраняются на устройстве и переживают перезапуск. Заметки, граф знаний и импорт Anki — следующие этапы, поэтому соответствующие экраны пока пустые.
