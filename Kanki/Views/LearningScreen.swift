@@ -1,8 +1,11 @@
+import Foundation
 import SwiftUI
 
 struct LearningScreen: View {
     @State private var cards: [SessionCard]
     @State private var log: SessionLog
+    @State private var schedules: [UUID: CardSchedule]
+    @State private var clock = Date()
     @State private var loadError: String?
     @State private var isAddingCard = false
     @State private var isReviewing = false
@@ -21,6 +24,10 @@ struct LearningScreen: View {
         CardSearch.filter(cards, matching: searchQuery)
     }
 
+    private var dueCards: [SessionCard] {
+        ReviewQueue.cards(cards, schedules: schedules, at: clock)
+    }
+
     init() {
         var snapshot = LearningSnapshot()
         var loadMessage: String?
@@ -31,6 +38,7 @@ struct LearningScreen: View {
         }
         _cards = State(initialValue: snapshot.cards)
         _log = State(initialValue: SessionLog(reviews: snapshot.reviews))
+        _schedules = State(initialValue: snapshot.schedules)
         _loadError = State(initialValue: loadMessage)
     }
 
@@ -52,6 +60,9 @@ struct LearningScreen: View {
                 }
             } else {
                 Section {
+                    Text("К повторению: \(dueCards.count)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dueCount")
                     Text("Оценок: \(log.count)")
                         .foregroundStyle(.secondary)
                     if let lastRating = log.lastRating {
@@ -75,9 +86,15 @@ struct LearningScreen: View {
                             Button {
                                 selectedCard = card
                             } label: {
-                                Label(card.question, systemImage: "rectangle.on.rectangle")
-                                    .foregroundStyle(.primary)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Label(card.question, systemImage: "rectangle.on.rectangle")
+                                        .foregroundStyle(.primary)
+                                    Text(dueText(for: card))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            .accessibilityLabel(card.question)
                         }
                     }
                 }
@@ -101,6 +118,12 @@ struct LearningScreen: View {
             }
         }
         .searchable(text: $searchQuery, prompt: "Поиск по карточкам")
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                clock = Date()
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             VStack(alignment: .trailing, spacing: 12) {
                 addCardButton
@@ -120,7 +143,7 @@ struct LearningScreen: View {
             }
         }
         .sheet(isPresented: $isReviewing) {
-            ReviewSessionScreen(cards: cards) { card, rating in
+            ReviewSessionScreen(cards: dueCards) { card, rating in
                 try record(card, rating: rating)
             }
         }
@@ -195,7 +218,7 @@ struct LearningScreen: View {
         } label: {
             Image(systemName: "play.fill")
                 .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(loadError != nil || cards.isEmpty ? Color.secondary : Color.primary)
+                .foregroundStyle(loadError != nil || dueCards.isEmpty ? Color.secondary : Color.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
@@ -203,12 +226,48 @@ struct LearningScreen: View {
         .background { FloatingCircleBackground(size: 56) }
         .accessibilityLabel("Начать повторение")
         .accessibilityIdentifier("startReviewSession")
-        .disabled(loadError != nil || cards.isEmpty)
-        .animation(.easeInOut(duration: 0.2), value: cards.isEmpty)
+        .disabled(loadError != nil || dueCards.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: dueCards.isEmpty)
     }
 
     private var snapshot: LearningSnapshot {
-        LearningSnapshot(cards: cards, reviews: log.reviews)
+        LearningSnapshot(cards: cards, reviews: log.reviews, schedules: schedules)
+    }
+
+    private func record(_ card: SessionCard, rating: RecallRating) throws {
+        let previousSchedule = schedules[card.id]
+        log.record(card, rating: rating)
+        do {
+            schedules[card.id] = try CardScheduling.nextReview(
+                for: previousSchedule,
+                rating: rating,
+                at: Date()
+            )
+            try LocalCardStore.save(snapshot)
+            schedulePush()
+        } catch {
+            log.discardLastRecord()
+            schedules[card.id] = previousSchedule
+            throw error
+        }
+    }
+
+    private func dueText(for card: SessionCard) -> String {
+        guard let schedule = schedules[card.id] else {
+            return "Новая — к повторению"
+        }
+        switch schedule.status(at: clock) {
+        case .new:
+            return "Новая — к повторению"
+        case .due:
+            return "Пора повторить"
+        case .scheduled(let date):
+            let formatter = RelativeDateTimeFormatter()
+            formatter.locale = Locale(identifier: "ru_RU")
+            formatter.unitsStyle = .full
+            formatter.dateTimeStyle = .named
+            return "Следующий показ: \(formatter.localizedString(for: date, relativeTo: clock))"
+        }
     }
 
     private func reload() {
@@ -217,6 +276,7 @@ struct LearningScreen: View {
             cards = snapshot.cards
             log = SessionLog(reviews: snapshot.reviews)
             selectedCard = nil
+            schedules = snapshot.schedules
             loadError = nil
         } catch {
             loadError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
@@ -233,18 +293,9 @@ struct LearningScreen: View {
             throw error
         }
     }
+}
 
-    private func record(_ card: SessionCard, rating: RecallRating) throws {
-        log.record(card, rating: rating)
-        do {
-            try LocalCardStore.save(snapshot)
-            schedulePush()
-        } catch {
-            log.discardLastRecord()
-            throw error
-        }
-    }
-
+extension LearningScreen {
     private var isSyncErrorPresented: Binding<Bool> {
         Binding(
             get: { syncError != nil },
@@ -271,7 +322,7 @@ struct LearningScreen: View {
     /// Отправляет снимок на сервер после локального изменения с коротким debounce.
     private func schedulePush() {
         guard let client = serverClient() else { return }
-        let snapshot = LearningSnapshot(cards: cards, reviews: log.reviews)
+        let localSnapshot = snapshot
         let baseRevision = serverRevision
         pushTask?.cancel()
         pushTask = Task { @MainActor in
@@ -279,7 +330,7 @@ struct LearningScreen: View {
             guard !Task.isCancelled else { return }
             do {
                 let result = try await client.push(
-                    snapshot: snapshot,
+                    snapshot: localSnapshot,
                     baseRevision: baseRevision
                 )
                 serverRevision = result.revision

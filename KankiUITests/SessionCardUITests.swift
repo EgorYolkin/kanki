@@ -39,7 +39,8 @@ final class SessionCardUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Оценок: 2"].exists)
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
-        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
         card.tap()
         XCTAssertTrue(app.staticTexts["История повторений"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Снова"].exists)
@@ -85,7 +86,30 @@ final class SessionCardUITests: XCTestCase {
         app.buttons["reviewFinish"].tap()
 
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+    }
+
+    func testEasyRatingRemovesCardFromDueQueue() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Что такое FSRS?", answer: "Планировщик повторений")
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 1")
+
+        app.buttons["startReviewSession"].tap()
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 1"].waitForExistence(timeout: 5))
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Легко"].tap()
+
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertTrue(app.staticTexts["dueCount"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["Что такое FSRS?"].exists)
     }
 
     func testSearchFiltersCardsByQuestion() {
