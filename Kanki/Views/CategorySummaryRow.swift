@@ -49,21 +49,3 @@ struct CategorySummaryRow: View {
         }
     }
 }
-
-struct FloatingCircleBackground: View {
-    let size: CGFloat
-
-    var body: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            Color.clear
-                .frame(width: size, height: size)
-                .glassEffect(.regular.interactive(), in: Circle())
-        } else {
-            Circle()
-                .fill(.regularMaterial)
-                .frame(width: size, height: size)
-                .overlay(Circle().strokeBorder(Color.primary.opacity(0.08)))
-                .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
-        }
-    }
-}

@@ -9,10 +9,12 @@ struct LearningScreen: View {
     @State var clock = Date()
     @State var loadError: String?
     @State var isAddingCard = false
-    @State private var isReviewing = false
+    @State var isReviewing = false
     @AppStorage("serverRevision") var serverRevision = 0
+    @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
+    @Environment(\.scenePhase) private var scenePhase
     @State var selectedCard: SessionCard?
-    @State private var isReviewingDeck = false
+    @State var isReviewingDeck = false
     @State var selectedDeck: String?
     @State var renamingDeck: String?
     @State var renameText = ""
@@ -20,6 +22,7 @@ struct LearningScreen: View {
     @State var deckToDelete: CategorySummary?
     @State var pushTask: Task<Void, Never>?
     @State var syncError: String?
+    @State var lastSyncFailed = false
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
@@ -38,192 +41,156 @@ struct LearningScreen: View {
         _log = State(initialValue: SessionLog(reviews: snapshot.reviews))
         _schedules = State(initialValue: snapshot.schedules)
         _deckRenames = State(initialValue: snapshot.deckRenames)
+        _loadError = State(initialValue: loadMessage)
     }
 
     var body: some View {
         List {
-        if let loadError {
-            Section("Не удалось открыть карточки") {
-                Text(loadError)
-                Button("Повторить чтение") { reload() }
-            }
-        } else if cards.isEmpty {
-            Section {
-                SectionIntro(
-                    symbol: "rectangle.stack",
-                    title: "Карточек пока нет",
-                    detail: "Добавьте карточку с вопросом и ответом кнопкой «плюс»."
-                )
-                .frame(maxWidth: .infinity)
-            }
-        } else {
-            Section {
-                VStack(spacing: 6) {
-                    Button("Учить: \(dueCards.count) к повторению") {
-                        isReviewing = true
-                    }
-                    .font(.title3.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(loadError != nil || dueCards.isEmpty)
-                    .accessibilityIdentifier("startReviewSession")
-                    if newCardsCount > 0 {
-                        Text("+\(newCardsCount) новых")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+            if let loadError {
+                Section("Не удалось открыть карточки") {
+                    Text(loadError)
+                    Button("Повторить чтение") { reload() }
                 }
+            } else if cards.isEmpty {
+                emptyCardsSection
+            } else {
+                studySection
+                categoriesSection
+                uncategorizedSection
+                allCardsSection
+                statsSection
             }
-
-            Section("Категории") {
-                ForEach(categorySummaries.filter { $0.deck != nil }, id: \.title) { summary in
-                    CategorySummaryRow(
-                        summary: summary,
-                        availableDecks: availableDecks,
-                        onStudy: {
-                            selectedDeck = summary.deck
-                            isReviewingDeck = true
-                        },
-                        onRename: {
-                            renameText = summary.title
-                            renamingDeck = summary.deck
-                        },
-                        onDelete: { deckToDelete = summary },
-                        onMove: { moveDeck(from: summary.deck, to: $0) }
-                    )
-                }
-            }
-
-            if categorySummaries.contains(where: { $0.deck == nil }) {
-                Section(CardCategory.noCategoryTitle) {
-                    ForEach(categorySummaries.filter { $0.deck == nil }, id: \.title) { summary in
-                        CategorySummaryRow(
-                            summary: summary,
-                            availableDecks: availableDecks,
-                            onStudy: {
-                                selectedDeck = nil
-                                isReviewingDeck = true
-                            },
-                            onRename: {},
-                            onDelete: {},
-                            onMove: { moveDeck(from: nil, to: $0) }
-                        )
-                    }
-                }
-            }
-
-            Section {
-                NavigationLink {
-                    AllCardsScreen(
-                        cards: cards,
-                        schedules: schedules,
-                        clock: clock
-                    ) { card in
-                        selectedCard = card
+        }
+        .contentMargins(.bottom, 90, for: .scrollContent)
+        .navigationTitle("Обучение")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("Выбрать карточки") { isChoosingCards = true }
+                    Button("Экспортировать все") {
+                        exportDocument = CardExportDocument(archive: CardExportArchive(snapshot: snapshot))
+                        isExporting = true
                     }
                 } label: {
-                    Label("Все карточки", systemImage: "rectangle.on.rectangle")
+                    Label("Экспорт", systemImage: "square.and.arrow.up")
                 }
-            }
-
-            Section {
-                Text("К повторению: \(dueCards.count)")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("dueCount")
-                Text("Оценок: \(log.count)")
-                    .foregroundStyle(.secondary)
-                if let lastRating = log.lastRating {
-                    Text("Последняя оценка: \(lastRating.title)")
-                        .foregroundStyle(.secondary)
-                }
+                .disabled(loadError != nil || cards.isEmpty)
+                .accessibilityIdentifier("cardExportMenu")
             }
         }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                clock = Date()
+            }
         }
-    .contentMargins(.bottom, 90, for: .scrollContent)
-    .navigationTitle("Обучение")
-    .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                Button("Выбрать карточки") { isChoosingCards = true }
-                Button("Экспортировать все") {
-                    exportDocument = CardExportDocument(archive: CardExportArchive(snapshot: snapshot))
+        .overlay(alignment: .bottomTrailing) {
+            addCardButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
+        }
+        .sheet(isPresented: $isAddingCard) {
+            AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
+                try addCard(question: question, answer: answer, deck: deck)
+            }
+        }
+        .sheet(item: $selectedCard) { card in
+            SessionCardScreen(
+                card: card,
+                history: log.history(for: card.id),
+                availableDecks: availableDecks,
+                onReview: { rating in try record(card, rating: rating) },
+                onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
+                onDelete: { try deleteCard(card) }
+            )
+        }
+        .sheet(isPresented: $isReviewing) {
+            ReviewSessionScreen(cards: dueCards) { card, rating in
+                try record(card, rating: rating)
+            }
+        }
+        .sheet(isPresented: $isReviewingDeck) {
+            ReviewSessionScreen(cards: deckReviewCards) { card, rating in
+                try record(card, rating: rating)
+            }
+        }
+        .onAppear(perform: reload)
+        .task {
+            await reconcile()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await reconcile() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
+            reload()
+        }
+        .sheet(
+            isPresented: $isChoosingCards,
+            onDismiss: {
+                if pendingSelectedExport {
+                    pendingSelectedExport = false
                     isExporting = true
                 }
-            } label: {
-                Label("Экспорт", systemImage: "square.and.arrow.up")
+            },
+            content: {
+                CardExportScreen(cards: cards) { selection in
+                    exportDocument = CardExportDocument(
+                        archive: CardExportArchive(snapshot: snapshot, selectedIDs: selection)
+                    )
+                    pendingSelectedExport = true
+                }
             }
-            .disabled(loadError != nil || cards.isEmpty)
-            .accessibilityIdentifier("cardExportMenu")
+        )
+        .fileExporter(isPresented: $isExporting,
+                      document: exportDocument,
+                      contentType: .json,
+                      defaultFilename: "kanki-cards") { result in
+            if case .failure(let error) = result,
+               (error as? CocoaError)?.code != .userCancelled {
+                exportError = error.localizedDescription
+            }
         }
-    }
-    .task {
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 30_000_000_000)
-            clock = Date()
+        .alert("Не удалось экспортировать", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("Закрыть", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
-    }
-    .overlay(alignment: .bottomTrailing) {
-        addCardButton
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
-    }
-    .sheet(isPresented: $isAddingCard) {
-        AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
-            try addCard(question: question, answer: answer, deck: deck)
+        .alert("Синхронизация", isPresented: isSyncErrorPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(syncError ?? "")
         }
-    }
-    .sheet(item: $selectedCard) { card in
-        SessionCardScreen(
-            card: card,
-            history: log.history(for: card.id),
-            availableDecks: availableDecks,
-            onReview: { rating in try record(card, rating: rating) },
-            onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
-            onDelete: { try deleteCard(card) }
+        .modifier(
+            DeckManagementAlertsModifier(
+                renamingDeck: $renamingDeck,
+                renameText: $renameText,
+                renameError: $renameError,
+                deckToDelete: $deckToDelete,
+                onRename: { renameDeck(from: $0, to: $1) },
+                onDelete: { deleteDeck($0) }
+            )
         )
     }
-    .sheet(isPresented: $isReviewing) {
-        ReviewSessionScreen(cards: dueCards) { card, rating in
-            try record(card, rating: rating)
-        }
-    }
-    .sheet(isPresented: $isReviewingDeck) {
-        ReviewSessionScreen(cards: deckReviewCards) { card, rating in
-            try record(card, rating: rating)
-        }
-    }
-    .onAppear(perform: reload)
-    .task {
-        await pullIfLocalEmpty()
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
-        reload()
-    }
-    .modifier(
-        CardExportFlowModifier(
-            isChoosingCards: $isChoosingCards,
-            isExporting: $isExporting,
-            pendingSelectedExport: $pendingSelectedExport,
-            exportDocument: $exportDocument,
-            exportError: $exportError,
-            cards: cards
-        ) { CardExportArchive(snapshot: snapshot, selectedIDs: $0) }
-    )
-    .alert("Синхронизация", isPresented: isSyncErrorPresented) {
-        Button("OK", role: .cancel) {}
-    } message: {
-        Text(syncError ?? "")
-    }
-    .modifier(
-        DeckManagementAlertsModifier(
-            renamingDeck: $renamingDeck,
-            renameText: $renameText,
-            renameError: $renameError,
-            deckToDelete: $deckToDelete,
-            onRename: { renameDeck(from: $0, to: $1) },
-            onDelete: { deleteDeck($0) }
-        )
-    )
-    }
+}
 
+struct FloatingCircleBackground: View {
+    let size: CGFloat
+
+    var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            Color.clear
+                .frame(width: size, height: size)
+                .glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            Circle()
+                .fill(.regularMaterial)
+                .frame(width: size, height: size)
+                .overlay(Circle().strokeBorder(Color.primary.opacity(0.08)))
+                .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
+        }
+    }
 }
