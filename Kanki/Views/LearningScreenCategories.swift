@@ -5,25 +5,23 @@ import SwiftUI
 extension LearningScreen {
     // MARK: - Секции
 
-    @ViewBuilder
-    var studySection: some View {
-        Section {
-            VStack(spacing: 6) {
-                Button("Учить: \(dueCards.count) к повторению") {
-                    isReviewing = true
-                }
-                .font(.title3.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .buttonStyle(.borderedProminent)
-                .disabled(loadError != nil || dueCards.isEmpty)
-                .accessibilityIdentifier("startReviewSession")
-                if newCardsCount > 0 {
-                    Text("+\(newCardsCount) новых")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    /// Плавающая кнопка запуска повторения: вся коллекция, только due-карточки.
+    var reviewButton: some View {
+        Button {
+            isReviewing = true
+        } label: {
+            Image(systemName: "play.fill")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(loadError != nil || dueCards.isEmpty ? Color.secondary : Color.primary)
+                .frame(width: 56, height: 56)
+                .contentShape(Circle())
         }
+        .buttonStyle(.plain)
+        .background { FloatingCircleBackground(size: 56) }
+        .accessibilityLabel("Начать повторение")
+        .accessibilityIdentifier("startReviewSession")
+        .disabled(loadError != nil || dueCards.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: dueCards.isEmpty)
     }
 
     @ViewBuilder
@@ -94,6 +92,11 @@ extension LearningScreen {
             Text("К повторению: \(dueCards.count)")
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("dueCount")
+            if newCardsCount > 0 {
+                Text("Новых: \(newCardsCount)")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("newCount")
+            }
             Text("Оценок: \(log.count)")
                 .foregroundStyle(.secondary)
             if let lastRating = log.lastRating {

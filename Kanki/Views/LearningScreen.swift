@@ -54,7 +54,6 @@ struct LearningScreen: View {
             } else if cards.isEmpty {
                 emptyCardsSection
             } else {
-                studySection
                 categoriesSection
                 uncategorizedSection
                 allCardsSection
@@ -85,9 +84,12 @@ struct LearningScreen: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            addCardButton
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
+            VStack(alignment: .trailing, spacing: 12) {
+                addCardButton
+                reviewButton
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
             AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
