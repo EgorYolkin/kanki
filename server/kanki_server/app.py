@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import __version__
@@ -37,6 +37,11 @@ class Principal:
     label: str
     role: str
     token_id: str | None = None
+
+
+def if_none_match_matches(header_value: str, etag: str) -> bool:
+    candidates = {candidate.strip() for candidate in header_value.split(",")}
+    return "*" in candidates or etag in candidates or f"W/{etag}" in candidates
 
 
 _UNSET: Any = object()
@@ -172,9 +177,23 @@ def create_app(
         return Identity(label=principal.label, role=principal.role)
 
     @app.get("/v1/snapshot", response_model=SnapshotRead)
-    def get_snapshot(principal: PrincipalDep, database: DatabaseDep) -> SnapshotRead:
+    def get_snapshot(
+        principal: PrincipalDep,
+        database: DatabaseDep,
+        response: Response,
+        if_none_match: Annotated[str | None, Header()] = None,
+    ) -> SnapshotRead | Response:
         del principal
-        return snapshot_response(database.read_snapshot())
+        row = database.read_snapshot()
+        revision = row.revision if row is not None else 0
+        etag = f'"{revision}"'
+        response.headers["ETag"] = etag
+        if if_none_match is not None and if_none_match_matches(if_none_match, etag):
+            return Response(
+                status_code=status.HTTP_304_NOT_MODIFIED,
+                headers={"ETag": etag},
+            )
+        return snapshot_response(row)
 
     @app.put("/v1/snapshot", response_model=SnapshotRead)
     def put_snapshot(

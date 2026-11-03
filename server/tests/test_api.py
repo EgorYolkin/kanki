@@ -104,6 +104,60 @@ def test_snapshot_round_trip_and_conflict(client: TestClient) -> None:
     assert second.json()["revision"] == 2
 
 
+def test_snapshot_etag_conditional_get(client: TestClient) -> None:
+    token = create_device_token(client)
+    empty = client.get("/v1/snapshot", headers=auth(token))
+    assert empty.status_code == 200
+    assert empty.headers["ETag"] == '"0"'
+
+    data = {"cards": [{"id": "a"}], "reviews": [], "schedules": {}}
+    stored = client.put(
+        "/v1/snapshot",
+        json={"schema_version": 1, "base_revision": 0, "data": data},
+        headers=auth(token),
+    )
+    revision = stored.json()["revision"]
+
+    current = client.get("/v1/snapshot", headers=auth(token))
+    assert current.status_code == 200
+    etag = current.headers["ETag"]
+    assert etag == f'"{revision}"'
+
+    not_modified = client.get(
+        "/v1/snapshot",
+        headers={**auth(token), "If-None-Match": etag},
+    )
+    assert not_modified.status_code == 304
+    assert not_modified.content == b""
+    assert not_modified.headers["ETag"] == etag
+
+    stale = client.get(
+        "/v1/snapshot",
+        headers={**auth(token), "If-None-Match": f'"{revision - 1}"'},
+    )
+    assert stale.status_code == 200
+    assert stale.json()["revision"] == revision
+    assert stale.headers["ETag"] == etag
+
+
+def test_snapshot_etag_accepts_weak_and_wildcard(client: TestClient) -> None:
+    token = create_device_token(client)
+    current = client.get("/v1/snapshot", headers=auth(token))
+    etag = current.headers["ETag"]
+
+    weak = client.get(
+        "/v1/snapshot",
+        headers={**auth(token), "If-None-Match": f"W/{etag}"},
+    )
+    assert weak.status_code == 304
+
+    wildcard = client.get(
+        "/v1/snapshot",
+        headers={**auth(token), "If-None-Match": "*"},
+    )
+    assert wildcard.status_code == 304
+
+
 def test_snapshot_requires_auth(client: TestClient) -> None:
     assert client.get("/v1/snapshot").status_code == 401
     assert (
