@@ -220,6 +220,8 @@ struct SettingsScreen: View {
                 serverStatus = "На сервере пока нет снимка"
                 return
             }
+            let localDecks = (try? LocalCardStore.load())?.localDeckCounts ?? [:]
+            ConflictLog.append(snapshot.lostCategoryMessages(localDecks: localDecks))
             try LocalCardStore.save(snapshot)
             serverRevision = result.revision
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)

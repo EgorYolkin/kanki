@@ -2,18 +2,24 @@ import Foundation
 import SwiftUI
 
 struct LearningScreen: View {
-    @State private var cards: [SessionCard]
-    @State private var log: SessionLog
-    @State private var schedules: [UUID: CardSchedule]
-    @State private var clock = Date()
+    @State var cards: [SessionCard]
+    @State var log: SessionLog
+    @State var schedules: [UUID: CardSchedule]
+    @State var deckRenames: [DeckRename]
+    @State var clock = Date()
     @State var loadError: String?
-    @State private var isAddingCard = false
-    @State private var isReviewing = false
+    @State var isAddingCard = false
+    @State var isReviewing = false
     @AppStorage("serverRevision") var serverRevision = 0
     @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
     @Environment(\.scenePhase) private var scenePhase
-    @State private var selectedCard: SessionCard?
-    @State private var searchQuery = ""
+    @State var selectedCard: SessionCard?
+    @State var isReviewingDeck = false
+    @State var selectedDeck: String?
+    @State var renamingDeck: String?
+    @State var renameText = ""
+    @State var renameError: String?
+    @State var deckToDelete: CategorySummary?
     @State var pushTask: Task<Void, Never>?
     @State var syncError: String?
     @State var lastSyncFailed = false
@@ -22,14 +28,6 @@ struct LearningScreen: View {
     @State private var isExporting = false
     @State private var pendingSelectedExport = false
     @State private var exportError: String?
-
-    private var filteredCards: [SessionCard] {
-        CardSearch.filter(cards, matching: searchQuery)
-    }
-
-    private var dueCards: [SessionCard] {
-        ReviewQueue.cards(cards, schedules: schedules, at: clock)
-    }
 
     init() {
         var snapshot = LearningSnapshot()
@@ -42,6 +40,7 @@ struct LearningScreen: View {
         _cards = State(initialValue: snapshot.cards)
         _log = State(initialValue: SessionLog(reviews: snapshot.reviews))
         _schedules = State(initialValue: snapshot.schedules)
+        _deckRenames = State(initialValue: snapshot.deckRenames)
         _loadError = State(initialValue: loadMessage)
     }
 
@@ -55,46 +54,14 @@ struct LearningScreen: View {
             } else if cards.isEmpty {
                 emptyCardsSection
             } else {
-                Section {
-                    Text("К повторению: \(dueCards.count)")
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("dueCount")
-                    Text("Оценок: \(log.count)")
-                        .foregroundStyle(.secondary)
-                    if let lastRating = log.lastRating {
-                        Text("Последняя оценка: \(lastRating.title)")
-                            .foregroundStyle(.secondary)
-                    }
-                    if let syncStatusText {
-                        Text(syncStatusText)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("syncStatus")
-                    }
-                }
-
-                if filteredCards.isEmpty {
-                    emptySearchSection
-                } else {
-                    Section("Карточки") {
-                        ForEach(filteredCards) { card in
-                            Button {
-                                selectedCard = card
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Label(card.question, systemImage: "rectangle.on.rectangle")
-                                        .foregroundStyle(.primary)
-                                    Text(dueText(for: card))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .accessibilityLabel(card.question)
-                        }
-                    }
-                }
+                studySection
+                categoriesSection
+                uncategorizedSection
+                allCardsSection
+                statsSection
             }
         }
-        .contentMargins(.bottom, 160, for: .scrollContent)
+        .contentMargins(.bottom, 90, for: .scrollContent)
         .navigationTitle("Обучение")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -111,7 +78,6 @@ struct LearningScreen: View {
                 .accessibilityIdentifier("cardExportMenu")
             }
         }
-        .searchable(text: $searchQuery, prompt: "Поиск по карточкам")
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
@@ -119,28 +85,32 @@ struct LearningScreen: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            VStack(alignment: .trailing, spacing: 12) {
-                addCardButton
-                reviewButton
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
+            addCardButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
-            AddSessionCardScreen { question, answer in
-                try addCard(question: question, answer: answer)
+            AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
+                try addCard(question: question, answer: answer, deck: deck)
             }
         }
         .sheet(item: $selectedCard) { card in
             SessionCardScreen(
                 card: card,
                 history: log.history(for: card.id),
+                availableDecks: availableDecks,
                 onReview: { rating in try record(card, rating: rating) },
+                onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
                 onDelete: { try deleteCard(card) }
             )
         }
         .sheet(isPresented: $isReviewing) {
             ReviewSessionScreen(cards: dueCards) { card, rating in
+                try record(card, rating: rating)
+            }
+        }
+        .sheet(isPresented: $isReviewingDeck) {
+            ReviewSessionScreen(cards: deckReviewCards) { card, rating in
                 try record(card, rating: rating)
             }
         }
@@ -194,116 +164,16 @@ struct LearningScreen: View {
         } message: {
             Text(syncError ?? "")
         }
-    }
-
-    private var addCardButton: some View {
-        Button {
-            isAddingCard = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .background { FloatingCircleBackground(size: 44) }
-        .accessibilityLabel("Добавить карточку")
-        .accessibilityIdentifier("addSessionCard")
-        .disabled(loadError != nil)
-    }
-
-    private var reviewButton: some View {
-        Button {
-            isReviewing = true
-        } label: {
-            Image(systemName: "play.fill")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(loadError != nil || dueCards.isEmpty ? Color.secondary : Color.primary)
-                .frame(width: 56, height: 56)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .background { FloatingCircleBackground(size: 56) }
-        .accessibilityLabel("Начать повторение")
-        .accessibilityIdentifier("startReviewSession")
-        .disabled(loadError != nil || dueCards.isEmpty)
-        .animation(.easeInOut(duration: 0.2), value: dueCards.isEmpty)
-    }
-
-    var snapshot: LearningSnapshot {
-        LearningSnapshot(cards: cards, reviews: log.reviews, schedules: schedules)
-    }
-
-    private func record(_ card: SessionCard, rating: RecallRating) throws {
-        let previousSchedule = schedules[card.id]
-        log.record(card, rating: rating)
-        do {
-            schedules[card.id] = try CardScheduling.nextReview(
-                for: previousSchedule,
-                rating: rating,
-                at: Date()
+        .modifier(
+            DeckManagementAlertsModifier(
+                renamingDeck: $renamingDeck,
+                renameText: $renameText,
+                renameError: $renameError,
+                deckToDelete: $deckToDelete,
+                onRename: { renameDeck(from: $0, to: $1) },
+                onDelete: { deleteDeck($0) }
             )
-            try LocalCardStore.save(snapshot)
-            schedulePush()
-        } catch {
-            log.discardLastRecord()
-            schedules[card.id] = previousSchedule
-            throw error
-        }
-    }
-
-    private func dueText(for card: SessionCard) -> String {
-        guard let schedule = schedules[card.id] else {
-            return "Новая — к повторению"
-        }
-        switch schedule.status(at: clock) {
-        case .new:
-            return "Новая — к повторению"
-        case .due:
-            return "Пора повторить"
-        case .scheduled(let date):
-            let formatter = RelativeDateTimeFormatter()
-            formatter.locale = Locale(identifier: "ru_RU")
-            formatter.unitsStyle = .full
-            formatter.dateTimeStyle = .named
-            return "Следующий показ: \(formatter.localizedString(for: date, relativeTo: clock))"
-        }
-    }
-
-    func reload() {
-        do {
-            let snapshot = try LocalCardStore.load()
-            cards = snapshot.cards
-            log = SessionLog(reviews: snapshot.reviews)
-            selectedCard = nil
-            schedules = snapshot.schedules
-            loadError = nil
-        } catch {
-            loadError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
-        }
-    }
-
-    private func addCard(question: String, answer: String) throws {
-        cards.append(SessionCard(question: question, answer: answer))
-        do {
-            try LocalCardStore.save(snapshot)
-            schedulePush()
-        } catch {
-            cards.removeLast()
-            throw error
-        }
-    }
-
-    private func deleteCard(_ card: SessionCard) throws {
-        var updated = snapshot
-        guard updated.removeCard(id: card.id) else { return }
-        try LocalCardStore.save(updated)
-        cards = updated.cards
-        log = SessionLog(reviews: updated.reviews)
-        schedules = updated.schedules
-        selectedCard = nil
-        schedulePush()
+        )
     }
 }
 

@@ -52,18 +52,6 @@ extension LearningScreen {
         }
     }
 
-    @ViewBuilder
-    var emptySearchSection: some View {
-        Section {
-            SectionIntro(
-                symbol: "magnifyingglass",
-                title: "Ничего не найдено",
-                detail: "Измените запрос или добавьте новую карточку."
-            )
-            .frame(maxWidth: .infinity)
-        }
-    }
-
     /// Честный текст статуса синхронизации; `nil` — сервер не настроен, строки нет.
     var syncStatusText: String? {
         SyncStatus.text(
@@ -121,6 +109,9 @@ extension LearningScreen {
                 hasUnsyncedChanges = false
             case .applyRemote:
                 guard let remoteSnapshot = remote.data else { return }
+                ConflictLog.append(
+                    remoteSnapshot.lostCategoryMessages(localDecks: snapshot.localDeckCounts)
+                )
                 do {
                     try LocalCardStore.save(remoteSnapshot)
                 } catch {
