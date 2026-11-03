@@ -1,13 +1,15 @@
 # Серверный протокол Kanki
 
 Решение для первого серверного среза: приложение и агенты ходят в один
-REST/JSON API по `https://kanki.ink`; SSH используется только для установки и ops.
+REST/JSON API по `https://kanki.host`; SSH используется только для установки и ops.
+`kanki.ink` — прежний адрес того же сервера: vhost для него сохранён, но его
+делегирование в DNS на 2026-11-03 отсутствует (см. «Домены и сертификаты»).
 
 ## Выбор
 
 | Слой | Решение | Причина |
 | --- | --- | --- |
-| Транспорт | HTTPS `kanki.ink` (nginx + Let's Encrypt) на 144.31.57.107 | публичный домен, TLS на уровне приложения; uvicorn только на `127.0.0.1` |
+| Транспорт | HTTPS `kanki.host` (nginx + Let's Encrypt) на 144.31.57.107 | публичный домен, TLS на уровне приложения; uvicorn только на `127.0.0.1` |
 | API | REST + JSON, `/v1`, OpenAPI 3.1 | `URLSession`, curl, отладка, агенты |
 | Аутентификация | `Authorization: Bearer` | отдельные токены устройства/агентов, отзыв |
 | Хранение | SQLite WAL, `busy_timeout`, `synchronous=NORMAL` | один писатель, конкурентные чтения |
@@ -50,9 +52,8 @@ iOS-приложению пришлось бы хранить SSH-ключи и 
 ## Безопасность и HTTPS
 
 - uvicorn слушает только `127.0.0.1:8000`; наружу API отдаёт nginx
-  (`/etc/nginx/sites-enabled/kanki`) с сертификатом Let's Encrypt для
-  `kanki.ink` (продление через certbot), HTTP перенаправляет на HTTPS (301),
-  порт 8000 в интернет не опубликован.
+  (`/etc/nginx/sites-enabled/kanki`) с сертификатом Let's Encrypt, HTTP
+  перенаправляет на HTTPS (301), порт 8000 в интернет не опубликован.
 - nginx закрывает `/docs`, `/redoc`, `/openapi.json` и `/v1/tokens` извне
   (404), ограничивает частоту запросов (`limit_req`), шлёт HSTS,
   `X-Content-Type-Options` и `Referrer-Policy`.
@@ -62,6 +63,28 @@ iOS-приложению пришлось бы хранить SSH-ключи и 
 - Токен на подписанной сборке — Keychain; в неподписанном симуляторе без
   entitlement используется файл в sandbox с file protection и правами `0600`.
 - `.env`, токены и база не коммитятся.
+
+## Домены и сертификаты
+
+- `kanki.host` — адрес, который использует приложение: `A`-запись на
+  `144.31.57.107`, отдельный сертификат Let's Encrypt
+  (`/etc/letsencrypt/live/kanki.host/`), продление через `snap.certbot.renew.timer`.
+- `kanki.ink` — прежний адрес. Vhost и сертификат
+  (`/etc/letsencrypt/live/kanki.ink/`) сохранены, но домен не делегирован в
+  зоне `.ink`, поэтому с 2026-11-03 он не разрешается и недоступен снаружи.
+  Вернуть его можно, восстановив NS/A-записи; сертификат при этом продлится
+  только после появления DNS.
+- Vhost состоит из трёх блоков: `:80` для обоих имён (ACME-челлендж и
+  redirect), `:443` для `kanki.host`, `:443` для `kanki.ink`. Общие части
+  вынесены в `/etc/nginx/snippets/kanki-tls.conf` (TLS 1.2/1.3, HSTS,
+  заголовки, лимит тела 11m) и `kanki-proxy.conf` (маршруты `/v1/` и
+  `/webhooks/`, 404 на `docs`, `redoc`, `openapi.json`, `/v1/tokens`).
+- Когда оба имени разрешаются в DNS, их можно свести в один SAN-сертификат:
+  `certbot certonly --webroot -w /var/www/html --cert-name kanki.ink -d kanki.ink -d kanki.host --expand`.
+- `certbot renew --dry-run` на этом хосте не проходит: исходящие соединения к
+  `acme-staging-v02.api.letsencrypt.org` сбрасываются. Production ACME доступен,
+  выдача и продление идут через него; проверять продление лучше по
+  `snap.certbot.renew.service` и сроку сертификата.
 
 ## Доступ агентов
 
