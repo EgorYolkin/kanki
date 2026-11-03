@@ -1,12 +1,47 @@
 import SwiftUI
 
 struct AddSessionCardScreen: View {
+    /// Служебный тег пикера: включить ввод нового имени категории.
+    private static let newDeckPlaceholder = "\u{1F}new-deck"
+
+    private var newDeckPlaceholder: String { Self.newDeckPlaceholder }
+
     @Environment(\.dismiss) private var dismiss
     @State private var draft = CardDraft()
     @State private var saveError = ""
     @State private var showSaveError = false
 
-    let onAdd: (String, String) throws -> Void
+    /// Итоговая категория новой карточки: выбранная или введённая вручную.
+    private var resolvedDeck: String? {
+        CardCategory.trimmedDeck(isCreatingDeck ? newDeckName : selectedDeck)
+    }
+
+    private var deckNameError: String? {
+        guard isCreatingDeck else { return nil }
+        return CardCategory.validationError(for: newDeckName, existingDecks: Set(availableDecks))
+    }
+
+    private var canSubmit: Bool {
+        draft.canSubmit && deckNameError == nil
+    }
+    @State private var selectedDeck: String?
+    @State private var isCreatingDeck = false
+    @State private var newDeckName = ""
+
+    let availableDecks: [String]
+    let initialDeck: String?
+    let onAdd: (String, String, String?) throws -> Void
+
+    init(
+        availableDecks: [String],
+        initialDeck: String? = nil,
+        onAdd: @escaping (String, String, String?) throws -> Void
+    ) {
+        self.availableDecks = availableDecks
+        self.initialDeck = initialDeck
+        self.onAdd = onAdd
+        _selectedDeck = State(initialValue: initialDeck)
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,6 +56,32 @@ struct AddSessionCardScreen: View {
                         .lineLimit(2...8)
                         .accessibilityIdentifier("cardAnswer")
                 }
+                Section("Категория") {
+                    Picker("Категория", selection: $selectedDeck) {
+                        Text(CardCategory.noCategoryTitle).tag(String?.none)
+                        ForEach(availableDecks, id: \.self) { deck in
+                            Text(deck).tag(String?.some(deck))
+                        }
+                        Text("Новая категория…").tag(String?.some(newDeckPlaceholder))
+                    }
+                    .accessibilityIdentifier("cardDeckPicker")
+                    .onChange(of: selectedDeck) { _, deck in
+                        isCreatingDeck = deck == newDeckPlaceholder
+                        if !isCreatingDeck {
+                            newDeckName = ""
+                        }
+                    }
+                    if isCreatingDeck {
+                        TextField("Имя категории", text: $newDeckName)
+                            .accessibilityIdentifier("newDeckName")
+                        if let deckNameError {
+                            Text(deckNameError)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("newDeckNameError")
+                        }
+                    }
+                }
             }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
@@ -32,7 +93,7 @@ struct AddSessionCardScreen: View {
                     Button("Добавить") {
                         if let card = draft.makeCard() {
                             do {
-                                try onAdd(card.question, card.answer)
+                                try onAdd(card.question, card.answer, resolvedDeck)
                                 dismiss()
                             } catch {
                                 saveError = error.localizedDescription
@@ -40,7 +101,7 @@ struct AddSessionCardScreen: View {
                             }
                         }
                     }
-                    .disabled(!draft.canSubmit)
+                    .disabled(!canSubmit)
                 }
             }
         }

@@ -33,7 +33,11 @@ struct AppShell: View {
             NavigationStack {
                 SettingsScreen()
                     .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
+                        if case .conflicts = destination {
+                            ConflictsScreen()
+                        } else {
+                            PlaceholderScreen(destination: destination)
+                        }
                     }
             }
             .tabItem { Label(AppSection.settings.title, systemImage: AppSection.settings.symbol) }

@@ -9,15 +9,45 @@ struct SessionCardScreen: View {
     @State private var showSaveError = false
     @State private var isConfirmingDeletion = false
     @Environment(\.dismiss) private var dismiss
+    let availableDecks: [String]
     let onReview: (RecallRating) throws -> Void
+    let onChangeDeck: (String?) throws -> Void
     let onDelete: () throws -> Void
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Вопрос") {
-                    Text(card.question)
+                Section {
+                    Menu {
+                        ForEach(availableDecks, id: \.self) { deck in
+                            Button {
+                                changeDeck(to: deck)
+                            } label: {
+                                if deck == card.deck {
+                                    Label(deck, systemImage: "checkmark")
+                                } else {
+                                    Text(deck)
+                                }
+                            }
+                        }
+                        Button {
+                            changeDeck(to: nil)
+                        } label: {
+                            if card.deck == nil {
+                                Label(CardCategory.noCategoryTitle, systemImage: "checkmark")
+                            } else {
+                                Text(CardCategory.noCategoryTitle)
+                            }
+                        }
+                    } label: {
+                        Label(card.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
+                            .font(.caption)
+                    }
+                    .accessibilityIdentifier("cardDeckChip")
                 }
+                 Section("Вопрос") {
+                    Text(card.question)
+                 }
                 if isAnswerVisible {
                     Section("Ответ") {
                         Text(card.answer)
@@ -64,7 +94,7 @@ struct SessionCardScreen: View {
                         ForEach(history.indices, id: \.self) { index in
                             let review = history[index]
                             LabeledContent(review.rating.title,
-                                           value: review.reviewedAt.formatted(date: .abbreviated, time: .standard))
+                                           value: review.reviewedAt.formatted(.dateTime.locale(Locale.current)))
                         }
                     }
                 }
@@ -103,6 +133,16 @@ struct SessionCardScreen: View {
             Button("Закрыть", role: .cancel) {}
         } message: {
             Text(saveError)
+        }
+    }
+
+    private func changeDeck(to deck: String?) {
+        guard deck != card.deck else { return }
+        do {
+            try onChangeDeck(deck)
+        } catch {
+            saveError = error.localizedDescription
+            showSaveError = true
         }
     }
 }

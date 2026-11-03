@@ -44,6 +44,10 @@ struct ReviewSessionScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("reviewProgress")
+                Text(card.deck ?? CardCategory.noCategoryTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("reviewDeck")
             }
             Section("Вопрос") {
                 Text(card.question)
