@@ -6,14 +6,17 @@ struct LearningScreen: View {
     @State private var log: SessionLog
     @State private var schedules: [UUID: CardSchedule]
     @State private var clock = Date()
-    @State private var loadError: String?
+    @State var loadError: String?
     @State private var isAddingCard = false
     @State private var isReviewing = false
-    @AppStorage("serverRevision") private var serverRevision = 0
+    @AppStorage("serverRevision") var serverRevision = 0
+    @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedCard: SessionCard?
     @State private var searchQuery = ""
-    @State private var pushTask: Task<Void, Never>?
-    @State private var syncError: String?
+    @State var pushTask: Task<Void, Never>?
+    @State var syncError: String?
+    @State var lastSyncFailed = false
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
@@ -50,14 +53,7 @@ struct LearningScreen: View {
                     Button("Повторить чтение") { reload() }
                 }
             } else if cards.isEmpty {
-                Section {
-                    SectionIntro(
-                        symbol: "rectangle.stack",
-                        title: "Карточек пока нет",
-                        detail: "Добавьте карточку с вопросом и ответом кнопкой «плюс»."
-                    )
-                    .frame(maxWidth: .infinity)
-                }
+                emptyCardsSection
             } else {
                 Section {
                     Text("К повторению: \(dueCards.count)")
@@ -69,17 +65,15 @@ struct LearningScreen: View {
                         Text("Последняя оценка: \(lastRating.title)")
                             .foregroundStyle(.secondary)
                     }
+                    if let syncStatusText {
+                        Text(syncStatusText)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("syncStatus")
+                    }
                 }
 
                 if filteredCards.isEmpty {
-                    Section {
-                        SectionIntro(
-                            symbol: "magnifyingglass",
-                            title: "Ничего не найдено",
-                            detail: "Измените запрос или добавьте новую карточку."
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
+                    emptySearchSection
                 } else {
                     Section("Карточки") {
                         ForEach(filteredCards) { card in
@@ -152,7 +146,11 @@ struct LearningScreen: View {
         }
         .onAppear(perform: reload)
         .task {
-            await pullIfLocalEmpty()
+            await reconcile()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await reconcile() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()
@@ -233,7 +231,7 @@ struct LearningScreen: View {
         .animation(.easeInOut(duration: 0.2), value: dueCards.isEmpty)
     }
 
-    private var snapshot: LearningSnapshot {
+    var snapshot: LearningSnapshot {
         LearningSnapshot(cards: cards, reviews: log.reviews, schedules: schedules)
     }
 
@@ -273,7 +271,7 @@ struct LearningScreen: View {
         }
     }
 
-    private func reload() {
+    func reload() {
         do {
             let snapshot = try LocalCardStore.load()
             cards = snapshot.cards
@@ -306,74 +304,6 @@ struct LearningScreen: View {
         schedules = updated.schedules
         selectedCard = nil
         schedulePush()
-    }
-}
-
-extension LearningScreen {
-    private var isSyncErrorPresented: Binding<Bool> {
-        Binding(
-            get: { syncError != nil },
-            set: { if !$0 { syncError = nil } }
-        )
-    }
-
-    private func serverClient() -> ServerClient? {
-        guard let rawURL = UserDefaults.standard.string(forKey: "serverURL"),
-              let configuration = ServerConfiguration(rawValue: rawURL)
-        else {
-            return nil
-        }
-        do {
-            guard let stored = try ServerTokenStore.load() else { return nil }
-            let token = stored.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !token.isEmpty else { return nil }
-            return ServerClient(configuration: configuration, token: token)
-        } catch {
-            return nil
-        }
-    }
-
-    /// Отправляет снимок на сервер после локального изменения с коротким debounce.
-    private func schedulePush() {
-        guard let client = serverClient() else { return }
-        let localSnapshot = snapshot
-        let baseRevision = serverRevision
-        pushTask?.cancel()
-        pushTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(700))
-            guard !Task.isCancelled else { return }
-            do {
-                let result = try await client.push(
-                    snapshot: localSnapshot,
-                    baseRevision: baseRevision
-                )
-                serverRevision = result.revision
-            } catch let error as ServerError {
-                if case .conflict(let current) = error {
-                    syncError = "Конфликт ревизий: на сервере \(current). Загрузите снимок в настройках."
-                }
-            } catch {
-                // Сеть недоступна; ручная синхронизация покажет ошибку.
-            }
-        }
-    }
-
-    /// Первый запуск на пустом устройстве подтягивает серверный снимок.
-    private func pullIfLocalEmpty() async {
-        guard cards.isEmpty, log.reviews.isEmpty, let client = serverClient() else { return }
-        do {
-            let remote = try await client.fetchSnapshot()
-            guard let snapshot = remote.data else { return }
-            try LocalCardStore.save(snapshot)
-            serverRevision = remote.revision
-            reload()
-        } catch let error as ServerError {
-            if case .conflict(let current) = error {
-                syncError = "Конфликт ревизий: на сервере \(current)."
-            }
-        } catch {
-            // Офлайн или сервер недоступен — локальные данные остаются.
-        }
     }
 }
 
