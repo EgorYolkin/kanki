@@ -77,10 +77,11 @@ extension LearningScreen {
                 AllCardsScreen(
                     cards: cards,
                     schedules: schedules,
-                    clock: clock
-                ) { card in
-                    selectedCard = card
-                }
+                    clock: clock,
+                    onOpen: { card in selectedCard = card },
+                    onSetArchived: { card, archived in try setArchived(card, archived) },
+                    onDelete: { card in try deleteCard(card) }
+                )
             } label: {
                 Label("Все карточки", systemImage: "rectangle.on.rectangle")
             }
@@ -144,7 +145,9 @@ extension LearningScreen {
     }
 
     var newCardsCount: Int {
-        cards.filter { log.history(for: $0.id).isEmpty }.count
+        CardCategory.cards(cards, archived: false)
+            .filter { log.history(for: $0.id).isEmpty }
+            .count
     }
 
     var categorySummaries: [CategorySummary] {
@@ -220,12 +223,36 @@ extension LearningScreen {
         selectedCard = nil
     }
 
-    func changeDeck(of card: SessionCard, to newDeck: String?) throws {
+    @discardableResult
+    func changeDeck(of card: SessionCard, to newDeck: String?) throws -> SessionCard? {
         var updated = snapshot
-        guard let index = updated.cards.firstIndex(where: { $0.id == card.id }) else { return }
+        guard let index = updated.cards.firstIndex(where: { $0.id == card.id }) else { return nil }
         updated.cards[index].deck = CardCategory.trimmedDeck(newDeck)
         try apply(updated)
-        selectedCard = updated.cards[index]
+        return updated.cards[index]
+    }
+
+    /// Архивирует или возвращает карточку; открытая карточка получает новый флаг.
+    func setArchived(_ card: SessionCard, _ archived: Bool) throws {
+        var updated = snapshot
+        guard updated.setArchived(archived, cardID: card.id) else { return }
+        try apply(updated)
+    }
+
+    /// Сохраняет правку вопроса, ответа и категории; пустой ввод не применяется.
+    @discardableResult
+    func updateCard(
+        _ card: SessionCard,
+        question: String,
+        answer: String,
+        deck: String?
+    ) throws -> SessionCard? {
+        var updated = snapshot
+        guard updated.updateCard(id: card.id, question: question, answer: answer, deck: deck) else {
+            return nil
+        }
+        try apply(updated)
+        return updated.cards.first { $0.id == card.id }
     }
 
     func renameDeck(from oldName: String, to newName: String) {
@@ -255,7 +282,7 @@ extension LearningScreen {
     func moveDeck(from source: String?, to target: String?) {
         var updated = snapshot
         let targetDeck = CardCategory.trimmedDeck(target)
-        let movingIDs = Set(CardCategory.cards(updated.cards, inDeck: source).map(\.id))
+        let movingIDs = Set(CardCategory.cards(updated.cards, inDeck: source, includingArchived: true).map(\.id))
         for index in updated.cards.indices where movingIDs.contains(updated.cards[index].id) {
             updated.cards[index].deck = targetDeck
         }

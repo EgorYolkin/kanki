@@ -63,6 +63,63 @@ final class CardCategoryTests: XCTestCase {
         XCTAssertEqual(CardCategory.cards(cards, inDeck: nil).map(\.question), ["4"])
     }
 
+    func testArchivedCardsAreExcludedUnlessRequested() {
+        let active = card("active", deck: "Физика")
+        let archived = SessionCard(
+            question: "archived",
+            answer: "Ответ",
+            createdAt: now,
+            deck: "Физика",
+            isArchived: true
+        )
+
+        XCTAssertEqual(
+            CardCategory.cards([active, archived], inDeck: "Физика").map(\.question),
+            ["active"]
+        )
+        XCTAssertEqual(
+            CardCategory.cards([active, archived], inDeck: "Физика", includingArchived: true).count,
+            2
+        )
+        XCTAssertEqual(
+            CardCategory.cards([active, archived], archived: true).map(\.question),
+            ["archived"]
+        )
+        XCTAssertEqual(
+            CardCategory.cards([active, archived], archived: false).map(\.question),
+            ["active"]
+        )
+    }
+
+    func testArchivedCardsDoNotCreateCategorySummaries() {
+        let active = card("active", deck: "Физика")
+        let archived = SessionCard(
+            question: "archived",
+            answer: "Ответ",
+            createdAt: now,
+            deck: "Физика",
+            isArchived: true
+        )
+        let archivedOnly = SessionCard(
+            question: "hidden",
+            answer: "Ответ",
+            createdAt: now,
+            deck: "Химия",
+            isArchived: true
+        )
+
+        let summaries = CardCategory.summaries(
+            of: LearningSnapshot(cards: [active, archived, archivedOnly]),
+            at: now
+        )
+
+        XCTAssertEqual(summaries.map(\.deck), ["Физика"])
+        XCTAssertEqual(summaries[0].totalCount, 1)
+        XCTAssertEqual(summaries[0].newCount, 1)
+        XCTAssertEqual(summaries[0].dueCount, 1)
+        XCTAssertEqual(CardCategory.deckNames(in: [active, archived]), ["Физика"])
+    }
+
     // MARK: - summaries
 
     func testSummariesCountDueTotalNewAndSortWithUncategorizedLast() {

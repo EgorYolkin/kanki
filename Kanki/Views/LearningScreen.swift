@@ -92,7 +92,7 @@ struct LearningScreen: View {
             .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
-            AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
+            SessionCardFormScreen(availableDecks: availableDecks) { question, answer, deck in
                 try addCard(question: question, answer: answer, deck: deck)
             }
         }
@@ -103,6 +103,9 @@ struct LearningScreen: View {
                 availableDecks: availableDecks,
                 onReview: { rating in try record(card, rating: rating) },
                 onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
+                onUpdate: { question, answer, deck in
+                    try updateCard(card, question: question, answer: answer, deck: deck)
+                },
                 onDelete: { try deleteCard(card) }
             )
         }

@@ -67,18 +67,31 @@ enum CardCategory {
 
     /// Карточки категории и её подкатегорий: точное совпадение имени
     /// или префикс `имя::` (семантика Anki: выбор колоды включает подколоды).
+    /// По умолчанию архивные карточки не учитываются.
     static func cards(
         _ cards: [SessionCard],
-        inDeck deck: String?
+        inDeck deck: String?,
+        includingArchived: Bool = false
     ) -> [SessionCard] {
+        let active = includingArchived ? cards : cards.filter { !$0.isArchived }
         guard let deck else {
-            return cards.filter { $0.deck == nil }
+            return active.filter { $0.deck == nil }
         }
         let prefix = deck + hierarchySeparator
-        return cards.filter { card in
+        return active.filter { card in
             guard let cardDeck = card.deck else { return false }
             return cardDeck == deck || cardDeck.hasPrefix(prefix)
         }
+    }
+
+    /// Имена категорий в наборе карточек, по алфавиту.
+    static func deckNames(in cards: [SessionCard]) -> [String] {
+        Set(cards.compactMap(\.deck)).sorted()
+    }
+
+    /// Карточки активные (`archived: false`) или архивные — для списка «Все карточки».
+    static func cards(_ cards: [SessionCard], archived: Bool) -> [SessionCard] {
+        cards.filter { $0.isArchived == archived }
     }
 
     /// Список категорий с счётчиками: по алфавиту, «Без категории» — в конце.
@@ -92,7 +105,8 @@ enum CardCategory {
             ReviewQueue.cards(snapshot.cards, schedules: snapshot.schedules, at: date)
                 .map(\.id)
         )
-        let decks = Set(snapshot.cards.compactMap(\.deck))
+        let activeCards = snapshot.cards.filter { !$0.isArchived }
+        let decks = Set(activeCards.compactMap(\.deck))
 
         var summaries = decks
             .map { deck -> CategorySummary in

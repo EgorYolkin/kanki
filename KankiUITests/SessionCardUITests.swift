@@ -275,4 +275,49 @@ final class SessionCardUITests: UITestCase {
         app.buttons["Save"].tap()
         XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
     }
+
+    func testEditingCardUpdatesQuestionAnswerAndCategory() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Старый вопрос", answer: "Старый ответ", deck: .new("Математика"))
+        openAllCards(in: app)
+        app.buttons["Старый вопрос"].tap()
+
+        let edit = app.buttons["editSessionCard"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5), "Нет кнопки «Изменить» на карточке")
+        edit.tap()
+
+        let questionField = app.descendants(matching: .any)["cardQuestion"]
+        XCTAssertTrue(questionField.waitForExistence(timeout: 5), "Форма редактирования не открылась")
+        XCTAssertEqual(questionField.value as? String, "Старый вопрос", "Форма не заполнена текущим вопросом")
+        replaceText(in: questionField, with: "Новый вопрос")
+        replaceText(in: app.descendants(matching: .any)["cardAnswer"], with: "Новый ответ")
+
+        let save = app.buttons["Сохранить"]
+        XCTAssertTrue(save.isEnabled, "Кнопка «Сохранить» заблокирована")
+        save.tap()
+
+        // После сохранения форма закрывается, а карточка остаётся открытой с новыми данными.
+        XCTAssertFalse(save.waitForExistence(timeout: 2), "Форма редактирования не закрылась")
+        XCTAssertTrue(app.staticTexts["Новый вопрос"].waitForExistence(timeout: 5), "Карточка не обновилась")
+        app.buttons["Показать ответ"].tap()
+        XCTAssertTrue(app.staticTexts["Новый ответ"].waitForExistence(timeout: 5), "Ответ не сохранился")
+        XCTAssertTrue(app.staticTexts["Математика"].exists, "Категория потерялась при правке")
+
+        app.buttons["Закрыть"].tap()
+        XCTAssertTrue(app.buttons["Новый вопрос"].waitForExistence(timeout: 5), "Список не обновился")
+        XCTAssertFalse(app.buttons["Старый вопрос"].exists, "Старый вопрос остался в списке")
+    }
+
+    /// Заменяет текст поля новым значением и проверяет результат.
+    private func replaceText(in field: XCUIElement, with text: String) {
+        // Тап по центру ставит курсор в начало, поэтому удаление ничего не стирает:
+        // ставим курсор в конец поля и удаляем с запасом.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40))
+        field.typeText(text)
+        XCTAssertEqual(field.value as? String, text, "Поле содержит «\(field.value ?? "")» вместо «\(text)»")
+    }
 }

@@ -43,7 +43,7 @@ final class LearningSnapshotTests: XCTestCase {
         XCTAssertEqual(decoded, LearningSnapshot())
     }
 
-    func testSnapshotV2EncodesVersionDeckAndRenames() throws {
+    func testSnapshotEncodesVersionDeckAndRenames() throws {
         let snapshot = LearningSnapshot(
             cards: [SessionCard(question: "Вопрос", answer: "Ответ", deck: "Математика")],
             deckRenames: [DeckRename(from: "Старое", to: "Математика")]
@@ -55,7 +55,7 @@ final class LearningSnapshotTests: XCTestCase {
         let cards = try XCTUnwrap(object["cards"] as? [[String: Any]])
         let renames = try XCTUnwrap(object["deck_renames"] as? [[String: String]])
 
-        XCTAssertEqual(object["snapshot_version"] as? Int, 2)
+        XCTAssertEqual(object["snapshot_version"] as? Int, 3)
         XCTAssertEqual(renames, [["from": "Старое", "to": "Математика"]])
         XCTAssertEqual(cards.first?["deck"] as? String, "Математика")
     }
@@ -121,6 +121,74 @@ final class LearningSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.schedules, [other.id: schedule])
         XCTAssertFalse(snapshot.removeCard(id: card.id))
         XCTAssertEqual(snapshot.reviews, [orphanReview, otherReview])
+    }
+
+    func testArchivingKeepsHistoryAndCanBeUndone() {
+        let review = SessionReview(cardID: card.id, rating: .good, reviewedAt: Date(timeIntervalSince1970: 300))
+        let schedule = CardSchedule(
+            due: Date(timeIntervalSince1970: 500),
+            stability: 4.5,
+            difficulty: 6,
+            elapsedDays: 2,
+            scheduledDays: 4,
+            learningSteps: 1,
+            reps: 3,
+            lapses: 1,
+            state: .review,
+            lastReview: Date(timeIntervalSince1970: 400)
+        )
+        var snapshot = LearningSnapshot(
+            cards: [card],
+            reviews: [review],
+            schedules: [card.id: schedule]
+        )
+
+        XCTAssertTrue(snapshot.setArchived(true, cardID: card.id))
+        XCTAssertEqual(snapshot.cards.first?.isArchived, true)
+        XCTAssertEqual(snapshot.reviews, [review])
+        XCTAssertEqual(snapshot.schedules[card.id], schedule)
+
+        XCTAssertTrue(snapshot.setArchived(false, cardID: card.id))
+        XCTAssertEqual(snapshot.cards.first?.isArchived, false)
+
+        XCTAssertFalse(snapshot.setArchived(true, cardID: UUID()))
+    }
+
+    func testArchivedCardSurvivesSnapshotRoundTrip() throws {
+        let archived = SessionCard(question: "Вопрос", answer: "Ответ", isArchived: true)
+        let snapshot = LearningSnapshot(cards: [archived])
+
+        let decoded = try JSONDecoder().decode(
+            LearningSnapshot.self,
+            from: JSONEncoder().encode(snapshot)
+        )
+
+        XCTAssertEqual(decoded.cards, [archived])
+        XCTAssertEqual(decoded.snapshotVersion, 3)
+    }
+
+    func testUpdatingCardKeepsIdentityAndRejectsEmptyInput() {
+        var snapshot = LearningSnapshot(cards: [card])
+
+        XCTAssertTrue(
+            snapshot.updateCard(
+                id: card.id,
+                question: "  Новый вопрос  ",
+                answer: "Новый ответ ",
+                deck: " Физика "
+            )
+        )
+        let updated = snapshot.cards[0]
+        XCTAssertEqual(updated.id, card.id)
+        XCTAssertEqual(updated.createdAt, card.createdAt)
+        XCTAssertEqual(updated.question, "Новый вопрос")
+        XCTAssertEqual(updated.answer, "Новый ответ")
+        XCTAssertEqual(updated.deck, "Физика")
+
+        XCTAssertFalse(snapshot.updateCard(id: card.id, question: " ", answer: "Ответ", deck: nil))
+        XCTAssertEqual(snapshot.cards[0].question, "Новый вопрос")
+
+        XCTAssertFalse(snapshot.updateCard(id: UUID(), question: "Вопрос", answer: "Ответ", deck: nil))
     }
 
 }

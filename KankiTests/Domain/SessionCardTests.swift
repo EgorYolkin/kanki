@@ -40,6 +40,7 @@ final class SessionCardTests: XCTestCase {
 
         let decoded = try JSONDecoder().decode(SessionCard.self, from: legacy)
         XCTAssertNil(decoded.deck)
+        XCTAssertFalse(decoded.isArchived)
 
         let encoded = try String(bytes: JSONEncoder().encode(decoded), encoding: .utf8) ?? ""
         XCTAssertFalse(encoded.contains("\"deck\""))
@@ -51,6 +52,21 @@ final class SessionCardTests: XCTestCase {
             encoding: .utf8
         ) ?? ""
         XCTAssertTrue(withDeck.contains("\"deck\":\"Физика\""))
+    }
+
+    func testArchivedFlagRoundTripsAndIsOmittedWhenFalse() throws {
+        let active = SessionCard(question: "q", answer: "a")
+        XCTAssertFalse(active.isArchived)
+        let activeJSON = try String(bytes: JSONEncoder().encode(active), encoding: .utf8) ?? ""
+        XCTAssertFalse(activeJSON.contains("isArchived"))
+
+        let archived = SessionCard(question: "q", answer: "a", isArchived: true)
+        let decoded = try JSONDecoder().decode(
+            SessionCard.self,
+            from: JSONEncoder().encode(archived)
+        )
+        XCTAssertTrue(decoded.isArchived)
+        XCTAssertEqual(decoded, archived)
     }
 
 }

@@ -44,7 +44,6 @@
 		76D15537CB97D5C4C2E993C8 /* LearningScreenSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A5A793FC000541B813F6FB /* LearningScreenSync.swift */; };
 		793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */; };
 		7A0D84F6098658CAA389E204 /* CardCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC01065DFF7383120EFB751 /* CardCategory.swift */; };
-		7C4B54AC72903FE1FC95EF08 /* AddSessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */; };
 		7F5CBE66DAB1FF45E1824EE8 /* ServerConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206D429002831316316C7E60 /* ServerConfigurationTests.swift */; };
 		7F675AD32EC39DB2667D083D /* CardExportArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8329926384A17781F614E660 /* CardExportArchiveTests.swift */; };
 		8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */; };
@@ -62,10 +61,12 @@
 		B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */; };
 		B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */; };
 		BC9EB485791353F110750C94 /* ServerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A937E6E66EAC7934CABF325D /* ServerModels.swift */; };
+		BD374A48827DC3AB4B6EEC5D /* CardArchiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF6D7038B0B54DB681E0B69 /* CardArchiveUITests.swift */; };
 		C3D75FF8CCCF06BEBD697B3A /* ReviewSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */; };
 		C78B83086F2EAC7BC862571E /* CardCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64000A64892970D6CC3EB14 /* CardCategoryTests.swift */; };
 		CAE07A0DDCD1295A3E4D78C8 /* UITestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4145F341B1F928BFF033253F /* UITestCase.swift */; };
 		CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */; };
+		CF8CC1019C367DF98D330766 /* SessionCardFormScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7814F49B17E7F6A0401BA313 /* SessionCardFormScreen.swift */; };
 		D1108B1F5BD6837BD01A0962 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF15689DA2A920F45308E742 /* Assets.xcassets */; };
 		D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */; };
 		D9EE570D6F392F7EEECF4528 /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9D099E1E9DFE214E983738 /* SessionLog.swift */; };
@@ -145,7 +146,7 @@
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		6EE0D609C81D308B2B202E60 /* SectionIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionIntro.swift; sourceTree = "<group>"; };
 		73630BF536A4BA8AD8872A30 /* SyncStatusUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusUITests.swift; sourceTree = "<group>"; };
-		77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSessionCardScreen.swift; sourceTree = "<group>"; };
+		7814F49B17E7F6A0401BA313 /* SessionCardFormScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardFormScreen.swift; sourceTree = "<group>"; };
 		78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSchedulingTests.swift; sourceTree = "<group>"; };
 		8329926384A17781F614E660 /* CardExportArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportArchiveTests.swift; sourceTree = "<group>"; };
 		8860FF46CFB7B4B1381E785C /* SyncStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatus.swift; sourceTree = "<group>"; };
@@ -179,6 +180,7 @@
 		D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportScreen.swift; sourceTree = "<group>"; };
 		D5298CF1C1CD9C6617351780 /* AppSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSection.swift; sourceTree = "<group>"; };
 		DB8BE689FAA18093026126C5 /* ServerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClient.swift; sourceTree = "<group>"; };
+		DBF6D7038B0B54DB681E0B69 /* CardArchiveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArchiveUITests.swift; sourceTree = "<group>"; };
 		DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardTests.swift; sourceTree = "<group>"; };
 		DEC01065DFF7383120EFB751 /* CardCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCategory.swift; sourceTree = "<group>"; };
 		E475D1F1CC902C13FEAEFB9B /* ServerConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfiguration.swift; sourceTree = "<group>"; };
@@ -258,6 +260,7 @@
 		735E615811A651D363DD6972 /* KankiUITests */ = {
 			isa = PBXGroup;
 			children = (
+				DBF6D7038B0B54DB681E0B69 /* CardArchiveUITests.swift */,
 				21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */,
 				6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */,
 				34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */,
@@ -310,7 +313,6 @@
 		F37EF497576787401095E09E /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				77CB094ADA3B7095CC6B3051 /* AddSessionCardScreen.swift */,
 				53F47B7A3C153F86AD1AA9D7 /* AllCardsScreen.swift */,
 				E78083BD8306FF6E06837F69 /* AppShell.swift */,
 				BCD23689E3AC04DF5AAED184 /* CategorySummaryRow.swift */,
@@ -325,6 +327,7 @@
 				9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */,
 				A93939D720A954E833FEE568 /* SectionCommands.swift */,
 				6EE0D609C81D308B2B202E60 /* SectionIntro.swift */,
+				7814F49B17E7F6A0401BA313 /* SessionCardFormScreen.swift */,
 				09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */,
 				BCEC30D666EB98EA77B4071C /* SettingsScreen.swift */,
 			);
@@ -532,7 +535,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7C4B54AC72903FE1FC95EF08 /* AddSessionCardScreen.swift in Sources */,
 				284721F61BB1472E6F973A19 /* AllCardsScreen.swift in Sources */,
 				A49D5534F3D1D81E8EFC3CF9 /* AppAppearance.swift in Sources */,
 				E899C275914FBF2E1848C731 /* AppSection.swift in Sources */,
@@ -569,6 +571,7 @@
 				BC9EB485791353F110750C94 /* ServerModels.swift in Sources */,
 				6CCADEA75353A3D2480CA318 /* ServerTokenStore.swift in Sources */,
 				57F5B421C058EF326B0AB360 /* SessionCard.swift in Sources */,
+				CF8CC1019C367DF98D330766 /* SessionCardFormScreen.swift in Sources */,
 				8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */,
 				D9EE570D6F392F7EEECF4528 /* SessionLog.swift in Sources */,
 				5423550B94EDFA23F30C9CCC /* SessionReview.swift in Sources */,
@@ -590,6 +593,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BD374A48827DC3AB4B6EEC5D /* CardArchiveUITests.swift in Sources */,
 				DAAF0BA7C27C0C1B0C262B1E /* CategoryUITests.swift in Sources */,
 				DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */,
 				1F16E47FEE8079660AFD8F08 /* SettingsUITests.swift in Sources */,
