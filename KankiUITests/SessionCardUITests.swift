@@ -109,12 +109,12 @@ final class SessionCardUITests: UITestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "addSessionCard").count, 1)
         XCTAssertTrue(startReview.isEnabled)
         XCTAssertTrue(startReview.isHittable)
-        XCTAssertEqual(startReview.label, "Учить: 2 к повторению")
+        XCTAssertEqual(startReview.label, "Начать повторение")
         let tabBar = app.tabBars.firstMatch
         XCTAssertLessThanOrEqual(startReview.frame.maxY, tabBar.frame.minY, "Кнопка перекрывает таб-бар")
-        XCTAssertLessThan(startReview.frame.minX, app.frame.midX, "Кнопка обучения должна быть широкой")
-        XCTAssertGreaterThan(startReview.frame.maxX, app.frame.midX, "Кнопка обучения должна быть широкой")
-        XCTAssertTrue(app.staticTexts["+2 новых"].exists)
+        XCTAssertGreaterThan(startReview.frame.minX, app.frame.midX, "Кнопка повторения стоит справа")
+        XCTAssertGreaterThan(startReview.frame.width, 48, "Плавающая кнопка остаётся нажимаемой")
+        XCTAssertEqual(app.staticTexts["newCount"].label, "Новых: 2")
 
         startReview.tap()
         XCTAssertTrue(app.staticTexts["Карточка 1 из 2"].waitForExistence(timeout: 5))
@@ -191,7 +191,8 @@ final class SessionCardUITests: UITestCase {
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 0)
+        XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
+        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
         XCTAssertEqual(app.searchFields.count, 0)
         XCTAssertFalse(app.buttons["Все карточки"].exists)
         assertAddButton(in: app)
