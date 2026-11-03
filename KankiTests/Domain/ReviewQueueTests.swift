@@ -41,6 +41,25 @@ final class ReviewQueueTests: XCTestCase {
         XCTAssertTrue(ReviewQueue.cards([], schedules: [:], at: now).isEmpty)
     }
 
+    func testArchivedCardsNeverEnterTheQueue() {
+        let active = card("active", createdAt: 100)
+        let archivedDue = SessionCard(
+            question: "archived",
+            answer: "A",
+            createdAt: Date(timeIntervalSince1970: 50),
+            isArchived: true
+        )
+        let schedules = [archivedDue.id: schedule(due: 200)]
+
+        let queue = ReviewQueue.cards(
+            [archivedDue, active],
+            schedules: schedules,
+            at: Date(timeIntervalSince1970: 500)
+        )
+
+        XCTAssertEqual(queue.map(\.question), ["active"])
+    }
+
     private func card(_ question: String, createdAt: TimeInterval) -> SessionCard {
         SessionCard(
             question: question,

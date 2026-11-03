@@ -9,19 +9,24 @@ struct SessionCard: Identifiable, Equatable, Codable {
     /// Имя категории (колоды Anki). `nil` или пустая строка — «Без категории».
     /// Иерархия — только в имени через `::`; отдельной сущности категории нет.
     var deck: String?
+    /// Архивная карточка остаётся в локальном снимке и экспорте,
+    /// но не попадает в очередь повторения и счётчики категорий.
+    var isArchived: Bool
 
     init(
         id: UUID = UUID(),
         question: String,
         answer: String,
         createdAt: Date = Date(),
-        deck: String? = nil
+        deck: String? = nil,
+        isArchived: Bool = false
     ) {
         self.id = id
         self.question = question
         self.answer = answer
         self.createdAt = createdAt
         self.deck = CardCategory.trimmedDeck(deck)
+        self.isArchived = isArchived
     }
 
     enum CodingKeys: String, CodingKey {
@@ -30,6 +35,7 @@ struct SessionCard: Identifiable, Equatable, Codable {
         case answer
         case createdAt
         case deck
+        case isArchived
     }
 
     init(from decoder: Decoder) throws {
@@ -42,6 +48,8 @@ struct SessionCard: Identifiable, Equatable, Codable {
         deck = CardCategory.trimmedDeck(
             try container.decodeIfPresent(String.self, forKey: .deck)
         )
+        // Снимок до версии 3 не знает архива: отсутствие ключа — карточка активна.
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -51,5 +59,8 @@ struct SessionCard: Identifiable, Equatable, Codable {
         try container.encode(answer, forKey: .answer)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(deck, forKey: .deck)
+        if isArchived {
+            try container.encode(true, forKey: .isArchived)
+        }
     }
 }

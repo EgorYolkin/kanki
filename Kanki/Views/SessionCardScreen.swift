@@ -1,18 +1,42 @@
 import SwiftUI
 
 struct SessionCardScreen: View {
-    let card: SessionCard
+    /// Отображаемая копия: после правки или смены категории обновляется локально,
+    /// не полагаясь на повторное создание sheet с тем же идентификатором.
+    @State private var displayedCard: SessionCard
     let history: [SessionReview]
     @State private var isAnswerVisible = false
     @State private var didSubmitRating = false
     @State private var saveError = ""
     @State private var showSaveError = false
     @State private var isConfirmingDeletion = false
+    @State private var isEditing = false
     @Environment(\.dismiss) private var dismiss
     let availableDecks: [String]
     let onReview: (RecallRating) throws -> Void
-    let onChangeDeck: (String?) throws -> Void
+    /// Смена категории возвращает обновлённую карточку (или `nil`, если ничего не изменилось).
+    let onChangeDeck: (String?) throws -> SessionCard?
+    /// Сохранение правки вопроса, ответа и категории.
+    let onUpdate: (String, String, String?) throws -> SessionCard?
     let onDelete: () throws -> Void
+
+    init(
+        card: SessionCard,
+        history: [SessionReview],
+        availableDecks: [String],
+        onReview: @escaping (RecallRating) throws -> Void,
+        onChangeDeck: @escaping (String?) throws -> SessionCard?,
+        onUpdate: @escaping (String, String, String?) throws -> SessionCard?,
+        onDelete: @escaping () throws -> Void
+    ) {
+        _displayedCard = State(initialValue: card)
+        self.history = history
+        self.availableDecks = availableDecks
+        self.onReview = onReview
+        self.onChangeDeck = onChangeDeck
+        self.onUpdate = onUpdate
+        self.onDelete = onDelete
+    }
 
     var body: some View {
         NavigationStack {
@@ -23,7 +47,7 @@ struct SessionCardScreen: View {
                             Button {
                                 changeDeck(to: deck)
                             } label: {
-                                if deck == card.deck {
+                                if deck == displayedCard.deck {
                                     Label(deck, systemImage: "checkmark")
                                 } else {
                                     Text(deck)
@@ -33,24 +57,24 @@ struct SessionCardScreen: View {
                         Button {
                             changeDeck(to: nil)
                         } label: {
-                            if card.deck == nil {
+                            if displayedCard.deck == nil {
                                 Label(CardCategory.noCategoryTitle, systemImage: "checkmark")
                             } else {
                                 Text(CardCategory.noCategoryTitle)
                             }
                         }
                     } label: {
-                        Label(card.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
+                        Label(displayedCard.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
                             .font(.caption)
                     }
                     .accessibilityIdentifier("cardDeckChip")
                 }
                  Section("Вопрос") {
-                    Text(card.question)
+                    Text(displayedCard.question)
                  }
                 if isAnswerVisible {
                     Section("Ответ") {
-                        Text(card.answer)
+                        Text(displayedCard.answer)
                     }
                 } else {
                     Button("Показать ответ") {
@@ -112,8 +136,25 @@ struct SessionCardScreen: View {
                 didSubmitRating = false
             }
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Изменить") {
+                        isEditing = true
+                    }
+                    .accessibilityIdentifier("editSessionCard")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Закрыть") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $isEditing) {
+                SessionCardFormScreen(
+                    availableDecks: availableDecks,
+                    draft: CardDraft(card: displayedCard),
+                    commitTitle: "Сохранить"
+                ) { question, answer, deck in
+                    if let updated = try onUpdate(question, answer, deck) {
+                        displayedCard = updated
+                    }
                 }
             }
         }
@@ -137,9 +178,11 @@ struct SessionCardScreen: View {
     }
 
     private func changeDeck(to deck: String?) {
-        guard deck != card.deck else { return }
+        guard deck != displayedCard.deck else { return }
         do {
-            try onChangeDeck(deck)
+            if let updated = try onChangeDeck(deck) {
+                displayedCard = updated
+            }
         } catch {
             saveError = error.localizedDescription
             showSaveError = true

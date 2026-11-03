@@ -3,9 +3,10 @@ import Foundation
 /// Локальный снимок демо-данных: карточки, их оценки и расписание FSRS.
 /// Кодируется в JSON `LocalCardStore`; серверного источника пока нет.
 struct LearningSnapshot: Codable, Equatable {
-    /// Версия состава payload: 2 — добавлены категории (`deck`) и `deck_renames`.
-    /// Отсутствие ключа при декодировании — старый снимок v1, принимается без потерь.
-    static let currentSnapshotVersion = 2
+    /// Версия состава payload: 2 — категории (`deck`, `deck_renames`),
+    /// 3 — архив карточки (`isArchived` в карточке).
+    /// Отсутствие ключа при декодировании — старый снимок, принимается с дефолтами.
+    static let currentSnapshotVersion = 3
 
     var snapshotVersion: Int
     var cards: [SessionCard]
@@ -45,6 +46,28 @@ struct LearningSnapshot: Codable, Equatable {
         return true
     }
 
+    /// Архивирует или возвращает карточку; история и расписание сохраняются.
+    @discardableResult
+    mutating func setArchived(_ archived: Bool, cardID: UUID) -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == cardID }) else { return false }
+        cards[index].isArchived = archived
+        return true
+    }
+
+    /// Правка текста и категории карточки: пустые поля отклоняются (`CardDraft`),
+    /// идентификатор, дата создания, архив и история сохраняются.
+    @discardableResult
+    mutating func updateCard(id: UUID, question: String, answer: String, deck: String?) -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == id }) else { return false }
+        var draft = CardDraft(card: cards[index])
+        draft.question = question
+        draft.answer = answer
+        draft.deck = deck
+        guard let edited = draft.updated(cards[index]) else { return false }
+        cards[index] = edited
+        return true
+    }
+
     private enum CodingKeys: String, CodingKey {
         case snapshotVersion = "snapshot_version"
         case cards
@@ -55,7 +78,7 @@ struct LearningSnapshot: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        // Снапшот v1 (без версий и категорий) декодируется как v2 с дефолтами.
+        // Снимок без версии (v1) декодируется как текущий с дефолтами.
         snapshotVersion = try container.decodeIfPresent(Int.self, forKey: .snapshotVersion)
             ?? Self.currentSnapshotVersion
         deckRenames = try container.decodeIfPresent([DeckRename].self, forKey: .deckRenames) ?? []

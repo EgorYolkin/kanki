@@ -1,6 +1,7 @@
 import Foundation
 
 /// Очередь повторения: новые карточки и те, чей срок уже наступил.
+/// Архивные карточки в очередь не попадают.
 /// Сортировка: сначала меньший due, затем более старые карточки.
 enum ReviewQueue {
     static func cards(
@@ -9,6 +10,7 @@ enum ReviewQueue {
         at date: Date
     ) -> [SessionCard] {
         cards
+            .filter { !$0.isArchived }
             .filter { schedules[$0.id].map { $0.due <= date } ?? true }
             .sorted { lhs, rhs in
                 let lhsDue = schedules[lhs.id]?.due ?? lhs.createdAt
