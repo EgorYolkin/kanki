@@ -1,12 +1,12 @@
 ---
 name: kanki-cards
-description: Add, read, edit or delete flashcards in the user's Kanki spaced-repetition app through its sync server (https://kanki.ink, REST + MCP stdio). Use this skill whenever the user asks to add cards to Kanki, push flashcards/questions to their iPhone review app, dump notes as cards, check their card list, or sync study material into Kanki — even if they just say "закинь в канки", "add these cards", "сделай карточки" without naming the server.
+description: Add, read, edit, archive or delete flashcards in the user's Kanki spaced-repetition app through its sync server (https://kanki.host, REST + MCP stdio), including assigning cards to categories. Use this skill whenever the user asks to add cards to Kanki, put flashcards into a category or deck, push study material to their iPhone review app, dump notes as cards, check their card list, or move cards between categories — even if they just say "закинь в канки", "add these cards", "сделай карточки" without naming the server.
 ---
 
 # Kanki cards via sync server
 
-Kanki stores all cards in a single revisioned snapshot on a self-hosted sync
-server. There is no per-card API: every write replaces the whole snapshot and
+Kanki stores every card in a single revisioned snapshot on a self-hosted sync
+server. There is no per-card API: each write replaces the whole snapshot and
 must carry the revision the client last read. Respect that contract or you
 will clobber the user's review history.
 
@@ -15,8 +15,8 @@ will clobber the user's review history.
 Two environment variables are required for every access path:
 
 ```bash
-export KANKI_SERVER_URL=https://kanki.ink   # no trailing slash needed
-export KANKI_TOKEN=<device-or-agent-token>  # bearer token; never commit it
+export KANKI_SERVER_URL=https://kanki.host   # no trailing slash needed
+export KANKI_TOKEN=<device-or-agent-token>   # bearer token; never commit it
 ```
 
 If `KANKI_TOKEN` is unset, ask the user — do not guess and do not use the
@@ -34,8 +34,9 @@ curl -s "$KANKI_SERVER_URL/v1/me" -H "Authorization: Bearer $KANKI_TOKEN"
 ## Snapshot contract (the one rule that matters)
 
 1. `GET /v1/snapshot` → `{revision, schema_version, data, updated_at}`.
-2. Modify `data` in place. Keep every field you did not intend to change,
-   especially `reviews` and `schedules` — they are the user's FSRS history.
+2. Modify `data` in place. Keep every field you did not intend to change:
+   `reviews` and `schedules` are the user's FSRS history, and `deck_renames`
+   is the record of category renames (see below).
 3. `PUT /v1/snapshot` with `{schema_version: 1, base_revision: <revision from
    step 1>, data: <full modified data>}`.
 4. A `409` response means someone else wrote first (usually the iPhone).
@@ -43,25 +44,67 @@ curl -s "$KANKI_SERVER_URL/v1/me" -H "Authorization: Bearer $KANKI_TOKEN"
    blind-retry with the same `base_revision`.
 
 Never construct `data` from scratch when the server already has cards:
-always start from the current snapshot. An empty server returns
+always start from the current snapshot. A server with no snapshot returns
 `revision: 0, data: null` — then `data` starts as
-`{"cards": [], "reviews": [], "schedules": {}}`.
+`{"snapshot_version": 3, "cards": [], "reviews": [], "schedules": {}, "deck_renames": []}`.
 
-## Card schema
+`schema_version` is the server's payload version (currently `1`); the app's
+own format version lives inside `data.snapshot_version`.
+
+## Card schema (`snapshot_version: 3`)
 
 ```json
 {
   "id": "2621F15A-306C-435A-9680-AEEB602F272D",   // UUID, uppercase; generate fresh
   "question": "annals",                            // user-visible front
   "answer": "летопись",                            // user-visible back
-  "createdAt": "2026-11-02T13:13:19Z"              // ISO-8601, UTC, seconds
+  "createdAt": "2026-11-02T13:13:19Z",              // ISO-8601, UTC, seconds
+  "deck": "Японский",                              // category, optional
+  "isArchived": false                               // archived cards stay out of review
 }
 ```
 
-Language follows the material: Russian answers for Russian-learning cards,
-etc. Do not prefill `schedules[id]` — the app schedules new cards itself on
-first review. Deleting a card: remove it from `cards` **and** its entries
-from `schedules` (reviews may stay; they are a log).
+- `deck` is the category (Anki deck). Omit it, `null` or `""` → «Без
+  категории» (no category). The app trims surrounding whitespace.
+- `isArchived: true` keeps the card, its reviews and its schedule, but hides
+  it from the review queue and from category counters. Prefer archiving over
+  deleting when the user says the card is no longer wanted.
+- Do not prefill `schedules[id]` — the app schedules new cards itself on the
+  first review. Deleting a card: remove it from `cards` **and** its entry
+  from `schedules` (reviews may stay; they are a log).
+
+Media, HTML and rich text are out of scope: the app renders plain question
+and answer strings.
+
+## Categories
+
+Categories are derived from card names — there is no separate table or
+endpoint, so creating a category means putting at least one card into it.
+
+- **One category per card.** A card belongs to exactly one `deck` value.
+- **Hierarchy lives in the name** via `::`, e.g. `Японский::Кандзи`. Picking
+  a category in the app also covers its subcategories, and the app lists one
+  row per distinct full name.
+- **Name rules** (the app's own validation): non-empty after trimming, not
+  `Без категории` (reserved), and no duplicate of an existing name. The app's
+  text field additionally forbids typing `::`; an agent writing directly to
+  the snapshot may still create hierarchical names — do it only when the user
+  asks for nested categories.
+- **Reuse existing names.** Read the snapshot first and copy an existing
+  `deck` string verbatim instead of inventing a near-duplicate
+  (`Японский` vs `японский` are two different rows).
+- **Renames** are recorded in `data.deck_renames` as `{"from": "...", "to":
+  "..."}`. When you rename a category for the user:
+  1. rewrite every `cards[].deck` that equals `from` or starts with `from + "::"`
+     (keeping the subcategory tail),
+  2. append `{from, to}` to `deck_renames`,
+  3. leave earlier rename entries in place.
+  Never rename by silently rewriting `deck` alone — other devices replay
+  `deck_renames` to keep their view consistent. A category disappears only
+  when no card carries its name and no rename covers it; its cards fall back
+  to «Без категории».
+- **Moving cards between categories** is just assigning a different `deck`;
+  that is not a rename and must not add a `deck_renames` entry.
 
 ## Path A: REST with curl (default)
 
@@ -84,7 +127,7 @@ If the checkout is available (repo `server/`), the same operations come as
 MCP tools — use them when the agent runtime speaks MCP:
 
 ```bash
-KANKI_SERVER_URL=https://kanki.ink KANKI_TOKEN=… \
+KANKI_SERVER_URL=https://kanki.host KANKI_TOKEN=… \
   uv run --project <repo>/server kanki-mcp
 ```
 
@@ -103,5 +146,7 @@ instant sync.
   commits or chat logs.
 - Don't rewrite `reviews`/`schedules` "to clean up" — they encode FSRS memory
   state; damage is silent and permanent.
+- Don't drop `deck_renames`, `snapshot_version` or `isArchived` when rewriting
+  `data`: older values are replayed by other devices and by the app's decoder.
 - Don't invent endpoints: there is no `/v1/cards`, no search, no delta sync.
   Snapshot read/put is the whole API for now.
