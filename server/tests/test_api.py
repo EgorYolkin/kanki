@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -52,6 +53,15 @@ def test_identity_requires_token(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"label": "admin", "role": "admin"}
+
+
+def test_non_ascii_token_is_rejected_without_server_error(client: TestClient) -> None:
+    # Байт 0xFF Starlette декодирует как latin-1 «ÿ»; сравнение строк в
+    # hmac.compare_digest бросало TypeError и давало 500.
+    response = client.get("/v1/me", headers={b"authorization": b"Bearer \xff"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == {"code": "invalid_token"}
 
 
 def test_snapshot_starts_empty(client: TestClient) -> None:
@@ -186,6 +196,26 @@ def test_rejects_unknown_schema_and_oversized_snapshot(client: TestClient) -> No
     )
     assert oversized.status_code == 413
     assert oversized.json()["detail"] == {"code": "snapshot_too_large"}
+
+
+def test_oversized_content_length_is_rejected_before_parsing(
+    client: TestClient,
+) -> None:
+    token = create_device_token(client)
+    # 70 КиБ превышают лимит данных (1 КиБ) + запас на конверт (64 КиБ),
+    # поэтому тело отклоняется по Content-Length до чтения и парсинга.
+    payload = json.dumps(
+        {"schema_version": 1, "base_revision": 0, "data": {"blob": "x" * 70_000}}
+    )
+
+    response = client.put(
+        "/v1/snapshot",
+        content=payload,
+        headers={**auth(token), "Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == {"code": "snapshot_too_large"}
 
 
 def test_device_token_cannot_manage_tokens(client: TestClient) -> None:
