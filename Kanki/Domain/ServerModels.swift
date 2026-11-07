@@ -20,6 +20,26 @@ struct ServerSnapshot: Codable, Equatable {
     }
 }
 
+extension ServerSnapshot {
+    /// Снимок неизвестной будущей схемы отклоняется: декодировать его
+    /// дефолтами — значит молча применять непонятые данные.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        revision = try container.decode(Int.self, forKey: .revision)
+        let version = try container.decode(Int.self, forKey: .schemaVersion)
+        guard version <= 1 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .schemaVersion,
+                in: container,
+                debugDescription: "schema_version \(version) новее поддерживаемой 1"
+            )
+        }
+        schemaVersion = version
+        data = try container.decodeIfPresent(LearningSnapshot.self, forKey: .data)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+    }
+}
+
 struct ServerSnapshotWrite: Encodable, Equatable {
     let schemaVersion: Int
     let baseRevision: Int

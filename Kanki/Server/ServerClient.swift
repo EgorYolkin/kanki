@@ -24,6 +24,19 @@ actor ServerClient {
         try await request(path: "v1/me", method: "GET")
     }
 
+    /// Снимок, приведённый к проводному формату: `iso8601` теряет дробные
+    /// секунды, поэтому локальный снимок сравнивается с серверным после такого
+    /// же round-trip. Иначе применённый, но не подтверждённый PUT выглядит
+    /// конфликтом вместо `.adoptRevision`.
+    static func wireNormalized(_ snapshot: LearningSnapshot) -> LearningSnapshot? {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? encoder.encode(snapshot) else { return nil }
+        return try? decoder.decode(LearningSnapshot.self, from: data)
+    }
+
     func fetchSnapshot() async throws -> ServerSnapshot {
         try await request(path: "v1/snapshot", method: "GET")
     }
