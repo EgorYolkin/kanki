@@ -60,6 +60,56 @@ final class ReviewQueueTests: XCTestCase {
         XCTAssertEqual(queue.map(\.question), ["active"])
     }
 
+    // MARK: - aheadCards
+
+    func testAheadCardsIncludeOnlyScheduledFutureCards() {
+        let scheduled = card("scheduled", createdAt: 100)
+        let newCard = card("new", createdAt: 100)
+        let due = card("due", createdAt: 100)
+        let archived = SessionCard(
+            question: "archived",
+            answer: "A",
+            createdAt: Date(timeIntervalSince1970: 50),
+            isArchived: true
+        )
+        let schedules = [
+            scheduled.id: schedule(due: 2_000),
+            due.id: schedule(due: 200),
+            archived.id: schedule(due: 2_000)
+        ]
+
+        let ahead = ReviewQueue.aheadCards(
+            [scheduled, newCard, due, archived],
+            schedules: schedules,
+            at: Date(timeIntervalSince1970: 500)
+        )
+
+        XCTAssertEqual(ahead.map(\.question), ["scheduled"])
+    }
+
+    func testAheadCardsOrderBySoonestDue() {
+        let dueLater = card("due-later", createdAt: 100)
+        let dueSoon = card("due-soon", createdAt: 100)
+        let schedules = [
+            dueLater.id: schedule(due: 3_000),
+            dueSoon.id: schedule(due: 1_500)
+        ]
+
+        let ahead = ReviewQueue.aheadCards(
+            [dueLater, dueSoon],
+            schedules: schedules,
+            at: Date(timeIntervalSince1970: 500)
+        )
+
+        XCTAssertEqual(ahead.map(\.question), ["due-soon", "due-later"])
+    }
+
+    func testAheadCardsEmptyWithoutSchedules() {
+        let newCard = card("new", createdAt: 100)
+
+        XCTAssertTrue(ReviewQueue.aheadCards([newCard], schedules: [:], at: now).isEmpty)
+    }
+
     private func card(_ question: String, createdAt: TimeInterval) -> SessionCard {
         SessionCard(
             question: question,

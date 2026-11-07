@@ -5,23 +5,24 @@ import SwiftUI
 extension LearningScreen {
     // MARK: - Секции
 
-    /// Плавающая кнопка запуска повторения: вся коллекция, только due-карточки.
+    /// Плавающая кнопка запуска повторения: due-очередь, а при пустой —
+    /// досрочный сеанс по карточкам с будущим сроком.
     var reviewButton: some View {
         Button {
             isReviewing = true
         } label: {
             Image(systemName: "play.fill")
                 .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(loadError != nil || dueCards.isEmpty ? Color.secondary : Color.primary)
+                .foregroundStyle(loadError != nil || !hasReviewableCards ? Color.secondary : Color.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .background { FloatingCircleBackground(size: 56) }
-        .accessibilityLabel("Начать повторение")
+        .accessibilityLabel(isAheadReview ? "Досрочное повторение" : "Начать повторение")
         .accessibilityIdentifier("startReviewSession")
-        .disabled(loadError != nil || dueCards.isEmpty)
-        .animation(.easeInOut(duration: 0.2), value: dueCards.isEmpty)
+        .disabled(loadError != nil || !hasReviewableCards)
+        .animation(.easeInOut(duration: 0.2), value: hasReviewableCards)
     }
 
     @ViewBuilder
@@ -93,6 +94,11 @@ extension LearningScreen {
             Text("К повторению: \(dueCards.count)")
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("dueCount")
+            if isAheadReview {
+                Text("Доступно досрочно: \(aheadCards.count)")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("aheadCount")
+            }
             if newCardsCount > 0 {
                 Text("Новых: \(newCardsCount)")
                     .foregroundStyle(.secondary)
@@ -142,6 +148,21 @@ extension LearningScreen {
 
     var dueCards: [SessionCard] {
         ReviewQueue.cards(cards, schedules: schedules, at: clock)
+    }
+
+    /// Карточки с будущим сроком — очередь досрочного повторения.
+    var aheadCards: [SessionCard] {
+        ReviewQueue.aheadCards(cards, schedules: schedules, at: clock)
+    }
+
+    /// Есть ли что повторять: основная очередь либо досрочные карточки.
+    var hasReviewableCards: Bool {
+        !dueCards.isEmpty || !aheadCards.isEmpty
+    }
+
+    /// Режим кнопки повторения: due-очередь пуста, доступны только досрочные.
+    var isAheadReview: Bool {
+        dueCards.isEmpty && !aheadCards.isEmpty
     }
 
     var newCardsCount: Int {

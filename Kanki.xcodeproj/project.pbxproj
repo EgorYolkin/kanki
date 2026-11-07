@@ -71,10 +71,8 @@
 		D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */; };
 		D9EE570D6F392F7EEECF4528 /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9D099E1E9DFE214E983738 /* SessionLog.swift */; };
 		DAAF0BA7C27C0C1B0C262B1E /* CategoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */; };
-		DCD8678C63871995286F5946 /* ConflictsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D041AE9526A90F3E6FA56F /* ConflictsScreen.swift */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 		DEDE77EFAB2B93BF6930BAF0 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = FFCF1B1BCF68255D61B88DDB /* FSRS */; };
-		E37D010BF775265269E8741C /* ConflictLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2690199A4D6057E083171839 /* ConflictLog.swift */; };
 		E40017F8F6D0C4E1A6C70B1C /* ServerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD5F2D164BA2D6817E928B5 /* ServerModelsTests.swift */; };
 		E526A974456CAF35D98C3825 /* ReviewQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1297976B3B0A769446205BE /* ReviewQueue.swift */; };
 		E899C275914FBF2E1848C731 /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5298CF1C1CD9C6617351780 /* AppSection.swift */; };
@@ -121,7 +119,6 @@
 		206D429002831316316C7E60 /* ServerConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfigurationTests.swift; sourceTree = "<group>"; };
 		21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryUITests.swift; sourceTree = "<group>"; };
 		248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSectionTests.swift; sourceTree = "<group>"; };
-		2690199A4D6057E083171839 /* ConflictLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictLog.swift; sourceTree = "<group>"; };
 		283B368D15032ED87CD7B9CD /* NotesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesScreen.swift; sourceTree = "<group>"; };
 		2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KankiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B9D099E1E9DFE214E983738 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
@@ -159,7 +156,6 @@
 		9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionScreen.swift; sourceTree = "<group>"; };
 		9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduleTests.swift; sourceTree = "<group>"; };
 		9E3252F25729C7B4B4471BF2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		A5D041AE9526A90F3E6FA56F /* ConflictsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictsScreen.swift; sourceTree = "<group>"; };
 		A937E6E66EAC7934CABF325D /* ServerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerModels.swift; sourceTree = "<group>"; };
 		A93939D720A954E833FEE568 /* SectionCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCommands.swift; sourceTree = "<group>"; };
 		B1297976B3B0A769446205BE /* ReviewQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueue.swift; sourceTree = "<group>"; };
@@ -212,7 +208,6 @@
 			children = (
 				CF15689DA2A920F45308E742 /* Assets.xcassets */,
 				D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */,
-				2690199A4D6057E083171839 /* ConflictLog.swift */,
 				9E3252F25729C7B4B4471BF2 /* Info.plist */,
 				B33483AD5F02BE5F2CA01E6F /* KankiApp.swift */,
 				2BA5B8E0F788A9D63024B328 /* LocalCardStore.swift */,
@@ -316,7 +311,6 @@
 				53F47B7A3C153F86AD1AA9D7 /* AllCardsScreen.swift */,
 				E78083BD8306FF6E06837F69 /* AppShell.swift */,
 				BCD23689E3AC04DF5AAED184 /* CategorySummaryRow.swift */,
-				A5D041AE9526A90F3E6FA56F /* ConflictsScreen.swift */,
 				895DE69FECE0431295FFC150 /* GraphScreen.swift */,
 				5B576BC0D00A4522D761422A /* LearningScreen.swift */,
 				BC8419149DC49D5F4D35BB41 /* LearningScreenCategories.swift */,
@@ -547,8 +541,6 @@
 				3BAAFA1E294FE5025AFA5C5D /* CardScheduling.swift in Sources */,
 				04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */,
 				B42EC05BAC34CA6B900C85CB /* CategorySummaryRow.swift in Sources */,
-				E37D010BF775265269E8741C /* ConflictLog.swift in Sources */,
-				DCD8678C63871995286F5946 /* ConflictsScreen.swift in Sources */,
 				01CEB24A2815331C4773EFDF /* Destination.swift in Sources */,
 				2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */,
 				07AF579290417D019A9855BC /* KankiApp.swift in Sources */,

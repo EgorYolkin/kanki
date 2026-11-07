@@ -109,9 +109,6 @@ extension LearningScreen {
                 hasUnsyncedChanges = false
             case .applyRemote:
                 guard let remoteSnapshot = remote.data else { return }
-                ConflictLog.append(
-                    remoteSnapshot.lostCategoryMessages(localDecks: snapshot.localDeckCounts)
-                )
                 do {
                     try LocalCardStore.save(remoteSnapshot)
                 } catch {

@@ -30,6 +30,8 @@ struct SettingsScreen: View {
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverRevision") private var serverRevision = 0
+    @AppStorage("showNotesSection") private var showNotesSection = false
+    @AppStorage("showGraphSection") private var showGraphSection = false
 
     @State private var serverToken = ""
     @State private var serverStatus = "Не подключён"
@@ -47,9 +49,9 @@ struct SettingsScreen: View {
     var body: some View {
         List {
             appearanceSection
+            sectionsSection
             serverSection
             dataSection
-            serviceSection
             aboutSection
         }
         .navigationTitle("Настройки")
@@ -89,6 +91,18 @@ struct SettingsScreen: View {
                 .accessibilityAddTraits(appearance == option ? [.isSelected] : [])
             }
             Text("Тема сохраняется между запусками и применяется ко всему приложению.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var sectionsSection: some View {
+        Section("Разделы") {
+            Toggle("Заметки", isOn: $showNotesSection)
+                .accessibilityIdentifier("showNotesSection")
+            Toggle("Граф", isOn: $showGraphSection)
+                .accessibilityIdentifier("showGraphSection")
+            Text("Разделы «Заметки» и «Граф» пока заготовки; включите переключатель, чтобы вернуть раздел в панель вкладок.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -137,17 +151,6 @@ struct SettingsScreen: View {
             )
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private var serviceSection: some View {
-        Section("Служебные экраны") {
-            NavigationLink(value: Destination.merges) {
-                Label("Очередь мержей", systemImage: Destination.merges.symbol)
-            }
-            NavigationLink(value: Destination.conflicts) {
-                Label("Конфликты", systemImage: Destination.conflicts.symbol)
-            }
         }
     }
 
@@ -220,8 +223,6 @@ struct SettingsScreen: View {
                 serverStatus = "На сервере пока нет снимка"
                 return
             }
-            let localDecks = (try? LocalCardStore.load())?.localDeckCounts ?? [:]
-            ConflictLog.append(snapshot.lostCategoryMessages(localDecks: localDecks))
             try LocalCardStore.save(snapshot)
             serverRevision = result.revision
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)

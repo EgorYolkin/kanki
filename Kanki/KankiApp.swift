@@ -14,6 +14,10 @@ struct KankiApp: App {
             UserDefaults.standard.removeObject(forKey: "serverURL")
             UserDefaults.standard.removeObject(forKey: "serverRevision")
         }
+        if arguments.contains("--reset-sections") {
+            UserDefaults.standard.removeObject(forKey: "showNotesSection")
+            UserDefaults.standard.removeObject(forKey: "showGraphSection")
+        }
     }
 
     var body: some Scene {

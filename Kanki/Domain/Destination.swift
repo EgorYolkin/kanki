@@ -9,8 +9,6 @@ enum Destination: Hashable, CaseIterable {
     case editor
     case search
     case library
-    case merges
-    case conflicts
 
     var title: String {
         switch self {
@@ -18,8 +16,6 @@ enum Destination: Hashable, CaseIterable {
         case .editor: "Редактор заметки"
         case .library: "Библиотека"
         case .search: "Поиск"
-        case .merges: "Очередь мержей"
-        case .conflicts: "Конфликты"
         }
     }
 
@@ -28,9 +24,7 @@ enum Destination: Hashable, CaseIterable {
         case .note: "note.text"
         case .editor: "square.and.pencil"
         case .library: "books.vertical"
-        case .merges: "arrow.triangle.merge"
         case .search: "magnifyingglass"
-        case .conflicts: "exclamationmark.arrow.triangle.2.circlepath"
         }
     }
 }

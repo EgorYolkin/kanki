@@ -45,7 +45,7 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
 
         openAllCards(in: app)
         XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
@@ -138,7 +138,7 @@ final class SessionCardUITests: UITestCase {
 
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
     }
 
     func testEasyRatingRemovesCardFromDueQueue() {
@@ -159,10 +159,42 @@ final class SessionCardUITests: UITestCase {
 
         XCTAssertTrue(app.staticTexts["dueCount"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
+        XCTAssertEqual(app.staticTexts["aheadCount"].label, "Доступно досрочно: 1")
 
         openAllCards(in: app)
         XCTAssertTrue(app.buttons["Что такое FSRS?"].exists)
+    }
+
+    func testAheadReviewContinuesWhenDueQueueIsEmpty() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Что такое FSRS?", answer: "Планировщик повторений")
+        app.buttons["startReviewSession"].tap()
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 1"].waitForExistence(timeout: 5))
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Легко"].tap()
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+        let startReview = app.buttons["startReviewSession"]
+        XCTAssertTrue(startReview.isEnabled, "Очередь пуста, но карточки доступны досрочно")
+        XCTAssertEqual(startReview.label, "Досрочное повторение")
+        XCTAssertEqual(app.staticTexts["aheadCount"].label, "Доступно досрочно: 1")
+
+        startReview.tap()
+        XCTAssertTrue(app.navigationBars["Досрочное повторение"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 1"].waitForExistence(timeout: 5))
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Хорошо"].tap()
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5), "Оценка досрочного сеанса сохранена")
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
     }
 
     func testSearchFiltersCardsByQuestion() {
@@ -186,7 +218,7 @@ final class SessionCardUITests: UITestCase {
 
     func testShellTabsAndPlaceholderNavigation() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-sections"]
         app.launch()
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
@@ -196,6 +228,12 @@ final class SessionCardUITests: UITestCase {
         XCTAssertEqual(app.searchFields.count, 0)
         XCTAssertFalse(app.buttons["Все карточки"].exists)
         assertAddButton(in: app)
+
+        // Разделы-заготовки скрыты по умолчанию: видны только рабочие вкладки.
+        XCTAssertFalse(app.tabBars.buttons["Заметки"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Граф"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Обучение"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Настройки"].exists)
 
         addCard(in: app, question: "Проверка оболочки", answer: "Ответ")
         XCTAssertFalse(app.searchFields.firstMatch.exists, "Поиска на главном экране больше нет")
@@ -207,6 +245,16 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(app.searchFields.firstMatch.exists)
         XCTAssertTrue(app.buttons["Проверка оболочки"].exists)
         backToLearning(in: app)
+
+        // Скрытые разделы возвращаются тумблерами в настройках.
+        app.tabBars.buttons["Настройки"].tap()
+        XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
+        enableSectionToggles(in: app)
+        XCTAssertTrue(app.tabBars.buttons["Заметки"].waitForExistence(timeout: 10))
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertFalse(app.buttons["Очередь мержей"].exists, "Служебные экраны убраны из настроек")
+        XCTAssertFalse(app.buttons["Конфликты"].exists, "Служебные экраны убраны из настроек")
 
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
@@ -224,24 +272,8 @@ final class SessionCardUITests: UITestCase {
 
         app.tabBars.buttons["Граф"].tap()
         XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.staticTexts["Не подключён"].waitForExistence(timeout: 5))
-
-        let merges = app.buttons["Очередь мержей"]
-        scrollTo(merges, in: app)
-        XCTAssertTrue(merges.waitForExistence(timeout: 5), "Кнопка «Очередь мержей» не появилась")
-        merges.tap()
-        XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «Очередь мержей»")
-        app.navigationBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
-
-        let conflicts = app.buttons["Конфликты"]
-        scrollTo(conflicts, in: app)
-        XCTAssertTrue(conflicts.waitForExistence(timeout: 5), "Кнопка «Конфликты» не появилась")
-        conflicts.tap()
-        XCTAssertTrue(app.staticTexts["Конфликтов нет"].waitForExistence(timeout: 5), "Экран «Конфликты» больше не заглушка")
-        app.navigationBars.buttons["Настройки"].tap()
-        XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Обучение"].tap()
+        XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
     }
 
     func testExportMenuSavesSelectedAndAllCards() {

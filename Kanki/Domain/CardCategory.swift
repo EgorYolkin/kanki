@@ -198,25 +198,6 @@ extension LearningSnapshot {
         return copy
     }
 
-    /// Сообщения о карточках, потерявших категорию при загрузке снапшота:
-    /// категория была локально, исчезла в пришедшем снапшоте и не покрыта rename.
-    func lostCategoryMessages(localDecks: [String: Int]) -> [String] {
-        let remoteDecks = Set(cards.compactMap(\.deck))
-        let renamedAway = Set(deckRenames.map(\.from))
-        return localDecks
-            .filter { deck, count in
-                !remoteDecks.contains(deck)
-                    && !renamedAway.contains(deck)
-                    && !remoteDecks.contains { $0.hasPrefix(deck + CardCategory.hierarchySeparator) }
-                    && count > 0
-            }
-            .sorted { $0.key < $1.key }
-            .map { deck, count in
-                count == 1
-                    ? "Карточка потеряла категорию «\(deck)» (удалена на другом устройстве)"
-                    : "\(count) карточек потеряли категорию «\(deck)» (удалена на другом устройстве)"
-            }
-    }
 }
 
 struct CardCategoryError: Error, Equatable {
