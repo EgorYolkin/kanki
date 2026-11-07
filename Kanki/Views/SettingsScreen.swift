@@ -49,7 +49,6 @@ struct SettingsScreen: View {
             appearanceSection
             serverSection
             dataSection
-            serviceSection
             aboutSection
         }
         .navigationTitle("Настройки")
@@ -140,17 +139,6 @@ struct SettingsScreen: View {
         }
     }
 
-    private var serviceSection: some View {
-        Section("Служебные экраны") {
-            NavigationLink(value: Destination.merges) {
-                Label("Очередь мержей", systemImage: Destination.merges.symbol)
-            }
-            NavigationLink(value: Destination.conflicts) {
-                Label("Конфликты", systemImage: Destination.conflicts.symbol)
-            }
-        }
-    }
-
     private var aboutSection: some View {
         Section("О приложении") {
             LabeledContent("Версия", value: appVersion)
@@ -220,8 +208,6 @@ struct SettingsScreen: View {
                 serverStatus = "На сервере пока нет снимка"
                 return
             }
-            let localDecks = (try? LocalCardStore.load())?.localDeckCounts ?? [:]
-            ConflictLog.append(snapshot.lostCategoryMessages(localDecks: localDecks))
             try LocalCardStore.save(snapshot)
             serverRevision = result.revision
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)

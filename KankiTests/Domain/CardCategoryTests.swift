@@ -220,42 +220,4 @@ final class CardCategoryTests: XCTestCase {
         XCTAssertEqual(renamed.cards.map(\.deck), ["Точные науки", "Точные науки::Интегралы", "Физика"])
     }
 
-    // MARK: - lostCategoryMessages
-
-    func testLostCategoryMessagesIgnoreRenamedAndSubdeckSurvivors() {
-        let remote = LearningSnapshot(
-            cards: [card("1", deck: "Алгебра")],
-            deckRenames: [DeckRename(from: "Математика", to: "Алгебра")]
-        )
-
-        let messages = remote.lostCategoryMessages(localDecks: [
-            "Математика": 2,
-            "Физика": 1,
-            "Химия::Органика": 3
-        ])
-
-        XCTAssertEqual(messages, [
-            "Карточка потеряла категорию «Физика» (удалена на другом устройстве)",
-            "3 карточек потеряли категорию «Химия::Органика» (удалена на другом устройстве)"
-        ])
-    }
-
-    func testLostCategoryMessagesEmptyWhenNothingLost() {
-        let remote = LearningSnapshot(cards: [card("1", deck: "Математика")])
-
-        XCTAssertTrue(remote.lostCategoryMessages(localDecks: ["Математика": 1]).isEmpty)
-        XCTAssertTrue(remote.lostCategoryMessages(localDecks: [:]).isEmpty)
-    }
-
-    // MARK: - localDeckCounts
-
-    func testLocalDeckCountsSkipUncategorized() {
-        let snapshot = LearningSnapshot(cards: [
-            card("1", deck: "Математика"),
-            card("2", deck: "Математика"),
-            card("3", deck: nil)
-        ])
-
-        XCTAssertEqual(snapshot.localDeckCounts, ["Математика": 2])
-    }
 }

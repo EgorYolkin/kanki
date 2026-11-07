@@ -27,16 +27,6 @@ struct LearningSnapshot: Codable, Equatable {
         self.deckRenames = deckRenames
     }
 
-    /// Локальные категории с числом карточек — для обнаружения потерь при загрузке.
-    var localDeckCounts: [String: Int] {
-        var counts: [String: Int] = [:]
-        for card in cards {
-            guard let deck = card.deck else { continue }
-            counts[deck, default: 0] += 1
-        }
-        return counts
-    }
-
     @discardableResult
     mutating func removeCard(id: UUID) -> Bool {
         guard cards.contains(where: { $0.id == id }) else { return false }
