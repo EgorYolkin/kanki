@@ -68,9 +68,20 @@ struct LearningSnapshot: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        // Снимок без версии (v1) декодируется как текущий с дефолтами.
-        snapshotVersion = try container.decodeIfPresent(Int.self, forKey: .snapshotVersion)
+        // Снимок без версии (v1) декодируется как текущий с дефолтами;
+        // версия новее поддерживаемой отклоняется, чтобы не «понизить»
+        // незнакомые поля и не потерять их при следующей правке.
+        let version = try container.decodeIfPresent(Int.self, forKey: .snapshotVersion)
             ?? Self.currentSnapshotVersion
+        guard version <= Self.currentSnapshotVersion else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .snapshotVersion,
+                in: container,
+                debugDescription: "Снимок версии \(version) новее поддерживаемой "
+                    + "\(Self.currentSnapshotVersion)"
+            )
+        }
+        snapshotVersion = version
         deckRenames = try container.decodeIfPresent([DeckRename].self, forKey: .deckRenames) ?? []
         cards = try container.decodeIfPresent([SessionCard].self, forKey: .cards) ?? []
         reviews = try container.decodeIfPresent([SessionReview].self, forKey: .reviews) ?? []

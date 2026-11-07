@@ -22,7 +22,8 @@ enum ServerTokenStore {
     private static let account = "token"
     private static let fileName = "server-token"
 
-    private static var tokenFileURL: URL {
+    /// Путь файлового fallback; internal для проверки инварианта в тестах.
+    static var tokenFileURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "Kanki", directoryHint: .isDirectory)
             .appending(path: fileName)
@@ -38,7 +39,7 @@ enum ServerTokenStore {
 
     static func load() throws -> String? {
         do {
-            if let token = try keychainLoad() {
+            if let token = try keychainToken() {
                 return token
             }
             return try fileLoad()
@@ -70,7 +71,9 @@ enum ServerTokenStore {
         try fileDelete()
     }
 
-    private static func keychainLoad() throws -> String? {
+    /// Токен из Keychain; internal — тест проверяет, какой источник реально
+    /// использован (подписанная сборка или неподписанный симулятор).
+    static func keychainToken() throws -> String? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -93,6 +96,7 @@ enum ServerTokenStore {
         let status = SecItemUpdate(baseQuery as CFDictionary, update as CFDictionary)
         switch status {
         case errSecSuccess:
+            invalidateFileFallback()
             return
         case errSecItemNotFound:
             var query = baseQuery
@@ -102,9 +106,16 @@ enum ServerTokenStore {
             guard addStatus == errSecSuccess else {
                 throw ServerTokenStoreError.keychain(addStatus)
             }
+            invalidateFileFallback()
         default:
             throw ServerTokenStoreError.keychain(status)
         }
+    }
+
+    /// Keychain — источник истины: после успешной записи файловый fallback
+    /// удаляется, иначе устаревший токен «воскресает» в неподписанной сборке.
+    private static func invalidateFileFallback() {
+        try? fileDelete()
     }
 
     private static func fileLoad() throws -> String? {
