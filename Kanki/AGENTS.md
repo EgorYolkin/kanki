@@ -7,7 +7,7 @@ the gates themselves are in `docs/quality-gates.md`.
 
 | Path | Contents |
 | --- | --- |
-| `KankiApp.swift` | `@main` entry point only |
+| `KankiApp.swift` | `@main` entry point and launch hooks (`--reset-store`, `--reset-server`, `--reset-sections`) |
 | `Domain/` | Pure value types and state, covered by unit tests |
 | `Views/` | SwiftUI screens and presentation-only helpers |
 | `Server/` | HTTP client and token storage; no business rules |
@@ -39,8 +39,9 @@ macOS 14+. The same sources ship on both; a screen must work on both.
   push/pull are real; a revision conflict must be shown, never merged silently.
 - `Destination` has exhaustive `title` and `symbol` switches: a new case requires both.
 - Interactive elements driven by UI tests need a stable `accessibilityIdentifier`
-  (`addSessionCard`, `cardQuestion`, `cardAnswer`, `startReviewSession`, `reviewProgress`,
-  `reviewFinish`, `appearance-system`, `appearance-light`, `appearance-dark`,
+  (`addSessionCard`, `cardQuestion`, `cardAnswer`, `startReviewSession`, `aheadCount`,
+  `reviewProgress`, `reviewFinish`, `appearance-system`, `appearance-light`,
+  `appearance-dark`, `showNotesSection`, `showGraphSection`,
   `serverURL`, `serverToken`, `serverCheck`, `serverStatus`, `serverPush`, `serverPull`).
 - After adding, renaming or deleting a file run `xcodegen generate` and commit
   `Kanki.xcodeproj`: XcodeGen expands the directory into an explicit source list.
