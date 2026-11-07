@@ -110,7 +110,10 @@ struct LearningScreen: View {
             )
         }
         .sheet(isPresented: $isReviewing) {
-            ReviewSessionScreen(cards: dueCards) { card, rating in
+            ReviewSessionScreen(
+                cards: dueCards.isEmpty ? aheadCards : dueCards,
+                title: dueCards.isEmpty ? "Досрочное повторение" : "Повторение"
+            ) { card, rating in
                 try record(card, rating: rating)
             }
         }

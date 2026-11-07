@@ -45,7 +45,7 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Последняя оценка: Снова"].exists)
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
 
         openAllCards(in: app)
         XCTAssertTrue(app.buttons["Почему небо голубое?"].waitForExistence(timeout: 5))
@@ -138,7 +138,7 @@ final class SessionCardUITests: UITestCase {
 
         XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
     }
 
     func testEasyRatingRemovesCardFromDueQueue() {
@@ -159,10 +159,42 @@ final class SessionCardUITests: UITestCase {
 
         XCTAssertTrue(app.staticTexts["dueCount"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
-        XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
+        XCTAssertTrue(app.buttons["startReviewSession"].isEnabled, "Очередь пуста — доступен досрочный сеанс")
+        XCTAssertEqual(app.staticTexts["aheadCount"].label, "Доступно досрочно: 1")
 
         openAllCards(in: app)
         XCTAssertTrue(app.buttons["Что такое FSRS?"].exists)
+    }
+
+    func testAheadReviewContinuesWhenDueQueueIsEmpty() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Что такое FSRS?", answer: "Планировщик повторений")
+        app.buttons["startReviewSession"].tap()
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 1"].waitForExistence(timeout: 5))
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Легко"].tap()
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
+        let startReview = app.buttons["startReviewSession"]
+        XCTAssertTrue(startReview.isEnabled, "Очередь пуста, но карточки доступны досрочно")
+        XCTAssertEqual(startReview.label, "Досрочное повторение")
+        XCTAssertEqual(app.staticTexts["aheadCount"].label, "Доступно досрочно: 1")
+
+        startReview.tap()
+        XCTAssertTrue(app.navigationBars["Досрочное повторение"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Карточка 1 из 1"].waitForExistence(timeout: 5))
+        app.buttons["Показать ответ"].tap()
+        app.buttons["Хорошо"].tap()
+        XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+        app.buttons["reviewFinish"].tap()
+
+        XCTAssertTrue(app.staticTexts["Оценок: 2"].waitForExistence(timeout: 5), "Оценка досрочного сеанса сохранена")
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
     }
 
     func testSearchFiltersCardsByQuestion() {

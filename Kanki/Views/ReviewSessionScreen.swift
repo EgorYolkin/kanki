@@ -2,14 +2,21 @@ import SwiftUI
 
 struct ReviewSessionScreen: View {
     let onReview: (SessionCard, RecallRating) throws -> Void
+    /// Заголовок сеанса: «Повторение» или «Досрочное повторение».
+    private let title: String
 
     @Environment(\.dismiss) private var dismiss
     @State private var session: ReviewSessionState
     @State private var saveError = ""
     @State private var showSaveError = false
 
-    init(cards: [SessionCard], onReview: @escaping (SessionCard, RecallRating) throws -> Void) {
+    init(
+        cards: [SessionCard],
+        title: String = "Повторение",
+        onReview: @escaping (SessionCard, RecallRating) throws -> Void
+    ) {
         self.onReview = onReview
+        self.title = title
         _session = State(initialValue: ReviewSessionState(cards: cards))
     }
 
@@ -22,7 +29,7 @@ struct ReviewSessionScreen: View {
                     summaryView
                 }
             }
-            .navigationTitle("Повторение")
+            .navigationTitle(title)
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
