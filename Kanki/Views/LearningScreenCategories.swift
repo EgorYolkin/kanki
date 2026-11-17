@@ -5,24 +5,18 @@ import SwiftUI
 extension LearningScreen {
     // MARK: - Секции
 
-    /// Плавающая кнопка запуска повторения: due-очередь, а при пустой —
-    /// досрочный сеанс по карточкам с будущим сроком.
+    /// Запуск повторения: due-очередь, а при пустой — досрочный сеанс.
     var reviewButton: some View {
         Button {
             isReviewing = true
         } label: {
-            Image(systemName: "play.fill")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(loadError != nil || !hasReviewableCards ? Color.secondary : Color.primary)
-                .frame(width: 56, height: 56)
-                .contentShape(Circle())
-                .modifier(StudyFloatingSurface())
+            Text(isAheadReview ? "Досрочное повторение" : "Начать повторение")
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.plain)
+        .modifier(StudyActionStyle(prominent: true))
         .accessibilityLabel(isAheadReview ? "Досрочное повторение" : "Начать повторение")
         .accessibilityIdentifier("startReviewSession")
         .disabled(loadError != nil || !hasReviewableCards)
-        .animation(.easeInOut(duration: 0.2), value: hasReviewableCards)
     }
 
     @ViewBuilder
@@ -91,12 +85,9 @@ extension LearningScreen {
 
     var statsSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Ритм обучения", systemImage: "sparkle")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
                 Text("К повторению: \(dueCards.count)")
-                    .font(.title.bold())
+                    .font(.headline)
                     .foregroundStyle(.primary)
                     .accessibilityIdentifier("dueCount")
                 if isAheadReview {
@@ -109,7 +100,14 @@ extension LearningScreen {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("newCount")
                 }
-                Divider()
+            }
+            reviewButton
+        }
+    }
+
+    var activitySection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Оценок: \(log.count)")
                     .foregroundStyle(.secondary)
                 if let lastRating = log.lastRating {
@@ -122,9 +120,8 @@ extension LearningScreen {
                         .accessibilityIdentifier("syncStatus")
                 }
             }
-            .padding(.vertical, 12)
         }
-        .listRowBackground(Color.accentColor.opacity(0.08))
+        .font(.footnote)
     }
 
     // MARK: - Значения
@@ -133,14 +130,8 @@ extension LearningScreen {
         Button {
             isAddingCard = true
         } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .contentShape(Circle())
-                .modifier(StudyFloatingSurface())
+            Label("Добавить карточку", systemImage: "plus")
         }
-        .buttonStyle(.plain)
         .accessibilityLabel("Добавить карточку")
         .accessibilityIdentifier("addSessionCard")
         .disabled(loadError != nil)

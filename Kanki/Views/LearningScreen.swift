@@ -52,21 +52,27 @@ struct LearningScreen: View {
             if let loadError {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)
+                    reviewButton
                     Button("Повторить чтение") { reload() }
                 }
             } else if cards.isEmpty {
+                Section { reviewButton }
                 emptyCardsSection
             } else {
                 statsSection
+                allCardsSection
                 categoriesSection
                 uncategorizedSection
-                allCardsSection
+                activitySection
             }
         }
         .modifier(StudyListStyle())
-        .contentMargins(.bottom, 90, for: .scrollContent)
         .navigationTitle("Обучение")
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                addCardButton
+            }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("Выбрать карточки") { isChoosingCards = true }
@@ -86,16 +92,6 @@ struct LearningScreen: View {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 clock = Date()
             }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            StudyControlGroup {
-                VStack(alignment: .trailing, spacing: 12) {
-                    addCardButton
-                    reviewButton
-                }
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
             SessionCardFormScreen(availableDecks: availableDecks) { question, answer, deck in

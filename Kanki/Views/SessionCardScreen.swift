@@ -12,6 +12,7 @@ struct SessionCardScreen: View {
     @State private var isConfirmingDeletion = false
     @State private var isEditing = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let availableDecks: [String]
     let onReview: (RecallRating) throws -> Void
     /// Смена категории возвращает обновлённую карточку (или `nil`, если ничего не изменилось).
@@ -40,85 +41,40 @@ struct SessionCardScreen: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Menu {
-                        ForEach(availableDecks, id: \.self) { deck in
-                            Button {
-                                changeDeck(to: deck)
-                            } label: {
-                                if deck == displayedCard.deck {
-                                    Label(deck, systemImage: "checkmark")
-                                } else {
-                                    Text(deck)
-                                }
-                            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    deckMenu
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Text("Вопрос")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        Button {
-                            changeDeck(to: nil)
-                        } label: {
-                            if displayedCard.deck == nil {
-                                Label(CardCategory.noCategoryTitle, systemImage: "checkmark")
-                            } else {
-                                Text(CardCategory.noCategoryTitle)
-                            }
-                        }
-                    } label: {
-                        Label(displayedCard.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
-                            .font(.caption)
+                        StudyText(text: displayedCard.question, isQuestion: true)
                     }
-                    .accessibilityIdentifier("cardDeckChip")
-                }
-                Section("Вопрос") {
-                    StudyText(text: displayedCard.question, isQuestion: true)
-                }
-                if isAnswerVisible {
-                    Section("Ответ") {
-                        StudyText(text: displayedCard.answer)
-                    }
-                } else {
-                    Button("Показать ответ") {
-                        isAnswerVisible = true
-                    }
-                    .controlSize(.large)
-                    .modifier(StudyActionStyle(prominent: true))
-                }
-                if isAnswerVisible {
-                    Section("Насколько легко вспомнили?") {
-                        StudyRatingButtons { rating in
-                            guard !didSubmitRating else { return }
-                            didSubmitRating = true
-                            do {
-                                try onReview(rating)
-                                dismiss()
-                            } catch {
-                                didSubmitRating = false
-                                saveError = error.localizedDescription
-                                showSaveError = true
-                            }
+                    if isAnswerVisible {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Ответ")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            StudyText(text: displayedCard.answer)
                         }
                     }
-                }
-                Section("История повторений") {
-                    if history.isEmpty {
-                        Text("Оценок пока нет")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(history.indices, id: \.self) { index in
-                            let review = history[index]
-                            LabeledContent(review.rating.title,
-                                           value: review.reviewedAt.formatted(.dateTime.locale(Locale.current)))
-                        }
-                    }
-                }
-                Section {
+                    Divider()
+                    historySection
                     Button("Удалить карточку", role: .destructive) {
                         isConfirmingDeletion = true
                     }
                     .accessibilityIdentifier("deleteSessionCard")
                 }
+                .frame(maxWidth: 720, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .modifier(StudyListStyle())
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                reviewControls
+            }
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
             .onAppear {
@@ -164,6 +120,98 @@ struct SessionCardScreen: View {
             Button("Закрыть", role: .cancel) {}
         } message: {
             Text(saveError)
+        }
+    }
+
+    private var deckMenu: some View {
+        Menu {
+            ForEach(availableDecks, id: \.self) { deck in
+                Button {
+                    changeDeck(to: deck)
+                } label: {
+                    if deck == displayedCard.deck {
+                        Label(deck, systemImage: "checkmark")
+                    } else {
+                        Text(deck)
+                    }
+                }
+            }
+            Button {
+                changeDeck(to: nil)
+            } label: {
+                if displayedCard.deck == nil {
+                    Label(CardCategory.noCategoryTitle, systemImage: "checkmark")
+                } else {
+                    Text(CardCategory.noCategoryTitle)
+                }
+            }
+        } label: {
+            Label(displayedCard.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityIdentifier("cardDeckChip")
+    }
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("История повторений")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if history.isEmpty {
+                Text("Оценок пока нет")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(history.indices, id: \.self) { index in
+                    let review = history[index]
+                    LabeledContent(
+                        review.rating.title,
+                        value: review.reviewedAt.formatted(.dateTime.locale(Locale.current))
+                    )
+                }
+            }
+        }
+    }
+
+    private var reviewControls: some View {
+        VStack(spacing: 0) {
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                if isAnswerVisible {
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Text("Насколько легко вспомнили?")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    StudyRatingButtons(onRate: record)
+                } else {
+                    Button {
+                        isAnswerVisible = true
+                    } label: {
+                        Text("Показать ответ")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .modifier(StudyActionStyle(prominent: true))
+                }
+            }
+            .frame(maxWidth: 720)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+        }
+        .background(.bar)
+    }
+
+    private func record(_ rating: RecallRating) {
+        guard !didSubmitRating else { return }
+        didSubmitRating = true
+        do {
+            try onReview(rating)
+            dismiss()
+        } catch {
+            didSubmitRating = false
+            saveError = error.localizedDescription
+            showSaveError = true
         }
     }
 

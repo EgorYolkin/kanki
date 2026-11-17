@@ -58,6 +58,7 @@ struct SettingsScreen: View {
         }
         .modifier(StudyListStyle())
         .navigationTitle("Настройки")
+        .toolbarTitleDisplayMode(.inline)
         .onAppear(perform: loadToken)
         .onChange(of: serverURL) { _, _ in
             serverRevision = 0
@@ -75,20 +76,14 @@ struct SettingsScreen: View {
     }
 
     private var appearanceSection: some View {
-        Section("Оформление") {
+        Section {
             ForEach(AppAppearance.allCases) { option in
                 Button {
                     appearance = option
                 } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: appearanceSymbol(for: option))
-                            .font(.title3)
-                            .foregroundStyle(.tint)
-                            .frame(width: 40, height: 40)
-                            .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                            .accessibilityHidden(true)
+                    HStack {
                         Text(option.title)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Color.primary)
                         Spacer()
                         if appearance == option {
                             Image(systemName: "checkmark")
@@ -99,34 +94,28 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("appearance-\(option.rawValue)")
                 .accessibilityAddTraits(appearance == option ? [.isSelected] : [])
             }
+        } header: {
+            Text("Оформление")
+        } footer: {
             Text("Тема сохраняется между запусками и применяется ко всему приложению.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func appearanceSymbol(for option: AppAppearance) -> String {
-        switch option {
-        case .system: "circle.lefthalf.filled"
-        case .light: "sun.max"
-        case .dark: "moon"
         }
     }
 
     private var sectionsSection: some View {
-        Section("Разделы") {
+        Section {
             Toggle("Заметки", isOn: $showNotesSection)
                 .accessibilityIdentifier("showNotesSection")
             Toggle("Граф", isOn: $showGraphSection)
                 .accessibilityIdentifier("showGraphSection")
+        } header: {
+            Text("Разделы")
+        } footer: {
             Text("Разделы «Заметки» и «Граф» пока заготовки; включите переключатель, чтобы вернуть раздел в панель вкладок.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 
     private var serverSection: some View {
-        Section("Сервер") {
+        Section {
             TextField("http://100.x.y.z:8000", text: $serverURL)
                 .autocorrectionDisabled()
                 .noAutocapitalization()
@@ -154,9 +143,10 @@ struct SettingsScreen: View {
             }
             .disabled(isServerBusy)
             .accessibilityIdentifier("serverPull")
+        } header: {
+            Text("Сервер")
+        } footer: {
             Text("Снимок отправляется вручную. Автоматического мержа нет: при конфликте ревизий загрузите данные с сервера.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 

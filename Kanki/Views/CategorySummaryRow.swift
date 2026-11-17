@@ -14,22 +14,15 @@ struct CategorySummaryRow: View {
 
     var body: some View {
         Button(action: onStudy) {
-            HStack(spacing: 14) {
-                Image(systemName: "rectangle.stack.fill")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: 44, height: 44)
-                    .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityHidden(true)
+            HStack {
                 Text(summary.title)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("\(summary.dueCount)/\(summary.totalCount)")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
                     .font(.subheadline.weight(.medium))
                     .monospacedDigit()
             }
-            .padding(.vertical, 6)
         }
         .contextMenu {
             if summary.deck != nil {

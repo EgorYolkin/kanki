@@ -50,15 +50,13 @@ struct AllCardsScreen: View {
                     Button {
                         onOpen(card)
                     } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label(card.question, systemImage: "rectangle.on.rectangle")
-                                .foregroundStyle(.primary)
-                                .font(.headline)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(card.question)
+                                .foregroundStyle(Color.primary)
                             Text(dueText(for: card))
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.secondary)
                         }
-                        .padding(.vertical, 8)
                     }
                     .accessibilityLabel(card.question)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {

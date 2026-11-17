@@ -6,6 +6,7 @@ struct ReviewSessionScreen: View {
     private let title: String
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var session: ReviewSessionState
     @State private var saveError = ""
     @State private var showSaveError = false
@@ -45,40 +46,75 @@ struct ReviewSessionScreen: View {
     }
 
     private func reviewView(for card: SessionCard) -> some View {
-        List {
-            Section {
-                Text(session.progressText)
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(.tint)
-                    .accessibilityIdentifier("reviewProgress")
-                Text(card.deck ?? CardCategory.noCategoryTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("reviewDeck")
-            }
-            Section("Вопрос") {
-                StudyText(text: card.question, isQuestion: true)
-            }
-            if session.isAnswerVisible {
-                Section("Ответ") {
-                    StudyText(text: card.answer)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(session.progressText)
+                        .monospacedDigit()
+                        .accessibilityIdentifier("reviewProgress")
+                    Text(card.deck ?? CardCategory.noCategoryTitle)
+                        .accessibilityIdentifier("reviewDeck")
                 }
-                Section("Насколько легко вспомнили?") {
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Text("Вопрос")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    StudyText(text: card.question, isQuestion: true)
+                }
+                if session.isAnswerVisible {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Ответ")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        StudyText(text: card.answer)
+                    }
+                }
+            }
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .id(card.id)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            reviewControls(for: card)
+        }
+    }
+
+    private func reviewControls(for card: SessionCard) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                if session.isAnswerVisible {
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Text("Насколько легко вспомнили?")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     StudyRatingButtons { rating in
                         record(rating, for: card)
                     }
-                }
-            } else {
-                Section {
-                    Button("Показать ответ") {
+                } else {
+                    Button {
                         session.revealAnswer()
+                    } label: {
+                        Text("Показать ответ")
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .controlSize(.large)
                     .modifier(StudyActionStyle(prominent: true))
                 }
             }
+            .frame(maxWidth: 720)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
         }
-        .modifier(StudyListStyle())
+        .background(.bar)
     }
 
     private var summaryView: some View {

@@ -17,19 +17,6 @@ class UITestCase: XCTestCase {
         }
     }
 
-    /// Кнопка «плюс» стоит в правом нижнем углу над таб-баром;
-    /// отдельной FAB повторения больше нет — обучение запускает кнопка в списке.
-    func assertAddButton(in app: XCUIApplication) {
-        let add = app.buttons["addSessionCard"]
-        let tabBar = app.tabBars.firstMatch
-
-        XCTAssertTrue(add.exists, "Кнопка «плюс» должна быть видна")
-        XCTAssertEqual(add.frame.width, 44, accuracy: 1)
-        XCTAssertEqual(add.frame.height, 44, accuracy: 1)
-        XCTAssertGreaterThan(add.frame.midX, app.frame.midX, "Кнопка должна быть в правой половине экрана")
-        XCTAssertLessThanOrEqual(add.frame.maxY, tabBar.frame.minY, "Кнопка не должна перекрывать таб-бар")
-    }
-
     func addCard(
         in app: XCUIApplication,
         question: String,
