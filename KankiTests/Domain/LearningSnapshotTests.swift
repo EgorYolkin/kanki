@@ -191,4 +191,9 @@ final class LearningSnapshotTests: XCTestCase {
         XCTAssertFalse(snapshot.updateCard(id: UUID(), question: "Вопрос", answer: "Ответ", deck: nil))
     }
 
+    func testFutureSnapshotVersionIsRejected() {
+        let data = Data(#"{"snapshot_version":4,"cards":[],"reviews":[]}"#.utf8)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: data))
+    }
 }

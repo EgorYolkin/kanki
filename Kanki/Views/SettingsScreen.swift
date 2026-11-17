@@ -32,6 +32,7 @@ struct SettingsScreen: View {
     @AppStorage("serverRevision") private var serverRevision = 0
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
+    @AppStorage("serverHasUnsyncedChanges") private var hasUnsyncedChanges = false
 
     @State private var serverToken = ""
     @State private var serverStatus = "Не подключён"
@@ -201,11 +202,13 @@ struct SettingsScreen: View {
     private func pushSnapshot() async {
         isServerBusy = true
         defer { isServerBusy = false }
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
             let local = try LocalCardStore.load()
             let result = try await client.push(snapshot: local, baseRevision: serverRevision)
             serverRevision = result.revision
+            hasUnsyncedChanges = false
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
@@ -216,6 +219,7 @@ struct SettingsScreen: View {
     private func pullSnapshot() async {
         isServerBusy = true
         defer { isServerBusy = false }
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
             let result = try await client.fetchSnapshot()
@@ -225,6 +229,7 @@ struct SettingsScreen: View {
             }
             try LocalCardStore.save(snapshot)
             serverRevision = result.revision
+            hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
             serverStatus = "Загружено, ревизия \(result.revision)"
         } catch {

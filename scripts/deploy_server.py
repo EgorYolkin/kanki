@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Deploy the Kanki server over SSH into a systemd user service.
 
-The server is reachable only through Tailscale; SSH is used for installation,
+Canonical posture (docs/server-protocol.md): uvicorn listens on loopback only
+and nginx terminates TLS for the public domain. SSH is used for installation,
 logs and token issuance, never as the app data channel.
 """
 
@@ -47,6 +48,11 @@ def main() -> None:
     parser.add_argument("--ssh", required=True, help="user@host or user@tailscale-ip")
     parser.add_argument("--remote-dir", default="kanki-server", help="directory in the remote home")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--public-url",
+        default="https://kanki.host",
+        help="HTTPS address served by nginx in front of uvicorn",
+    )
     parser.add_argument("--label", default="iphone", help="label for the first device token")
     parser.add_argument("--admin-token", default=None, help="reuse an existing admin token")
     parser.add_argument("--dry-run", action="store_true")
@@ -110,7 +116,7 @@ def main() -> None:
 
     unit = f"""[Unit]
 Description=Kanki sync server
-After=network-online.target tailscaled.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
@@ -118,7 +124,7 @@ Type=simple
 WorkingDirectory=%h/{args.remote_dir}
 EnvironmentFile=%h/{args.remote_dir}/.env
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart={uv_path} run --project %h/{args.remote_dir} uvicorn kanki_server.app:app --host 0.0.0.0 --port {args.port}
+ExecStart={uv_path} run --project %h/{args.remote_dir} uvicorn kanki_server.app:app --host 127.0.0.1 --port {args.port}
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=yes
@@ -176,13 +182,13 @@ WantedBy=default.target
         dry_run=False,
     )
     token = json.loads(token_json)["token"]
-    tailscale_ip = ssh(args.ssh, "tailscale ip -4 | head -1", dry_run=False)
 
     print()
-    print("Kanki server is running.")
-    print(f"URL:   http://{tailscale_ip}:{args.port}")
+    print("Kanki server is running on loopback; nginx must terminate TLS.")
+    print(f"URL:   {args.public_url}")
     print(f"Token: {token}  (device label: {args.label})")
     print("Admin token: ~/kanki-server/.env (not printed)")
+    print("nginx vhost and certificate: docs/server-protocol.md")
 
 
 if __name__ == "__main__":

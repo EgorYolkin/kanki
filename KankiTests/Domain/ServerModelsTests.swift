@@ -29,6 +29,14 @@ final class ServerModelsTests: XCTestCase {
         XCTAssertEqual(snapshot.data, LearningSnapshot())
     }
 
+    func testFutureSchemaVersionIsRejected() throws {
+        let data = Data(
+            #"{"revision":4,"schema_version":2,"data":null,"updated_at":null}"#.utf8
+        )
+
+        XCTAssertThrowsError(try JSONDecoder().decode(ServerSnapshot.self, from: data))
+    }
+
     func testEncodesWriteEnvelope() throws {
         let write = ServerSnapshotWrite(snapshot: LearningSnapshot(), baseRevision: 4)
         let object = try XCTUnwrap(

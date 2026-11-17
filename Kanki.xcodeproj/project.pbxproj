@@ -36,6 +36,7 @@
 		5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283B368D15032ED87CD7B9CD /* NotesScreen.swift */; };
 		5F7463464082BB36EBD024F6 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E475D1F1CC902C13FEAEFB9B /* ServerConfiguration.swift */; };
 		655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4F72F29D01441D198664F1 /* SessionLogTests.swift */; };
+		68BE118E87380D3B6B94577B /* PushGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61AA6010F939A75DCAAC05C /* PushGate.swift */; };
 		6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48706187509E815F62681E73 /* DestinationTests.swift */; };
 		6CCADEA75353A3D2480CA318 /* ServerTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60366F71075F2D649B01D98F /* ServerTokenStore.swift */; };
 		730325471BB3C3EB7A66AA04 /* ReviewQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */; };
@@ -48,6 +49,7 @@
 		7F675AD32EC39DB2667D083D /* CardExportArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8329926384A17781F614E660 /* CardExportArchiveTests.swift */; };
 		8221643A2A1DD4445B29E1D3 /* SessionCardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */; };
 		8725A5D943F2D0F9D7BD5154 /* SnapshotSyncPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28594DE4B3B5EE1B8A85735 /* SnapshotSyncPlanTests.swift */; };
+		8A31EB23D080265EEAB82AFE /* LocalCardStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A51837FFCBF63F48920BF01A /* LocalCardStoreTests.swift */; };
 		8ACE1D491BCA8045CB444CA3 /* SyncStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C12327F2D579AF8060A61F /* SyncStatusTests.swift */; };
 		8D4B273140846AECFDCE29E8 /* SnapshotSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A363F57517DD0567A863A30 /* SnapshotSyncPlan.swift */; };
 		9167A03C01060599ED9C5267 /* LearningSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906EE9A0C9A3C9D7C67AFB9F /* LearningSnapshotTests.swift */; };
@@ -73,12 +75,14 @@
 		DAAF0BA7C27C0C1B0C262B1E /* CategoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */; };
 		DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */; };
 		DEDE77EFAB2B93BF6930BAF0 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = FFCF1B1BCF68255D61B88DDB /* FSRS */; };
+		E2176C0A1FD0FA649813316A /* PushGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6BF35AF322D7690039DD4D /* PushGateTests.swift */; };
 		E40017F8F6D0C4E1A6C70B1C /* ServerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD5F2D164BA2D6817E928B5 /* ServerModelsTests.swift */; };
 		E526A974456CAF35D98C3825 /* ReviewQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1297976B3B0A769446205BE /* ReviewQueue.swift */; };
 		E899C275914FBF2E1848C731 /* AppSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5298CF1C1CD9C6617351780 /* AppSection.swift */; };
 		EBC1F4E9A527DC9DE6304C0A /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCEC30D666EB98EA77B4071C /* SettingsScreen.swift */; };
 		EDD6C5C2C34183F5B24279A0 /* SectionCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93939D720A954E833FEE568 /* SectionCommands.swift */; };
 		F54CB52ACFCDBECD46C57F98 /* CardScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */; };
+		FAD934EF0CD52491415576DC /* ServerTokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8506DC13B0DB92812AE0A7B3 /* ServerTokenStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -146,6 +150,7 @@
 		7814F49B17E7F6A0401BA313 /* SessionCardFormScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardFormScreen.swift; sourceTree = "<group>"; };
 		78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSchedulingTests.swift; sourceTree = "<group>"; };
 		8329926384A17781F614E660 /* CardExportArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportArchiveTests.swift; sourceTree = "<group>"; };
+		8506DC13B0DB92812AE0A7B3 /* ServerTokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerTokenStoreTests.swift; sourceTree = "<group>"; };
 		8860FF46CFB7B4B1381E785C /* SyncStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatus.swift; sourceTree = "<group>"; };
 		889A3D893F4A7E23D0D50569 /* ServerClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClientTests.swift; sourceTree = "<group>"; };
 		895DE69FECE0431295FFC150 /* GraphScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphScreen.swift; sourceTree = "<group>"; };
@@ -156,6 +161,7 @@
 		9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionScreen.swift; sourceTree = "<group>"; };
 		9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduleTests.swift; sourceTree = "<group>"; };
 		9E3252F25729C7B4B4471BF2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A51837FFCBF63F48920BF01A /* LocalCardStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCardStoreTests.swift; sourceTree = "<group>"; };
 		A937E6E66EAC7934CABF325D /* ServerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerModels.swift; sourceTree = "<group>"; };
 		A93939D720A954E833FEE568 /* SectionCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCommands.swift; sourceTree = "<group>"; };
 		B1297976B3B0A769446205BE /* ReviewQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueue.swift; sourceTree = "<group>"; };
@@ -163,6 +169,7 @@
 		B5A5A793FC000541B813F6FB /* LearningScreenSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningScreenSync.swift; sourceTree = "<group>"; };
 		B64000A64892970D6CC3EB14 /* CardCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCategoryTests.swift; sourceTree = "<group>"; };
 		BB4F72F29D01441D198664F1 /* SessionLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLogTests.swift; sourceTree = "<group>"; };
+		BB6BF35AF322D7690039DD4D /* PushGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushGateTests.swift; sourceTree = "<group>"; };
 		BC8419149DC49D5F4D35BB41 /* LearningScreenCategories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningScreenCategories.swift; sourceTree = "<group>"; };
 		BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionStateTests.swift; sourceTree = "<group>"; };
 		BCD23689E3AC04DF5AAED184 /* CategorySummaryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategorySummaryRow.swift; sourceTree = "<group>"; };
@@ -180,6 +187,7 @@
 		DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardTests.swift; sourceTree = "<group>"; };
 		DEC01065DFF7383120EFB751 /* CardCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCategory.swift; sourceTree = "<group>"; };
 		E475D1F1CC902C13FEAEFB9B /* ServerConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfiguration.swift; sourceTree = "<group>"; };
+		E61AA6010F939A75DCAAC05C /* PushGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushGate.swift; sourceTree = "<group>"; };
 		E78083BD8306FF6E06837F69 /* AppShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShell.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -231,6 +239,8 @@
 				115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */,
 				48706187509E815F62681E73 /* DestinationTests.swift */,
 				906EE9A0C9A3C9D7C67AFB9F /* LearningSnapshotTests.swift */,
+				A51837FFCBF63F48920BF01A /* LocalCardStoreTests.swift */,
+				BB6BF35AF322D7690039DD4D /* PushGateTests.swift */,
 				5B91454A611902605A7BD438 /* RecallRatingTests.swift */,
 				C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */,
 				BCA635B55084C877C0139A67 /* ReviewSessionStateTests.swift */,
@@ -270,6 +280,7 @@
 			children = (
 				992D0672A4A7313F1A3E9E12 /* ServerClientIntegrationTests.swift */,
 				889A3D893F4A7E23D0D50569 /* ServerClientTests.swift */,
+				8506DC13B0DB92812AE0A7B3 /* ServerTokenStoreTests.swift */,
 			);
 			path = Server;
 			sourceTree = "<group>";
@@ -350,6 +361,7 @@
 				3E67EF977A8459CBF8ED7A89 /* CardSearch.swift */,
 				1B2E736179A418F50CB67EBB /* Destination.swift */,
 				51B088E6A515E57B49D5DCC4 /* LearningSnapshot.swift */,
+				E61AA6010F939A75DCAAC05C /* PushGate.swift */,
 				54B3EFF5EE7F649EA9F3D241 /* RecallRating.swift */,
 				B1297976B3B0A769446205BE /* ReviewQueue.swift */,
 				BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */,
@@ -511,6 +523,8 @@
 				793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */,
 				6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */,
 				9167A03C01060599ED9C5267 /* LearningSnapshotTests.swift in Sources */,
+				8A31EB23D080265EEAB82AFE /* LocalCardStoreTests.swift in Sources */,
+				E2176C0A1FD0FA649813316A /* PushGateTests.swift in Sources */,
 				1A11C3361EDA051614591C29 /* RecallRatingTests.swift in Sources */,
 				730325471BB3C3EB7A66AA04 /* ReviewQueueTests.swift in Sources */,
 				CDECC05AFB1E6030023F15D4 /* ReviewSessionStateTests.swift in Sources */,
@@ -518,6 +532,7 @@
 				3EBB1F16D86E39C36A32D96E /* ServerClientTests.swift in Sources */,
 				7F5CBE66DAB1FF45E1824EE8 /* ServerConfigurationTests.swift in Sources */,
 				E40017F8F6D0C4E1A6C70B1C /* ServerModelsTests.swift in Sources */,
+				FAD934EF0CD52491415576DC /* ServerTokenStoreTests.swift in Sources */,
 				46251EEC490136F2319692F9 /* SessionCardTests.swift in Sources */,
 				655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */,
 				8725A5D943F2D0F9D7BD5154 /* SnapshotSyncPlanTests.swift in Sources */,
@@ -552,6 +567,7 @@
 				D317FA2EFB94AD8B9E8E6593 /* LocalCardStore.swift in Sources */,
 				5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */,
 				94787CE7AFD298F6E68A8BF5 /* PlaceholderScreen.swift in Sources */,
+				68BE118E87380D3B6B94577B /* PushGate.swift in Sources */,
 				037B39E0BD011C0960ECF264 /* RecallRating.swift in Sources */,
 				E526A974456CAF35D98C3825 /* ReviewQueue.swift in Sources */,
 				18000D5D18FABA38A7C40F42 /* ReviewSessionScreen.swift in Sources */,

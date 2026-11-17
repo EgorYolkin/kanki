@@ -20,7 +20,9 @@ struct LearningScreen: View {
     @State var renameText = ""
     @State var renameError: String?
     @State var deckToDelete: CategorySummary?
-    @State var pushTask: Task<Void, Never>?
+    @State var pushDebounceTask: Task<Void, Never>?
+    @State var pushGate = PushGate()
+    @State var isReconciling = false
     @State var syncError: String?
     @State var lastSyncFailed = false
     @State private var isChoosingCards = false
@@ -132,6 +134,9 @@ struct LearningScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiCancelPendingPush)) { _ in
+            pushDebounceTask?.cancel()
         }
         .sheet(
             isPresented: $isChoosingCards,

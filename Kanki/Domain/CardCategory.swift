@@ -179,25 +179,6 @@ extension LearningSnapshot {
             }
         }
     }
-
-    /// Применяет rename-операции входящего снапшота к локальным колодам
-    /// (используется при загрузке, чтобы сохранить иерархию, а не потерять её).
-    func applyingRenames(_ renames: [DeckRename]) -> LearningSnapshot {
-        var copy = self
-        for rename in renames {
-            let prefix = rename.from + CardCategory.hierarchySeparator
-            for index in copy.cards.indices {
-                guard let deck = copy.cards[index].deck else { continue }
-                if deck == rename.from {
-                    copy.cards[index].deck = rename.to
-                } else if deck.hasPrefix(prefix) {
-                    copy.cards[index].deck = rename.to + deck.dropFirst(rename.from.count)
-                }
-            }
-        }
-        return copy
-    }
-
 }
 
 struct CardCategoryError: Error, Equatable {

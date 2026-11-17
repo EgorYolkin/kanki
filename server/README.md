@@ -1,8 +1,9 @@
 # Kanki server
 
 Сервер синхронизации Kanki: REST/JSON, ревизионные снимки и MCP-инструменты.
-Транспорт — HTTP внутри Tailscale; SSH используется только для установки и
-администрирования.
+Канонический транспорт — HTTPS `kanki.host` (nginx + Let's Encrypt); uvicorn
+слушает только `127.0.0.1`. SSH используется для установки и администрирования,
+а не как канал данных. Tailnet-HTTP — legacy-режим, см. ниже.
 
 ## Что умеет
 
@@ -43,12 +44,27 @@ curl -s -X POST http://127.0.0.1:8000/v1/tokens \
 В приложении: «Настройки» → «Сервер» → `http://127.0.0.1:8000`, токен из ответа,
 «Проверить соединение». В симуляторе localhost указывает на Mac.
 
-## Tailscale + IP
+## Публичный HTTPS (канонический)
+
+Конфигурация — из `docs/server-protocol.md`: uvicorn слушает `127.0.0.1:8000`,
+наружу API отдаёт nginx с сертификатом Let's Encrypt (`kanki.host`),
+`/docs`, `/redoc`, `/openapi.json` и `/v1/tokens` закрыты извне, действуют
+`limit_req` и лимит тела. Порт 8000 в интернет не публикуется.
+
+1. Разверните сервис на loopback: `python3 scripts/deploy_server.py --ssh user@server-ip`.
+2. Настройте vhost `/etc/nginx/sites-enabled/kanki` и snippets по
+   `docs/server-protocol.md`; проверьте `nginx -t && systemctl reload nginx`.
+3. В приложении укажите `https://kanki.host` и выданный device-токен.
+
+## Tailnet HTTP (legacy)
+
+Режим без TLS-терминации: сервер слушает `0.0.0.0:8000` и доступен только
+внутри tailnet. Он не даёт закрытия служебных маршрутов, `limit_req` и HSTS
+из протокола — включайте только как осознанное исключение.
 
 1. Установите Tailscale на сервер, Mac и iPhone, войдите в один tailnet.
-2. Узнайте адрес: `tailscale ip -4` (обычно `100.x.y.z`).
-3. Сервер слушает `0.0.0.0:8000`; закройте порт для всех интерфейсов, кроме
-   `tailscale0`:
+2. В юните замените `--host 127.0.0.1` на `--host 0.0.0.0` и перезапустите сервис.
+3. Закройте порт для всех интерфейсов, кроме `tailscale0`:
 
    ```bash
    sudo ufw allow in on tailscale0 to any port 8000 proto tcp
@@ -72,9 +88,12 @@ python3 scripts/deploy_server.py --ssh user@server-ip
 ```
 
 Скрипт копирует `server/` через `rsync`, создаёт `.env` с admin-токеном,
-устанавливает systemd user-юнит `kanki-server`, запускает его, ждёт
-`/v1/health`, выпускает токен для `iphone` и печатает Tailscale-адрес.
-Требования на сервере: `ssh`, `rsync`, `uv`, `tailscale`, `systemd`.
+устанавливает systemd user-юнит `kanki-server` на `127.0.0.1`, запускает его,
+ждёт `/v1/health` и выпускает токен для `iphone`. Наружу сервис открывает
+только nginx по `docs/server-protocol.md`; при деплое печатается
+`--public-url` (по умолчанию `https://kanki.host`).
+Требования на сервере: `ssh`, `rsync`, `uv`, `systemd`; nginx и сертификат —
+по протоколу.
 
 Если `uv` не установлен:
 

@@ -205,19 +205,4 @@ final class CardCategoryTests: XCTestCase {
 
         XCTAssertEqual(snapshot.cards.map(\.deck), [nil, "Интегралы"])
     }
-
-    // MARK: - applyingRenames
-
-    func testApplyingRenamesRebuildsHierarchyWithoutLosingSubdecks() {
-        let snapshot = LearningSnapshot(cards: [
-            card("1", deck: "Математика"),
-            card("2", deck: "Математика::Интегралы"),
-            card("3", deck: "Физика")
-        ])
-
-        let renamed = snapshot.applyingRenames([DeckRename(from: "Математика", to: "Точные науки")])
-
-        XCTAssertEqual(renamed.cards.map(\.deck), ["Точные науки", "Точные науки::Интегралы", "Физика"])
-    }
-
 }

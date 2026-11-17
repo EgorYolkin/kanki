@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import __version__
@@ -47,6 +48,10 @@ def if_none_match_matches(header_value: str, etag: str) -> bool:
 _UNSET: Any = object()
 bearer = HTTPBearer(auto_error=False)
 
+# Запас на конверт {"schema_version","base_revision","data"}: ранний reject по
+# Content-Length не должен отвергать тело, которое пройдёт проверку данных.
+CONTENT_LENGTH_SLACK_BYTES = 64 * 1024
+
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -83,6 +88,23 @@ def create_app(
         lifespan=lifespan,
     )
 
+    @app.middleware("http")
+    async def reject_oversized_body(request: Request, call_next):
+        """Отклоняет заведомо большое тело до чтения, а не после буферизации."""
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                declared = int(content_length)
+            except ValueError:
+                declared = 0
+            limit = settings.max_snapshot_bytes + CONTENT_LENGTH_SLACK_BYTES
+            if declared > limit:
+                return JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content={"detail": {"code": "snapshot_too_large"}},
+                )
+        return await call_next(request)
+
     def get_db() -> Database:
         return app.state.database
 
@@ -105,7 +127,11 @@ def create_app(
             )
         token = credentials.credentials
         admin_token = current_settings.admin_token
-        if admin_token and hmac.compare_digest(token, admin_token):
+        # Сравнение в байтах: str-вариант бросает TypeError на не-ASCII
+        # (header bytes 0x80–0xFF декодируются Starlette как latin-1).
+        if admin_token and hmac.compare_digest(
+            token.encode("utf-8"), admin_token.encode("utf-8")
+        ):
             return Principal(label="admin", role="admin")
         row = database.find_active_token(hash_token(token))
         if row is None:
