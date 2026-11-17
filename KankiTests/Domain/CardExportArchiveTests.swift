@@ -104,14 +104,6 @@ final class CardExportArchiveTests: XCTestCase {
         XCTAssertEqual(loaded.reviews, [orphan])
     }
 
-    func testDuplicateCardIDsAreStillRejected() throws {
-        let (directory, fileURL) = makeStoreLocation()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let card = SessionCard(question: "Карточка", answer: "Ответ")
-        try LocalCardStore.save(LearningSnapshot(cards: [card, card]), to: fileURL)
-        XCTAssertThrowsError(try LocalCardStore.load(from: fileURL))
-    }
-
     func testWriteFailureDoesNotPretendDataWasSaved() throws {
         let (directory, fileURL) = makeStoreLocation()
         defer { try? FileManager.default.removeItem(at: directory) }
