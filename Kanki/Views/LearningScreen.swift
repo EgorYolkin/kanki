@@ -57,12 +57,13 @@ struct LearningScreen: View {
             } else if cards.isEmpty {
                 emptyCardsSection
             } else {
+                statsSection
                 categoriesSection
                 uncategorizedSection
                 allCardsSection
-                statsSection
             }
         }
+        .modifier(StudyListStyle())
         .contentMargins(.bottom, 90, for: .scrollContent)
         .navigationTitle("Обучение")
         .toolbar {
@@ -87,9 +88,11 @@ struct LearningScreen: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            VStack(alignment: .trailing, spacing: 12) {
-                addCardButton
-                reviewButton
+            StudyControlGroup {
+                VStack(alignment: .trailing, spacing: 12) {
+                    addCardButton
+                    reviewButton
+                }
             }
             .padding(.trailing, 20)
             .padding(.bottom, 20)
@@ -195,23 +198,5 @@ struct LearningScreen: View {
                 onDelete: { deleteDeck($0) }
             )
         )
-    }
-}
-
-struct FloatingCircleBackground: View {
-    let size: CGFloat
-
-    var body: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            Color.clear
-                .frame(width: size, height: size)
-                .glassEffect(.regular.interactive(), in: Circle())
-        } else {
-            Circle()
-                .fill(.regularMaterial)
-                .frame(width: size, height: size)
-                .overlay(Circle().strokeBorder(Color.primary.opacity(0.08)))
-                .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
-        }
     }
 }

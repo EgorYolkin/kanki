@@ -50,13 +50,15 @@ struct AllCardsScreen: View {
                     Button {
                         onOpen(card)
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Label(card.question, systemImage: "rectangle.on.rectangle")
                                 .foregroundStyle(.primary)
+                                .font(.headline)
                             Text(dueText(for: card))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        .padding(.vertical, 8)
                     }
                     .accessibilityLabel(card.question)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -96,6 +98,7 @@ struct AllCardsScreen: View {
                 .textCase(nil)
             }
         }
+        .modifier(StudyListStyle())
         .overlay {
             if filteredCards.isEmpty {
                 SectionIntro(

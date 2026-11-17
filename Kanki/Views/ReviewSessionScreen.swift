@@ -48,8 +48,8 @@ struct ReviewSessionScreen: View {
         List {
             Section {
                 Text(session.progressText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(.tint)
                     .accessibilityIdentifier("reviewProgress")
                 Text(card.deck ?? CardCategory.noCategoryTitle)
                     .font(.caption)
@@ -57,36 +57,28 @@ struct ReviewSessionScreen: View {
                     .accessibilityIdentifier("reviewDeck")
             }
             Section("Вопрос") {
-                Text(card.question)
+                StudyText(text: card.question, isQuestion: true)
             }
             if session.isAnswerVisible {
                 Section("Ответ") {
-                    Text(card.answer)
+                    StudyText(text: card.answer)
                 }
                 Section("Насколько легко вспомнили?") {
-                    HStack(spacing: 8) {
-                        ForEach(RecallRating.allCases, id: \.self) { rating in
-                            Button(rating.title) {
-                                record(rating, for: card)
-                            }
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(rating.tint, in: RoundedRectangle(cornerRadius: 10))
-                            .buttonStyle(.plain)
-                        }
+                    StudyRatingButtons { rating in
+                        record(rating, for: card)
                     }
-                    .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 }
             } else {
                 Section {
                     Button("Показать ответ") {
                         session.revealAnswer()
                     }
+                    .controlSize(.large)
+                    .modifier(StudyActionStyle(prominent: true))
                 }
             }
         }
+        .modifier(StudyListStyle())
     }
 
     private var summaryView: some View {
@@ -103,8 +95,11 @@ struct ReviewSessionScreen: View {
             Section {
                 Button("Готово") { dismiss() }
                     .accessibilityIdentifier("reviewFinish")
+                    .controlSize(.large)
+                    .modifier(StudyActionStyle(prominent: true))
             }
         }
+        .modifier(StudyListStyle())
     }
 
     private func record(_ rating: RecallRating, for card: SessionCard) {

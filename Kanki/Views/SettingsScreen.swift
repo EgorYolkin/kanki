@@ -56,6 +56,7 @@ struct SettingsScreen: View {
             dataSection
             aboutSection
         }
+        .modifier(StudyListStyle())
         .navigationTitle("Настройки")
         .onAppear(perform: loadToken)
         .onChange(of: serverURL) { _, _ in
@@ -79,7 +80,13 @@ struct SettingsScreen: View {
                 Button {
                     appearance = option
                 } label: {
-                    HStack {
+                    HStack(spacing: 14) {
+                        Image(systemName: appearanceSymbol(for: option))
+                            .font(.title3)
+                            .foregroundStyle(.tint)
+                            .frame(width: 40, height: 40)
+                            .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                            .accessibilityHidden(true)
                         Text(option.title)
                             .foregroundStyle(.primary)
                         Spacer()
@@ -95,6 +102,14 @@ struct SettingsScreen: View {
             Text("Тема сохраняется между запусками и применяется ко всему приложению.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private func appearanceSymbol(for option: AppAppearance) -> String {
+        switch option {
+        case .system: "circle.lefthalf.filled"
+        case .light: "sun.max"
+        case .dark: "moon"
         }
     }
 

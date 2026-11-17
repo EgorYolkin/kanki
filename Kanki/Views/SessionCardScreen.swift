@@ -69,45 +69,34 @@ struct SessionCardScreen: View {
                     }
                     .accessibilityIdentifier("cardDeckChip")
                 }
-                 Section("Вопрос") {
-                    Text(displayedCard.question)
-                 }
+                Section("Вопрос") {
+                    StudyText(text: displayedCard.question, isQuestion: true)
+                }
                 if isAnswerVisible {
                     Section("Ответ") {
-                        Text(displayedCard.answer)
+                        StudyText(text: displayedCard.answer)
                     }
                 } else {
                     Button("Показать ответ") {
                         isAnswerVisible = true
                     }
+                    .controlSize(.large)
+                    .modifier(StudyActionStyle(prominent: true))
                 }
                 if isAnswerVisible {
                     Section("Насколько легко вспомнили?") {
-                        HStack(spacing: 8) {
-                            ForEach(RecallRating.allCases, id: \.self) { rating in
-                                Button {
-                                    guard !didSubmitRating else { return }
-                                    didSubmitRating = true
-                                    do {
-                                        try onReview(rating)
-                                        dismiss()
-                                    } catch {
-                                        didSubmitRating = false
-                                        saveError = error.localizedDescription
-                                        showSaveError = true
-                                    }
-                                } label: {
-                                    Text(rating.title)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(rating.tint, in: RoundedRectangle(cornerRadius: 10))
-                                }
-                                .buttonStyle(.plain)
+                        StudyRatingButtons { rating in
+                            guard !didSubmitRating else { return }
+                            didSubmitRating = true
+                            do {
+                                try onReview(rating)
+                                dismiss()
+                            } catch {
+                                didSubmitRating = false
+                                saveError = error.localizedDescription
+                                showSaveError = true
                             }
                         }
-                        .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                     }
                 }
                 Section("История повторений") {
@@ -129,6 +118,7 @@ struct SessionCardScreen: View {
                     .accessibilityIdentifier("deleteSessionCard")
                 }
             }
+            .modifier(StudyListStyle())
             .navigationTitle("Карточка")
             .toolbarTitleDisplayMode(.inline)
             .onAppear {

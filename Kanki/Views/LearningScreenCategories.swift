@@ -16,9 +16,9 @@ extension LearningScreen {
                 .foregroundStyle(loadError != nil || !hasReviewableCards ? Color.secondary : Color.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
+                .modifier(StudyFloatingSurface())
         }
         .buttonStyle(.plain)
-        .background { FloatingCircleBackground(size: 56) }
         .accessibilityLabel(isAheadReview ? "Досрочное повторение" : "Начать повторение")
         .accessibilityIdentifier("startReviewSession")
         .disabled(loadError != nil || !hasReviewableCards)
@@ -91,31 +91,40 @@ extension LearningScreen {
 
     var statsSection: some View {
         Section {
-            Text("К повторению: \(dueCards.count)")
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("dueCount")
-            if isAheadReview {
-                Text("Доступно досрочно: \(aheadCards.count)")
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Ритм обучения", systemImage: "sparkle")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("aheadCount")
-            }
-            if newCardsCount > 0 {
-                Text("Новых: \(newCardsCount)")
+                Text("К повторению: \(dueCards.count)")
+                    .font(.title.bold())
+                    .foregroundStyle(.primary)
+                    .accessibilityIdentifier("dueCount")
+                if isAheadReview {
+                    Text("Доступно досрочно: \(aheadCards.count)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("aheadCount")
+                }
+                if newCardsCount > 0 {
+                    Text("Новых: \(newCardsCount)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("newCount")
+                }
+                Divider()
+                Text("Оценок: \(log.count)")
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("newCount")
+                if let lastRating = log.lastRating {
+                    Text("Последняя оценка: \(lastRating.title)")
+                        .foregroundStyle(.secondary)
+                }
+                if let syncStatusText {
+                    Text(syncStatusText)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("syncStatus")
+                }
             }
-            Text("Оценок: \(log.count)")
-                .foregroundStyle(.secondary)
-            if let lastRating = log.lastRating {
-                Text("Последняя оценка: \(lastRating.title)")
-                    .foregroundStyle(.secondary)
-            }
-            if let syncStatusText {
-                Text(syncStatusText)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("syncStatus")
-            }
+            .padding(.vertical, 12)
         }
+        .listRowBackground(Color.accentColor.opacity(0.08))
     }
 
     // MARK: - Значения
@@ -129,9 +138,9 @@ extension LearningScreen {
                 .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
+                .modifier(StudyFloatingSurface())
         }
         .buttonStyle(.plain)
-        .background { FloatingCircleBackground(size: 44) }
         .accessibilityLabel("Добавить карточку")
         .accessibilityIdentifier("addSessionCard")
         .disabled(loadError != nil)
