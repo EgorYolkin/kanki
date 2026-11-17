@@ -88,8 +88,10 @@ python3 scripts/deploy_server.py --ssh user@server-ip
 ```
 
 Скрипт копирует `server/` через `rsync`, создаёт `.env` с admin-токеном,
-устанавливает systemd user-юнит `kanki-server` на `127.0.0.1`, запускает его,
-ждёт `/v1/health` и выпускает токен для `iphone`. Наружу сервис открывает
+устанавливает systemd user-юнит `kanki-server` на `127.0.0.1`, включает автозапуск
+и явно перезапускает сервис, в том числе при повторном деплое. Новый процесс читает
+обновлённые код, `.env` и unit до проверки `/v1/health` и выпуска токена для `iphone`.
+Наружу сервис открывает
 только nginx по `docs/server-protocol.md`; при деплое печатается
 `--public-url` (по умолчанию `https://kanki.host`).
 Требования на сервере: `ssh`, `rsync`, `uv`, `systemd`; nginx и сертификат —

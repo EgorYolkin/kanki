@@ -21,7 +21,7 @@ struct LearningScreen: View {
     @State var renameError: String?
     @State var deckToDelete: CategorySummary?
     @State var pushDebounceTask: Task<Void, Never>?
-    @State var pushGate = PushGate()
+    @Binding var pushGate: PushGate
     @State var isReconciling = false
     @State var syncError: String?
     @State var lastSyncFailed = false
@@ -31,7 +31,8 @@ struct LearningScreen: View {
     @State private var pendingSelectedExport = false
     @State private var exportError: String?
 
-    init() {
+    init(pushGate: Binding<PushGate>) {
+        _pushGate = pushGate
         var snapshot = LearningSnapshot()
         var loadMessage: String?
         do {
@@ -116,11 +117,13 @@ struct LearningScreen: View {
                 cards: dueCards.isEmpty ? aheadCards : dueCards,
                 title: dueCards.isEmpty ? "Досрочное повторение" : "Повторение"
             ) { card, rating in
+                guard isReviewing else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
         .sheet(isPresented: $isReviewingDeck) {
             ReviewSessionScreen(cards: deckReviewCards) { card, rating in
+                guard isReviewingDeck else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
@@ -132,11 +135,16 @@ struct LearningScreen: View {
             guard phase == .active else { return }
             Task { await reconcile() }
         }
+        .onChange(of: pushGate.isManualSyncRunning) { _, isRunning in
+            guard !isRunning, hasUnsyncedChanges else { return }
+            schedulePush()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .kankiCancelPendingPush)) { _ in
             pushDebounceTask?.cancel()
+            pushDebounceTask = nil
         }
         .sheet(
             isPresented: $isChoosingCards,

@@ -27,6 +27,7 @@ private enum ServerInputError: LocalizedError {
 }
 
 struct SettingsScreen: View {
+    @Binding var pushGate: PushGate
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverRevision") private var serverRevision = 0
@@ -200,15 +201,23 @@ struct SettingsScreen: View {
 
     @MainActor
     private func pushSnapshot() async {
+        guard pushGate.beginManualSync() else {
+            serverStatus = "Дождитесь завершения синхронизации и повторите."
+            return
+        }
+        defer { pushGate.finishManualSync() }
         isServerBusy = true
         defer { isServerBusy = false }
         NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
             let local = try LocalCardStore.load()
+            let generation = pushGate.generation
             let result = try await client.push(snapshot: local, baseRevision: serverRevision)
             serverRevision = result.revision
-            hasUnsyncedChanges = false
+            if pushGate.isCurrent(generation) {
+                hasUnsyncedChanges = false
+            }
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
@@ -217,12 +226,23 @@ struct SettingsScreen: View {
 
     @MainActor
     private func pullSnapshot() async {
+        guard pushGate.beginManualSync() else {
+            serverStatus = "Дождитесь завершения синхронизации и повторите."
+            return
+        }
+        defer { pushGate.finishManualSync() }
         isServerBusy = true
         defer { isServerBusy = false }
         NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
+            let generation = pushGate.generation
+            let revision = serverRevision
             let result = try await client.fetchSnapshot()
+            guard pushGate.isCurrent(generation), serverRevision == revision else {
+                serverStatus = "Локальные данные изменились во время загрузки. Повторите загрузку."
+                return
+            }
             guard let snapshot = result.data else {
                 serverStatus = "На сервере пока нет снимка"
                 return

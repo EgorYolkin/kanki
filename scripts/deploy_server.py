@@ -162,8 +162,8 @@ WantedBy=default.target
     )
     ssh(
         args.ssh,
-        f"systemctl --user daemon-reload && systemctl --user enable --now {UNIT_NAME} "
-        f"&& loginctl enable-linger $USER",
+        f"systemctl --user daemon-reload && systemctl --user enable {UNIT_NAME} "
+        f"&& systemctl --user restart {UNIT_NAME} && loginctl enable-linger $USER",
         dry_run=dry_run,
     )
 
