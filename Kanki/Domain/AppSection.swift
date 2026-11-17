@@ -25,4 +25,16 @@ enum AppSection: Int, CaseIterable {
         case .settings: "gearshape"
         }
     }
+
+    /// Видимые разделы оболочки: рабочие — всегда, заготовки «Заметки» и «Граф» —
+    /// по тумблерам настроек. Порядок и номера горячих клавиш не меняются.
+    static func visible(notesShown: Bool, graphShown: Bool) -> [AppSection] {
+        allCases.filter { section in
+            switch section {
+            case .learning, .settings: true
+            case .notes: notesShown
+            case .graph: graphShown
+            }
+        }
+    }
 }

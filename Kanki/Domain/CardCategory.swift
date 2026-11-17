@@ -67,18 +67,31 @@ enum CardCategory {
 
     /// Карточки категории и её подкатегорий: точное совпадение имени
     /// или префикс `имя::` (семантика Anki: выбор колоды включает подколоды).
+    /// По умолчанию архивные карточки не учитываются.
     static func cards(
         _ cards: [SessionCard],
-        inDeck deck: String?
+        inDeck deck: String?,
+        includingArchived: Bool = false
     ) -> [SessionCard] {
+        let active = includingArchived ? cards : cards.filter { !$0.isArchived }
         guard let deck else {
-            return cards.filter { $0.deck == nil }
+            return active.filter { $0.deck == nil }
         }
         let prefix = deck + hierarchySeparator
-        return cards.filter { card in
+        return active.filter { card in
             guard let cardDeck = card.deck else { return false }
             return cardDeck == deck || cardDeck.hasPrefix(prefix)
         }
+    }
+
+    /// Имена категорий в наборе карточек, по алфавиту.
+    static func deckNames(in cards: [SessionCard]) -> [String] {
+        Set(cards.compactMap(\.deck)).sorted()
+    }
+
+    /// Карточки активные (`archived: false`) или архивные — для списка «Все карточки».
+    static func cards(_ cards: [SessionCard], archived: Bool) -> [SessionCard] {
+        cards.filter { $0.isArchived == archived }
     }
 
     /// Список категорий с счётчиками: по алфавиту, «Без категории» — в конце.
@@ -92,7 +105,8 @@ enum CardCategory {
             ReviewQueue.cards(snapshot.cards, schedules: snapshot.schedules, at: date)
                 .map(\.id)
         )
-        let decks = Set(snapshot.cards.compactMap(\.deck))
+        let activeCards = snapshot.cards.filter { !$0.isArchived }
+        let decks = Set(activeCards.compactMap(\.deck))
 
         var summaries = decks
             .map { deck -> CategorySummary in
@@ -164,44 +178,6 @@ extension LearningSnapshot {
                 cards[index].deck = String(deck.dropFirst(prefix.count))
             }
         }
-    }
-
-    /// Применяет rename-операции входящего снапшота к локальным колодам
-    /// (используется при загрузке, чтобы сохранить иерархию, а не потерять её).
-    func applyingRenames(_ renames: [DeckRename]) -> LearningSnapshot {
-        var copy = self
-        for rename in renames {
-            let prefix = rename.from + CardCategory.hierarchySeparator
-            for index in copy.cards.indices {
-                guard let deck = copy.cards[index].deck else { continue }
-                if deck == rename.from {
-                    copy.cards[index].deck = rename.to
-                } else if deck.hasPrefix(prefix) {
-                    copy.cards[index].deck = rename.to + deck.dropFirst(rename.from.count)
-                }
-            }
-        }
-        return copy
-    }
-
-    /// Сообщения о карточках, потерявших категорию при загрузке снапшота:
-    /// категория была локально, исчезла в пришедшем снапшоте и не покрыта rename.
-    func lostCategoryMessages(localDecks: [String: Int]) -> [String] {
-        let remoteDecks = Set(cards.compactMap(\.deck))
-        let renamedAway = Set(deckRenames.map(\.from))
-        return localDecks
-            .filter { deck, count in
-                !remoteDecks.contains(deck)
-                    && !renamedAway.contains(deck)
-                    && !remoteDecks.contains { $0.hasPrefix(deck + CardCategory.hierarchySeparator) }
-                    && count > 0
-            }
-            .sorted { $0.key < $1.key }
-            .map { deck, count in
-                count == 1
-                    ? "Карточка потеряла категорию «\(deck)» (удалена на другом устройстве)"
-                    : "\(count) карточек потеряли категорию «\(deck)» (удалена на другом устройстве)"
-            }
     }
 }
 

@@ -179,6 +179,38 @@ final class ServerClientTests: XCTestCase {
         }
     }
 
+    func testWireNormalizationMatchesStoredPayload() throws {
+        let cardID = UUID()
+        let moment = Date(timeIntervalSince1970: 1_770_000_000.123456)
+        let snapshot = LearningSnapshot(
+            cards: [
+                SessionCard(
+                    id: cardID,
+                    question: "Вопрос",
+                    answer: "Ответ",
+                    createdAt: moment
+                )
+            ],
+            reviews: [SessionReview(cardID: cardID, rating: .good, reviewedAt: moment)]
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        // Снимок в том виде, в каком его вернёт сервер после нашего PUT.
+        let stored = try decoder.decode(
+            LearningSnapshot.self,
+            from: encoder.encode(snapshot)
+        )
+
+        XCTAssertEqual(ServerClient.wireNormalized(snapshot), stored)
+        XCTAssertNotEqual(
+            stored,
+            snapshot,
+            "Провод теряет дробные секунды — сравнение обязано это учитывать"
+        )
+    }
+
     func testMalformedJSONMapsToDecodingError() async throws {
         StubURLProtocol.install { request in
             (try makeResponse(200, request), Data("not-json".utf8))

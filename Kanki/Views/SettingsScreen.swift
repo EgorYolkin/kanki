@@ -27,9 +27,13 @@ private enum ServerInputError: LocalizedError {
 }
 
 struct SettingsScreen: View {
+    @Binding var pushGate: PushGate
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverRevision") private var serverRevision = 0
+    @AppStorage("showNotesSection") private var showNotesSection = false
+    @AppStorage("showGraphSection") private var showGraphSection = false
+    @AppStorage("serverHasUnsyncedChanges") private var hasUnsyncedChanges = false
 
     @State private var serverToken = ""
     @State private var serverStatus = "Не подключён"
@@ -47,9 +51,9 @@ struct SettingsScreen: View {
     var body: some View {
         List {
             appearanceSection
+            sectionsSection
             serverSection
             dataSection
-            serviceSection
             aboutSection
         }
         .navigationTitle("Настройки")
@@ -89,6 +93,18 @@ struct SettingsScreen: View {
                 .accessibilityAddTraits(appearance == option ? [.isSelected] : [])
             }
             Text("Тема сохраняется между запусками и применяется ко всему приложению.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var sectionsSection: some View {
+        Section("Разделы") {
+            Toggle("Заметки", isOn: $showNotesSection)
+                .accessibilityIdentifier("showNotesSection")
+            Toggle("Граф", isOn: $showGraphSection)
+                .accessibilityIdentifier("showGraphSection")
+            Text("Разделы «Заметки» и «Граф» пока заготовки; включите переключатель, чтобы вернуть раздел в панель вкладок.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -140,17 +156,6 @@ struct SettingsScreen: View {
         }
     }
 
-    private var serviceSection: some View {
-        Section("Служебные экраны") {
-            NavigationLink(value: Destination.merges) {
-                Label("Очередь мержей", systemImage: Destination.merges.symbol)
-            }
-            NavigationLink(value: Destination.conflicts) {
-                Label("Конфликты", systemImage: Destination.conflicts.symbol)
-            }
-        }
-    }
-
     private var aboutSection: some View {
         Section("О приложении") {
             LabeledContent("Версия", value: appVersion)
@@ -196,13 +201,23 @@ struct SettingsScreen: View {
 
     @MainActor
     private func pushSnapshot() async {
+        guard pushGate.beginManualSync() else {
+            serverStatus = "Дождитесь завершения синхронизации и повторите."
+            return
+        }
+        defer { pushGate.finishManualSync() }
         isServerBusy = true
         defer { isServerBusy = false }
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
             let local = try LocalCardStore.load()
+            let generation = pushGate.generation
             let result = try await client.push(snapshot: local, baseRevision: serverRevision)
             serverRevision = result.revision
+            if pushGate.isCurrent(generation) {
+                hasUnsyncedChanges = false
+            }
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
@@ -211,19 +226,30 @@ struct SettingsScreen: View {
 
     @MainActor
     private func pullSnapshot() async {
+        guard pushGate.beginManualSync() else {
+            serverStatus = "Дождитесь завершения синхронизации и повторите."
+            return
+        }
+        defer { pushGate.finishManualSync() }
         isServerBusy = true
         defer { isServerBusy = false }
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
             let client = try makeClient(token: serverToken)
+            let generation = pushGate.generation
+            let revision = serverRevision
             let result = try await client.fetchSnapshot()
+            guard pushGate.isCurrent(generation), serverRevision == revision else {
+                serverStatus = "Локальные данные изменились во время загрузки. Повторите загрузку."
+                return
+            }
             guard let snapshot = result.data else {
                 serverStatus = "На сервере пока нет снимка"
                 return
             }
-            let localDecks = (try? LocalCardStore.load())?.localDeckCounts ?? [:]
-            ConflictLog.append(snapshot.lostCategoryMessages(localDecks: localDecks))
             try LocalCardStore.save(snapshot)
             serverRevision = result.revision
+            hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
             serverStatus = "Загружено, ревизия \(result.revision)"
         } catch {

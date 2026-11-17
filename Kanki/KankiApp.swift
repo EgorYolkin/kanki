@@ -13,6 +13,11 @@ struct KankiApp: App {
             try? ServerTokenStore.delete()
             UserDefaults.standard.removeObject(forKey: "serverURL")
             UserDefaults.standard.removeObject(forKey: "serverRevision")
+            UserDefaults.standard.removeObject(forKey: "serverHasUnsyncedChanges")
+        }
+        if arguments.contains("--reset-sections") {
+            UserDefaults.standard.removeObject(forKey: "showNotesSection")
+            UserDefaults.standard.removeObject(forKey: "showGraphSection")
         }
     }
 

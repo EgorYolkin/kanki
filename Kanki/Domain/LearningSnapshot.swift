@@ -3,9 +3,10 @@ import Foundation
 /// Локальный снимок демо-данных: карточки, их оценки и расписание FSRS.
 /// Кодируется в JSON `LocalCardStore`; серверного источника пока нет.
 struct LearningSnapshot: Codable, Equatable {
-    /// Версия состава payload: 2 — добавлены категории (`deck`) и `deck_renames`.
-    /// Отсутствие ключа при декодировании — старый снимок v1, принимается без потерь.
-    static let currentSnapshotVersion = 2
+    /// Версия состава payload: 2 — категории (`deck`, `deck_renames`),
+    /// 3 — архив карточки (`isArchived` в карточке).
+    /// Отсутствие ключа при декодировании — старый снимок, принимается с дефолтами.
+    static let currentSnapshotVersion = 3
 
     var snapshotVersion: Int
     var cards: [SessionCard]
@@ -26,14 +27,17 @@ struct LearningSnapshot: Codable, Equatable {
         self.deckRenames = deckRenames
     }
 
-    /// Локальные категории с числом карточек — для обнаружения потерь при загрузке.
-    var localDeckCounts: [String: Int] {
-        var counts: [String: Int] = [:]
+    enum ValidationError: Error {
+        case duplicateCardID(UUID)
+    }
+
+    func validate() throws {
+        var cardIDs = Set<UUID>(minimumCapacity: cards.count)
         for card in cards {
-            guard let deck = card.deck else { continue }
-            counts[deck, default: 0] += 1
+            guard cardIDs.insert(card.id).inserted else {
+                throw ValidationError.duplicateCardID(card.id)
+            }
         }
-        return counts
     }
 
     @discardableResult
@@ -42,6 +46,28 @@ struct LearningSnapshot: Codable, Equatable {
         cards.removeAll { $0.id == id }
         reviews.removeAll { $0.cardID == id }
         schedules.removeValue(forKey: id)
+        return true
+    }
+
+    /// Архивирует или возвращает карточку; история и расписание сохраняются.
+    @discardableResult
+    mutating func setArchived(_ archived: Bool, cardID: UUID) -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == cardID }) else { return false }
+        cards[index].isArchived = archived
+        return true
+    }
+
+    /// Правка текста и категории карточки: пустые поля отклоняются (`CardDraft`),
+    /// идентификатор, дата создания, архив и история сохраняются.
+    @discardableResult
+    mutating func updateCard(id: UUID, question: String, answer: String, deck: String?) -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == id }) else { return false }
+        var draft = CardDraft(card: cards[index])
+        draft.question = question
+        draft.answer = answer
+        draft.deck = deck
+        guard let edited = draft.updated(cards[index]) else { return false }
+        cards[index] = edited
         return true
     }
 
@@ -55,14 +81,26 @@ struct LearningSnapshot: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        // Снапшот v1 (без версий и категорий) декодируется как v2 с дефолтами.
-        snapshotVersion = try container.decodeIfPresent(Int.self, forKey: .snapshotVersion)
+        // Снимок без версии (v1) декодируется как текущий с дефолтами;
+        // версия новее поддерживаемой отклоняется, чтобы не «понизить»
+        // незнакомые поля и не потерять их при следующей правке.
+        let version = try container.decodeIfPresent(Int.self, forKey: .snapshotVersion)
             ?? Self.currentSnapshotVersion
+        guard version <= Self.currentSnapshotVersion else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .snapshotVersion,
+                in: container,
+                debugDescription: "Снимок версии \(version) новее поддерживаемой "
+                    + "\(Self.currentSnapshotVersion)"
+            )
+        }
+        snapshotVersion = version
         deckRenames = try container.decodeIfPresent([DeckRename].self, forKey: .deckRenames) ?? []
         cards = try container.decodeIfPresent([SessionCard].self, forKey: .cards) ?? []
         reviews = try container.decodeIfPresent([SessionReview].self, forKey: .reviews) ?? []
         let stored = try container.decodeIfPresent([String: CardSchedule].self, forKey: .schedules) ?? [:]
-        schedules = try Dictionary(uniqueKeysWithValues: stored.map { key, schedule in
+        schedules = Dictionary(minimumCapacity: stored.count)
+        for (key, schedule) in stored {
             guard let id = UUID(uuidString: key) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .schedules,
@@ -70,8 +108,23 @@ struct LearningSnapshot: Codable, Equatable {
                     debugDescription: "Некорректный идентификатор карточки: \(key)"
                 )
             }
-            return (id, schedule)
-        })
+            guard schedules.updateValue(schedule, forKey: id) == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .schedules,
+                    in: container,
+                    debugDescription: "Повторяющийся идентификатор расписания: \(key)"
+                )
+            }
+        }
+        do {
+            try validate()
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .cards,
+                in: container,
+                debugDescription: "Повторяющийся идентификатор карточки"
+            )
+        }
     }
 
     func encode(to encoder: Encoder) throws {

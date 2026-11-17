@@ -20,7 +20,9 @@ struct LearningScreen: View {
     @State var renameText = ""
     @State var renameError: String?
     @State var deckToDelete: CategorySummary?
-    @State var pushTask: Task<Void, Never>?
+    @State var pushDebounceTask: Task<Void, Never>?
+    @Binding var pushGate: PushGate
+    @State var isReconciling = false
     @State var syncError: String?
     @State var lastSyncFailed = false
     @State private var isChoosingCards = false
@@ -29,7 +31,8 @@ struct LearningScreen: View {
     @State private var pendingSelectedExport = false
     @State private var exportError: String?
 
-    init() {
+    init(pushGate: Binding<PushGate>) {
+        _pushGate = pushGate
         var snapshot = LearningSnapshot()
         var loadMessage: String?
         do {
@@ -92,7 +95,7 @@ struct LearningScreen: View {
             .padding(.bottom, 20)
         }
         .sheet(isPresented: $isAddingCard) {
-            AddSessionCardScreen(availableDecks: availableDecks) { question, answer, deck in
+            SessionCardFormScreen(availableDecks: availableDecks) { question, answer, deck in
                 try addCard(question: question, answer: answer, deck: deck)
             }
         }
@@ -103,16 +106,24 @@ struct LearningScreen: View {
                 availableDecks: availableDecks,
                 onReview: { rating in try record(card, rating: rating) },
                 onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
+                onUpdate: { question, answer, deck in
+                    try updateCard(card, question: question, answer: answer, deck: deck)
+                },
                 onDelete: { try deleteCard(card) }
             )
         }
         .sheet(isPresented: $isReviewing) {
-            ReviewSessionScreen(cards: dueCards) { card, rating in
+            ReviewSessionScreen(
+                cards: dueCards.isEmpty ? aheadCards : dueCards,
+                title: dueCards.isEmpty ? "Досрочное повторение" : "Повторение"
+            ) { card, rating in
+                guard isReviewing else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
         .sheet(isPresented: $isReviewingDeck) {
             ReviewSessionScreen(cards: deckReviewCards) { card, rating in
+                guard isReviewingDeck else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
@@ -124,8 +135,16 @@ struct LearningScreen: View {
             guard phase == .active else { return }
             Task { await reconcile() }
         }
+        .onChange(of: pushGate.isManualSyncRunning) { _, isRunning in
+            guard !isRunning, hasUnsyncedChanges else { return }
+            schedulePush()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiCancelPendingPush)) { _ in
+            pushDebounceTask?.cancel()
+            pushDebounceTask = nil
         }
         .sheet(
             isPresented: $isChoosingCards,

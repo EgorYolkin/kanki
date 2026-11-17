@@ -17,6 +17,15 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(AppSection.allCases, [.learning, .notes, .graph, .settings])
     }
 
+    func testVisibleSectionsHidePlaceholderTabsByDefault() {
+        XCTAssertEqual(AppSection.visible(notesShown: false, graphShown: false),
+                       [.learning, .settings])
+        XCTAssertEqual(AppSection.visible(notesShown: true, graphShown: true),
+                       [.learning, .notes, .graph, .settings])
+        XCTAssertEqual(AppSection.visible(notesShown: false, graphShown: true),
+                       [.learning, .graph, .settings])
+    }
+
     func testTitles() {
         XCTAssertEqual(AppSection.learning.title, "Обучение")
         XCTAssertEqual(AppSection.notes.title, "Заметки")

@@ -1,17 +1,17 @@
 import SwiftUI
 
-struct AddSessionCardScreen: View {
+struct SessionCardFormScreen: View {
     /// Служебный тег пикера: включить ввод нового имени категории.
     private static let newDeckPlaceholder = "\u{1F}new-deck"
 
     private var newDeckPlaceholder: String { Self.newDeckPlaceholder }
 
     @Environment(\.dismiss) private var dismiss
-    @State private var draft = CardDraft()
+    @State private var draft: CardDraft
     @State private var saveError = ""
     @State private var showSaveError = false
 
-    /// Итоговая категория новой карточки: выбранная или введённая вручную.
+    /// Итоговая категория карточки: выбранная или введённая вручную.
     private var resolvedDeck: String? {
         CardCategory.trimmedDeck(isCreatingDeck ? newDeckName : selectedDeck)
     }
@@ -29,18 +29,22 @@ struct AddSessionCardScreen: View {
     @State private var newDeckName = ""
 
     let availableDecks: [String]
-    let initialDeck: String?
-    let onAdd: (String, String, String?) throws -> Void
+    let commitTitle: String
+    let onCommit: (String, String, String?) throws -> Void
 
+    /// Форма работает в двух режимах: создание (`CardDraft()`) и редактирование
+    /// (`CardDraft(card:)`); отличается только заголовок кнопки и исходные значения.
     init(
         availableDecks: [String],
-        initialDeck: String? = nil,
-        onAdd: @escaping (String, String, String?) throws -> Void
+        draft: CardDraft = CardDraft(),
+        commitTitle: String = "Добавить",
+        onCommit: @escaping (String, String, String?) throws -> Void
     ) {
         self.availableDecks = availableDecks
-        self.initialDeck = initialDeck
-        self.onAdd = onAdd
-        _selectedDeck = State(initialValue: initialDeck)
+        self.commitTitle = commitTitle
+        self.onCommit = onCommit
+        _draft = State(initialValue: draft)
+        _selectedDeck = State(initialValue: draft.deck)
     }
 
     var body: some View {
@@ -90,15 +94,14 @@ struct AddSessionCardScreen: View {
                     Button("Отмена") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Добавить") {
-                        if let card = draft.makeCard() {
-                            do {
-                                try onAdd(card.question, card.answer, resolvedDeck)
-                                dismiss()
-                            } catch {
-                                saveError = error.localizedDescription
-                                showSaveError = true
-                            }
+                    Button(commitTitle) {
+                        guard let card = draft.makeCard() else { return }
+                        do {
+                            try onCommit(card.question, card.answer, resolvedDeck)
+                            dismiss()
+                        } catch {
+                            saveError = error.localizedDescription
+                            showSaveError = true
                         }
                     }
                     .disabled(!canSubmit)

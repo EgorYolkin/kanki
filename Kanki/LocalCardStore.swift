@@ -23,14 +23,11 @@ enum LocalCardStore {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let snapshot = try decoder.decode(LearningSnapshot.self, from: Data(contentsOf: url))
-        let cardIDs = Set(snapshot.cards.map(\.id))
-        guard cardIDs.count == snapshot.cards.count else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
         return snapshot
     }
 
     static func save(_ snapshot: LearningSnapshot, to url: URL = fileURL) throws {
+        try snapshot.validate()
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true

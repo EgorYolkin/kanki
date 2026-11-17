@@ -17,8 +17,6 @@ final class DestinationTests: XCTestCase {
         XCTAssertEqual(Destination.editor.title, "Редактор заметки")
         XCTAssertEqual(Destination.search.title, "Поиск")
         XCTAssertEqual(Destination.library.title, "Библиотека")
-        XCTAssertEqual(Destination.merges.title, "Очередь мержей")
-        XCTAssertEqual(Destination.conflicts.title, "Конфликты")
     }
 
     func testSymbols() {
@@ -26,7 +24,5 @@ final class DestinationTests: XCTestCase {
         XCTAssertEqual(Destination.editor.symbol, "square.and.pencil")
         XCTAssertEqual(Destination.search.symbol, "magnifyingglass")
         XCTAssertEqual(Destination.library.symbol, "books.vertical")
-        XCTAssertEqual(Destination.merges.symbol, "arrow.triangle.merge")
-        XCTAssertEqual(Destination.conflicts.symbol, "exclamationmark.arrow.triangle.2.circlepath")
     }
 }

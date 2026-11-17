@@ -113,4 +113,27 @@ class UITestCase: XCTestCase {
         alert.buttons["Переименовать"].tap()
         XCTAssertTrue(categoryRow(in: app, named: newName).waitForExistence(timeout: 5))
     }
+
+    /// Включает тумблеры разделов «Заметки» и «Граф» в настройках.
+    /// Полный свайп проскакивает секцию, поэтому крутим список короткими драгами.
+    func enableSectionToggles(in app: XCUIApplication) {
+        turnOnSectionToggle("showNotesSection", in: app)
+        turnOnSectionToggle("showGraphSection", in: app)
+    }
+
+    private func turnOnSectionToggle(_ identifier: String, in app: XCUIApplication) {
+        let control = app.switches[identifier]
+        for _ in 0..<10 where !(control.exists && control.isHittable) {
+            dragListUpSlightly(in: app)
+        }
+        XCTAssertTrue(control.isHittable, "Тумблер \(identifier) вне экрана")
+        // Элемент накрывает и подпись, и кноб: тап в центр попадает в текст.
+        control.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(control.value as? String, "1", "Тумблер \(identifier) не включился")
+    }
+
+    private func dragListUpSlightly(in app: XCUIApplication) {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)))
+    }
 }
