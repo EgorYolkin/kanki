@@ -48,6 +48,8 @@ struct LearningScreen: View {
     }
 
     var body: some View {
+        // Читаем выбор в body: sheet не должен захватить предыдущую категорию.
+        let categoryCards = isReviewingDeck ? deckReviewCards : []
         List {
             if let loadError {
                 Section("Не удалось открыть карточки") {
@@ -122,7 +124,7 @@ struct LearningScreen: View {
             }
         }
         .sheet(isPresented: $isReviewingDeck) {
-            ReviewSessionScreen(cards: deckReviewCards) { card, rating in
+            ReviewSessionScreen(cards: categoryCards) { card, rating in
                 guard isReviewingDeck else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
