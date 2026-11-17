@@ -52,4 +52,37 @@ final class LocalCardStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.reviews.first?.rating, .hard)
         XCTAssertEqual(snapshot.snapshotVersion, LearningSnapshot.currentSnapshotVersion)
     }
+
+    func testSavingDuplicateCardIDsPreservesExistingSnapshotBytes() throws {
+        let url = directory.appending(path: "cards.json")
+        let card = SessionCard(
+            id: try XCTUnwrap(UUID(uuidString: "2621F15A-306C-435A-9680-AEEB602F272D")),
+            question: "Вопрос",
+            answer: "Ответ",
+            createdAt: Date(timeIntervalSince1970: 100)
+        )
+        let original = LearningSnapshot(cards: [card])
+        try LocalCardStore.save(original, to: url)
+        let originalBytes = try Data(contentsOf: url)
+        var invalid = original
+        invalid.cards.append(card)
+
+        XCTAssertThrowsError(try LocalCardStore.save(invalid, to: url))
+
+        XCTAssertEqual(try Data(contentsOf: url), originalBytes)
+        XCTAssertEqual(try LocalCardStore.load(from: url), original)
+    }
+
+    func testLoadingDuplicateCardIDsRejectsCorruptSnapshot() throws {
+        let url = directory.appending(path: "cards.json")
+        let card = """
+        {"id":"2621F15A-306C-435A-9680-AEEB602F272D",
+        "question":"Вопрос","answer":"Ответ","createdAt":"2026-01-02T03:04:05Z"}
+        """
+        let payload = Data(#"{"cards":[\#(card),\#(card)]}"#.utf8)
+        try payload.write(to: url)
+
+        XCTAssertThrowsError(try LocalCardStore.load(from: url))
+        XCTAssertEqual(try Data(contentsOf: url), payload)
+    }
 }

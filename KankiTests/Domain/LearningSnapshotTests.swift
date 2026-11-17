@@ -92,6 +92,63 @@ final class LearningSnapshotTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: data))
     }
 
+    func testRemoteSnapshotWithDuplicateCardIDsIsRejected() throws {
+        let payload = try JSONEncoder().encode(LearningSnapshot(cards: [card, card]))
+
+        XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: payload)) { error in
+            guard case DecodingError.dataCorrupted(let context) = error else {
+                return XCTFail("Expected a catchable data-corruption error, got \(error)")
+            }
+            XCTAssertEqual(context.codingPath.map(\.stringValue), ["cards"])
+        }
+    }
+
+    func testScheduleKeysDifferingOnlyByUUIDCaseAreRejected() {
+        let schedule = """
+        {"due":0,"stability":0,"difficulty":0,"elapsedDays":0,
+        "scheduledDays":0,"learningSteps":0,"reps":0,"lapses":0,"state":"new"}
+        """
+        let payload = Data(
+            """
+            {"schedules":{
+            "2621F15A-306C-435A-9680-AEEB602F272D":\(schedule),
+            "2621f15a-306c-435a-9680-aeeb602f272d":\(schedule)}}
+            """.utf8
+        )
+
+        XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: payload)) { error in
+            guard case DecodingError.dataCorrupted(let context) = error else {
+                return XCTFail("Expected a catchable data-corruption error, got \(error)")
+            }
+            XCTAssertEqual(context.codingPath.map(\.stringValue), ["schedules"])
+        }
+    }
+
+    func testSupportedVersionsKeepLegacyDefaultsAndOrphanReviews() throws {
+        for version in 1...3 {
+            let payload = Data(
+                """
+                {"snapshot_version":\(version),
+                "cards":[{"id":"2621F15A-306C-435A-9680-AEEB602F272D",
+                "question":"Вопрос","answer":"Ответ","createdAt":100}],
+                "reviews":[{"cardID":"11111111-1111-1111-1111-111111111111",
+                "rating":3,"reviewedAt":200}]}
+                """.utf8
+            )
+
+            let decoded = try JSONDecoder().decode(LearningSnapshot.self, from: payload)
+
+            XCTAssertEqual(decoded.snapshotVersion, version)
+            XCTAssertEqual(decoded.cards.count, 1)
+            XCTAssertNil(decoded.cards.first?.deck)
+            XCTAssertEqual(decoded.cards.first?.isArchived, false)
+            XCTAssertEqual(decoded.reviews.count, 1)
+            XCTAssertNotEqual(decoded.reviews.first?.cardID, decoded.cards.first?.id)
+            XCTAssertTrue(decoded.schedules.isEmpty)
+            XCTAssertTrue(decoded.deckRenames.isEmpty)
+        }
+    }
+
     func testRemovingCardAlsoRemovesItsHistoryAndScheduleWithoutChangingOtherCards() {
         let other = SessionCard(question: "Другой", answer: "Ответ")
         let review = SessionReview(cardID: card.id, rating: .good, reviewedAt: Date(timeIntervalSince1970: 300))

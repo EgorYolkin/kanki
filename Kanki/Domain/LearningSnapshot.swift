@@ -27,6 +27,19 @@ struct LearningSnapshot: Codable, Equatable {
         self.deckRenames = deckRenames
     }
 
+    enum ValidationError: Error {
+        case duplicateCardID(UUID)
+    }
+
+    func validate() throws {
+        var cardIDs = Set<UUID>(minimumCapacity: cards.count)
+        for card in cards {
+            guard cardIDs.insert(card.id).inserted else {
+                throw ValidationError.duplicateCardID(card.id)
+            }
+        }
+    }
+
     @discardableResult
     mutating func removeCard(id: UUID) -> Bool {
         guard cards.contains(where: { $0.id == id }) else { return false }
@@ -86,7 +99,8 @@ struct LearningSnapshot: Codable, Equatable {
         cards = try container.decodeIfPresent([SessionCard].self, forKey: .cards) ?? []
         reviews = try container.decodeIfPresent([SessionReview].self, forKey: .reviews) ?? []
         let stored = try container.decodeIfPresent([String: CardSchedule].self, forKey: .schedules) ?? [:]
-        schedules = try Dictionary(uniqueKeysWithValues: stored.map { key, schedule in
+        schedules = Dictionary(minimumCapacity: stored.count)
+        for (key, schedule) in stored {
             guard let id = UUID(uuidString: key) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .schedules,
@@ -94,8 +108,23 @@ struct LearningSnapshot: Codable, Equatable {
                     debugDescription: "Некорректный идентификатор карточки: \(key)"
                 )
             }
-            return (id, schedule)
-        })
+            guard schedules.updateValue(schedule, forKey: id) == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .schedules,
+                    in: container,
+                    debugDescription: "Повторяющийся идентификатор расписания: \(key)"
+                )
+            }
+        }
+        do {
+            try validate()
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .cards,
+                in: container,
+                debugDescription: "Повторяющийся идентификатор карточки"
+            )
+        }
     }
 
     func encode(to encoder: Encoder) throws {
