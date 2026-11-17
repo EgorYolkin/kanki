@@ -10,15 +10,15 @@ final class SessionLogTests: XCTestCase {
         XCTAssertEqual(log.reviews, [])
     }
 
-    func testRecordAppendsInOrderAndTracksLastRating() {
+    func testRestoredReviewsTrackCountAndLastRating() {
         let card = SessionCard(question: "Вопрос", answer: "Ответ")
         let other = SessionCard(question: "Другой", answer: "Ответ")
         let firstDate = Date(timeIntervalSince1970: 1_000)
         let secondDate = Date(timeIntervalSince1970: 2_000)
-        var log = SessionLog()
-
-        log.record(card, rating: .good, at: firstDate)
-        log.record(other, rating: .again, at: secondDate)
+        let log = SessionLog(reviews: [
+            SessionReview(cardID: card.id, rating: .good, reviewedAt: firstDate),
+            SessionReview(cardID: other.id, rating: .again, reviewedAt: secondDate)
+        ])
 
         XCTAssertEqual(log.count, 2)
         XCTAssertEqual(log.lastRating, .again)
@@ -28,23 +28,18 @@ final class SessionLogTests: XCTestCase {
         ])
     }
 
-    func testCardHistoryAndFailedWriteRollback() {
+    func testCardHistoryIsNewestFirstAndExcludesOtherCards() {
         let card = SessionCard(question: "Вопрос", answer: "Ответ")
         let other = SessionCard(question: "Другой", answer: "Ответ")
         let first = Date(timeIntervalSince1970: 1_000)
         let second = Date(timeIntervalSince1970: 2_000)
         let third = Date(timeIntervalSince1970: 3_000)
-        var log = SessionLog()
-
-        log.record(card, rating: .good, at: first)
-        log.record(other, rating: .hard, at: second)
-        log.record(card, rating: .again, at: third)
+        let log = SessionLog(reviews: [
+            SessionReview(cardID: card.id, rating: .good, reviewedAt: first),
+            SessionReview(cardID: other.id, rating: .hard, reviewedAt: second),
+            SessionReview(cardID: card.id, rating: .again, reviewedAt: third)
+        ])
         XCTAssertEqual(log.history(for: card.id).map(\.rating), [.again, .good])
         XCTAssertEqual(log.history(for: card.id).map(\.reviewedAt), [third, first])
-
-        log.discardLastRecord()
-        XCTAssertEqual(log.count, 2)
-        XCTAssertEqual(log.lastRating, .hard)
-        XCTAssertEqual(log.history(for: card.id).map(\.rating), [.good])
     }
 }
