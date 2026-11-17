@@ -33,6 +33,7 @@ extension LearningScreen {
     /// абортировать уже отправленный запрос.
     func schedulePush() {
         hasUnsyncedChanges = true
+        pushGate.markChanged()
         guard let client = serverClient() else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = Task { @MainActor in
@@ -75,17 +76,22 @@ extension LearningScreen {
         } while pushGate.finishAndNeedsAnother()
     }
 
-    /// Отправляет текущий снимок на сервер; успех фиксирует ревизию и чистоту локала.
+    /// Успех фиксирует ревизию; чистота подтверждается только для отправленного поколения.
     func pushNow(client: ServerClient) async {
+        pushDebounceTask?.cancel()
+        pushDebounceTask = nil
         let localSnapshot = snapshot
         let baseRevision = serverRevision
+        let generation = pushGate.generation
         do {
             let result = try await client.push(
                 snapshot: localSnapshot,
                 baseRevision: baseRevision
             )
             serverRevision = result.revision
-            hasUnsyncedChanges = false
+            if pushGate.isCurrent(generation) {
+                hasUnsyncedChanges = false
+            }
             lastSyncFailed = false
         } catch let error as ServerError {
             switch error {
@@ -110,13 +116,17 @@ extension LearningScreen {
     /// без тихого мержа: решение принимает `SnapshotSyncPlan`.
     func reconcile() async {
         guard let client = serverClient() else { return }
-        guard !isReconciling else { return }
+        guard !isReconciling, !pushGate.isRunning, !pushGate.isManualSyncRunning else { return }
         isReconciling = true
         defer { isReconciling = false }
         // Отменяем только ещё не начатый отложенный push; идущий PUT не трогаем.
         pushDebounceTask?.cancel()
+        pushDebounceTask = nil
+        let generation = pushGate.generation
+        let revision = serverRevision
         do {
             let remote = try await client.fetchSnapshot()
+            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             lastSyncFailed = false
             await apply(remote, client: client)
         } catch is CancellationError {
@@ -124,6 +134,7 @@ extension LearningScreen {
         } catch let error as URLError where error.code == .cancelled {
             // То же для отменённого URLSession-запроса.
         } catch {
+            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             lastSyncFailed = true
             // Сервер недоступен: тихо, повтор при следующей активации.
         }

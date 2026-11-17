@@ -190,26 +190,19 @@ extension LearningScreen {
     // MARK: - Действия
 
     func record(_ card: SessionCard, rating: RecallRating) throws {
-        let previousSchedule = schedules[card.id]
-        log.record(card, rating: rating)
-        do {
-            schedules[card.id] = try CardScheduling.nextReview(
-                for: previousSchedule,
-                rating: rating,
-                at: Date()
-            )
-            try LocalCardStore.save(snapshot)
-            schedulePush()
-        } catch {
-            log.discardLastRecord()
-            schedules[card.id] = previousSchedule
-            throw error
-        }
+        var updated = snapshot
+        try CardScheduling.record(card, rating: rating, in: &updated, at: Date())
+        try apply(updated)
     }
 
     func reload() {
         do {
             let snapshot = try LocalCardStore.load()
+            if snapshot != self.snapshot {
+                pushGate.markChanged()
+            }
+            isReviewing = false
+            isReviewingDeck = false
             cards = snapshot.cards
             log = SessionLog(reviews: snapshot.reviews)
             selectedCard = nil
