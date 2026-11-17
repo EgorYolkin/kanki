@@ -53,7 +53,6 @@ struct SessionCardFormScreen: View {
                 Section("Вопрос") {
                     TextField("Введите вопрос", text: $draft.question, axis: .vertical)
                         .lineLimit(2...5)
-                        .font(.title3.weight(.medium))
                         .accessibilityIdentifier("cardQuestion")
                 }
                 Section("Ответ") {
