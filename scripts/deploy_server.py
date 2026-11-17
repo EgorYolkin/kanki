@@ -43,6 +43,21 @@ def ssh(target: str, command: str, *, input_text: str | None = None, dry_run: bo
     return run(["ssh", target, command], input_text=input_text, dry_run=dry_run)
 
 
+def issue_device_token(target: str, port: int, label: str, admin_token: str) -> str:
+    """Issue a device token without placing the admin credential in argv or logs."""
+    response = ssh(
+        target,
+        (
+            f"curl -fsS -X POST http://127.0.0.1:{port}/v1/tokens "
+            "-H @- -H 'Content-Type: application/json' "
+            f"-d {shlex.quote(json.dumps({'label': label}))}"
+        ),
+        input_text=f"Authorization: Bearer {admin_token}\n",
+        dry_run=False,
+    )
+    return json.loads(response)["token"]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ssh", required=True, help="user@host or user@tailscale-ip")
@@ -171,17 +186,7 @@ WantedBy=default.target
     if not health:
         raise SystemExit("server did not become healthy; check: systemctl --user status kanki-server")
 
-    token_json = ssh(
-        args.ssh,
-        (
-            f"curl -fsS -X POST http://127.0.0.1:{args.port}/v1/tokens "
-            f"-H {shlex.quote(f'Authorization: Bearer {admin_token}')} "
-            "-H 'Content-Type: application/json' "
-            f"-d {shlex.quote(json.dumps({'label': args.label}))}"
-        ),
-        dry_run=False,
-    )
-    token = json.loads(token_json)["token"]
+    token = issue_device_token(args.ssh, args.port, args.label, admin_token)
 
     print()
     print("Kanki server is running on loopback; nginx must terminate TLS.")

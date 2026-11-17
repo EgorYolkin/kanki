@@ -101,8 +101,13 @@ python3 scripts/deploy_server.py --ssh user@server-ip
 ssh user@server-ip 'curl -LsSf https://astral.sh/uv/install.sh | sh'
 ```
 
-Admin-токен не печатается. Он лежит в `~/kanki-server/.env` с правами `0600`;
-храните его как пароль и не коммитьте.
+Admin-токен передаётся команде выпуска device-токена через stdin SSH и `curl -H @-`,
+а не в аргументах процесса или журнале команд. Он лежит в `~/kanki-server/.env`
+с правами `0600`; храните его как пароль и не коммитьте.
+
+Локальная проверка этой границы: `python3 -m unittest scripts.tests.test_deploy_server -v`
+из корня репозитория. Она использует синтетический токен и настоящий HTTP на loopback,
+не подключается по SSH и не выполняет деплой.
 
 ## MCP для агентов
 
