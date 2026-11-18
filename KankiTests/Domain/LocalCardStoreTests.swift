@@ -52,7 +52,8 @@ final class LocalCardStoreTests: XCTestCase {
         XCTAssertNil(snapshot.cards[0].deck, "Старый снимок без категории → «Без категории»")
         XCTAssertFalse(snapshot.cards[0].isArchived, "Старый снимок без архива → карточка активна")
         XCTAssertEqual(snapshot.reviews.first?.rating, .hard)
-        XCTAssertEqual(snapshot.snapshotVersion, LearningSnapshot.currentSnapshotVersion)
+        XCTAssertEqual(snapshot.snapshotVersion, 3)
+        XCTAssertTrue(snapshot.lessons.isEmpty)
 
         var updated = snapshot
         XCTAssertTrue(updated.updateCard(id: snapshot.cards[0].id, question: "Новый вопрос", answer: "Ответ", deck: nil))
@@ -173,6 +174,52 @@ final class LocalCardStoreTests: XCTestCase {
         }
         XCTAssertEqual(try Data(contentsOf: token), tokenBytes)
         XCTAssertEqual(try LocalCardStore.load(from: url), LearningSnapshot())
+    }
+
+    func testFirstAndLastLessonPersistWithoutLosingPriorProgress() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
+        let date = Date(timeIntervalSince1970: 100)
+        var old = makeSnapshot(question: "Старый вопрос")
+        let member = old.cards[0]
+        try CardScheduling.record(member, rating: .good, in: &old, at: date)
+        XCTAssertTrue(old.setArchived(true, cardID: member.id))
+        old.deckRenames = [DeckRename(from: "a", to: "б")]
+        old.snapshotVersion = 2
+        try writeLegacy(old, to: legacy)
+        let legacyBytes = try Data(contentsOf: legacy)
+
+        var candidate = try LocalCardStore.load(from: url)
+        XCTAssertEqual(candidate, old)
+        let lessonID = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
+        try candidate.createLesson(id: lessonID, title: "Первый", course: "Курс", sourceURL: nil, createdAt: date)
+        candidate.lessons[0].cardIDs = [member.id]
+        try LocalCardStore.save(candidate, to: url)
+        var reopened = try LocalCardStore.load(from: url)
+        XCTAssertEqual(reopened, candidate)
+        XCTAssertEqual(reopened.cards, old.cards)
+        XCTAssertEqual(reopened.reviews, old.reviews)
+        XCTAssertEqual(reopened.schedules, old.schedules)
+        try reopened.removeLesson(id: lessonID)
+        try LocalCardStore.save(reopened, to: url)
+        XCTAssertEqual(try LocalCardStore.load(from: url), reopened)
+        XCTAssertEqual(reopened.snapshotVersion, 4)
+        XCTAssertEqual(try Data(contentsOf: legacy), legacyBytes)
+    }
+
+    func testInvalidLessonCannotReplacePersistedSnapshot() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        var valid = makeSnapshot(question: "Сохранённая карточка")
+        let id = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
+        try valid.createLesson(id: id, title: "Сохранённый урок", course: nil, sourceURL: nil, createdAt: Date(timeIntervalSince1970: 100))
+        try LocalCardStore.save(valid, to: url)
+        let originalBytes = try Data(contentsOf: url)
+        var invalid = valid
+        invalid.lessons[0].cardIDs = [id]
+        XCTAssertThrowsError(try LocalCardStore.save(invalid, to: url))
+        XCTAssertThrowsError(try LocalCardStore.replaceFromConfirmedPull(invalid, to: url))
+        XCTAssertEqual(try Data(contentsOf: url), originalBytes)
+        XCTAssertEqual(try LocalCardStore.load(from: url), valid)
     }
 
     private func writeLegacy(_ snapshot: LearningSnapshot, to url: URL) throws {
