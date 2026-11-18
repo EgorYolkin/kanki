@@ -170,6 +170,19 @@ final class ReviewQueueTests: XCTestCase {
         ).isEmpty)
     }
 
+    func testAheadModeRequiresNonemptyEntirelyFutureQueue() {
+        let future = categoryCard(1, deck: "Математика")
+        let due = categoryCard(2, deck: nil)
+        let fresh = categoryCard(3, deck: "Физика")
+        let schedules = [future.id: schedule(due: 20_000), due.id: schedule(due: 10_000)]
+
+        XCTAssertTrue(ReviewQueue.isAheadReview([future], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([due], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([fresh], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([future, due], schedules: schedules, at: now))
+    }
+
     private func categoryCard(_ index: Int, deck: String?) -> SessionCard {
         SessionCard(
             id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, UInt8(index))),
