@@ -30,7 +30,7 @@ struct ImportedCardsScreen: View {
                     NavigationLink {
                         ImportedCardScreen(key: card.id)
                     } label: {
-                        Text(card.title)
+                        Text(ImportedCardHTML.displayTitle(card.title))
                     }
                     .accessibilityIdentifier("importedCard-\(card.guid)")
                 }
@@ -124,7 +124,7 @@ private struct ImportedCardScreen: View {
             }
         }
         .padding()
-        .navigationTitle(detail?.content.title ?? "Карточка")
+        .navigationTitle(html?.title ?? "Карточка")
         .toolbarTitleDisplayMode(.inline)
         .task { reload() }
     }
@@ -170,6 +170,7 @@ private struct ImportedCardScreen: View {
     private func record(_ rating: RecallRating, shown: ImportedCardDetail) {
         do {
             detail = try LocalCardStore.recordImportedReview(key, shown: shown, rating: rating, at: .now)
+            isAnswerRevealed = false
             error = nil
         } catch {
             self.error = "Не удалось сохранить оценку: \(error.localizedDescription)"

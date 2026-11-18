@@ -51,6 +51,7 @@ struct ImportedCardWebView: WebViewRepresentable {
 }
 
 struct ImportedCardHTML {
+    let title: String
     let question: String
     let revealed: String
 
@@ -58,15 +59,34 @@ struct ImportedCardHTML {
         // No attributes (including href, style, src), scripts, template HTML or media enter the page.
         let allowed = try Whitelist.none().addTags("p", "br", "b", "strong", "i", "em", "ul", "ol", "li", "code", "pre")
         let output = OutputSettings().prettyPrint(pretty: false)
+        title = Self.displayTitle(content.title)
         let question = if content.question.isEmpty {
             // The server exports Title as escaped text; never interpret it as markup.
-            try Entities.escape(Entities.unescape(content.title), output)
+            Entities.escape(title, output)
         } else {
             try SwiftSoup.clean(content.question, "", allowed, output) ?? ""
         }
         let answer = try SwiftSoup.clean(content.answer, "", allowed, output) ?? ""
         self.question = Self.page(question)
-        revealed = Self.page("\(question)<hr>\(answer)")
+        revealed = Self.page("\(question)<hr>\(answer)\(Self.relations(content.relations, output: output))")
+    }
+
+    static func displayTitle(_ title: String) -> String {
+        // Keep the raw text displayable if entity parsing fails; never interpret it as markup.
+        (try? Entities.unescape(title)) ?? title
+    }
+
+    private static func relations(_ relations: [AnkiE1Import.Relation], output: OutputSettings) -> String {
+        guard !relations.isEmpty else { return "" }
+        var fragment = "<p>Связи</p><ul>"
+        for relation in relations {
+            var text = "\(relation.kind.rawValue) → \(relation.targetUID)"
+            if let note = relation.note, !note.isEmpty {
+                text += ": \(note)"
+            }
+            fragment += "<li>\(Entities.escape(text, output))</li>"
+        }
+        return fragment + "</ul>"
     }
 
     private static func page(_ fragment: String) -> String {

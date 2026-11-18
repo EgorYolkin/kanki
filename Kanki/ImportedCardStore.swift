@@ -13,6 +13,7 @@ struct ImportedCardContent: Equatable, Decodable, FetchableRecord {
     let title: String
     let question: String
     let answer: String
+    let relations: [AnkiE1Import.Relation]
     let mod: Int64
 }
 
@@ -102,7 +103,7 @@ extension LocalCardStore {
 
     private static func importedContent(_ key: AnkiE1Import.CardKey, in db: Database) throws -> ImportedCardContent? {
         let sql = """
-            SELECT n.title, n.question, n.answer, n.mod FROM note_cards c JOIN notes n ON n.guid = c.guid
+            SELECT n.title, n.question, n.answer, n.relations, n.mod FROM note_cards c JOIN notes n ON n.guid = c.guid
             WHERE c.guid = ? AND c.ord = ?
             """
         return try ImportedCardContent.fetchOne(db, sql: sql, arguments: [key.guid, key.ord])

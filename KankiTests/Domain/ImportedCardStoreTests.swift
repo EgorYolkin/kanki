@@ -69,6 +69,7 @@ final class ImportedCardStoreTests: XCTestCase {
             title: "Карточка",
             question: #"<p onclick="ignored()">Вопрос <strong>Km</strong></p><script>script text</script>"#,
             answer: #"<a href="https://invalid.example/">Ответ</a><img src="file:///private/local"><pre> a   b</pre>"#,
+            relations: [],
             mod: 1
         )
         let html = try ImportedCardHTML(content: content)
@@ -86,11 +87,32 @@ final class ImportedCardStoreTests: XCTestCase {
             title: "Выражение: &lt;x&gt; &amp; y",
             question: "",
             answer: "<p>Ответ <strong>здесь</strong></p>",
+            relations: [],
             mod: 1
         )
         let html = try ImportedCardHTML(content: content)
         XCTAssertTrue(html.question.contains("<body>Выражение: &lt;x&gt; &amp; y</body>"))
         XCTAssertTrue(html.revealed.contains("<body>Выражение: &lt;x&gt; &amp; y<hr><p>Ответ <strong>здесь</strong></p></body>"))
+    }
+
+    func testRelationsAreVisibleAsLiteralTextOnlyAfterRevealWithEmptyAnswer() throws {
+        let content = ImportedCardContent(
+            title: "Синтетика &lt;x&gt; &amp;lt;y&amp;gt;",
+            question: "<p>Вопрос</p>",
+            answer: "",
+            relations: [
+                .init(kind: .requires, targetUID: "n-first", note: "<img src='fixture'> &lt;tag&gt;"),
+                .init(kind: .related, targetUID: "n-second", note: nil)
+            ],
+            mod: 1
+        )
+        let html = try ImportedCardHTML(content: content)
+        XCTAssertEqual(html.title, "Синтетика <x> &lt;y&gt;")
+        XCTAssertFalse(html.question.contains("n-first"))
+        XCTAssertTrue(html.revealed.contains(
+            "<li>requires → n-first: &lt;img src='fixture'&gt; &amp;lt;tag&amp;gt;</li><li>related → n-second</li>"
+        ))
+        XCTAssertFalse(html.revealed.contains("<img"))
     }
 
     // These three packages come from experiments/e1.py generate with genanki 0.13.1.
