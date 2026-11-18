@@ -12,45 +12,102 @@ extension SessionCardUITests {
         let cards: [ExportedCard]
     }
 
-    func saveExport(in app: XCUIApplication, folder: String) throws -> [ExportedCard] {
-        let save = app.buttons["Save"]
-        XCTAssertTrue(save.waitForExistence(timeout: 45), "Системный диалог экспорта не открылся")
+    private struct FilesLabels {
+        let localLocation: String
+        let browse: String
+        let newFolder: String
+        let keyboardContinue: String
+        let actionsMenu: String
+        let emptyFolder: String
 
-        // Оба экспорта предлагают одно имя; сохраняем их в разные новые папки.
-        let localTitle = app.navigationBars.staticTexts["On My iPhone"]
-        let localLocation = app.staticTexts["On My iPhone"]
-        let browse = app.navigationBars.buttons["Browse"]
-        let back = app.navigationBars.buttons["On My iPhone"]
-        if !localTitle.exists {
-            if back.exists {
-                back.tap()
-            } else {
-                if browse.exists {
-                    browse.tap()
-                }
-                XCTAssertTrue(localLocation.waitForExistence(timeout: 5))
-                localLocation.tap()
+        static func forSystemLanguage() throws -> Self {
+            // The Files picker is localized by iOS, independently of Kanki's Russian UI.
+            let language = Locale.preferredLanguages.first.flatMap { Locale(identifier: $0).language.languageCode?.identifier }
+            switch language {
+            case "en":
+                return Self(
+                    localLocation: "On My iPhone",
+                    browse: "Browse",
+                    newFolder: "New Folder",
+                    keyboardContinue: "Continue",
+                    actionsMenu: "Actions Menu",
+                    emptyFolder: "Folder is Empty"
+                )
+            case "ru":
+                return Self(
+                    localLocation: "На\u{00A0}iPhone",
+                    browse: "Обзор",
+                    newFolder: "Новая папка",
+                    keyboardContinue: "Продолжить",
+                    actionsMenu: "Меню действий",
+                    emptyFolder: "Папка пуста"
+                )
+            default:
+                throw UnsupportedFilesLanguage(language: language)
             }
         }
-        XCTAssertTrue(localTitle.waitForExistence(timeout: 5))
-        let more = app.navigationBars.buttons["More"]
-        let newFolder = app.buttons["New Folder"]
+    }
+
+    private struct UnsupportedFilesLanguage: LocalizedError {
+        let language: String?
+
+        var errorDescription: String? {
+            "Нет подписей Files для системного языка \(language ?? "unknown"); используйте ru или en"
+        }
+    }
+
+    func saveExport(in app: XCUIApplication, folder: String) throws -> [ExportedCard] {
+        let labels = try FilesLabels.forSystemLanguage()
+        let save = app.buttons.matching(identifier: "DOCPicker.actionButton").element
+        XCTAssertTrue(save.waitForExistence(timeout: 45), "Системный диалог экспорта не открылся: \(app.debugDescription)")
+
+        // Оба экспорта предлагают одно имя; сохраняем их в разные новые папки.
+        let localRoot = app.otherElements.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "DOC.browsingRoot Source: com.apple.FileProvider.LocalStorage,"
+        )).element
+        let browse = app.navigationBars.buttons[labels.browse]
+        if !localRoot.exists {
+            if browse.exists {
+                browse.tap()
+            }
+            let localLocation = app.staticTexts[labels.localLocation]
+            XCTAssertTrue(localLocation.waitForExistence(timeout: 5), app.debugDescription)
+            localLocation.tap()
+        }
+        XCTAssertTrue(localRoot.waitForExistence(timeout: 5), app.debugDescription)
+
+        // Files оставляет корневой контейнер в AX-дереве и внутри вложенных папок.
+        // В корне кнопка «назад» ведёт к «Обзору», а не к родительской папке.
+        let back = localRoot.navigationBars.buttons.matching(identifier: "BackButton").element
+        for _ in 0..<5 {
+            if browse.exists && browse.isHittable { break }
+            XCTAssertTrue(back.exists, app.debugDescription)
+            back.tap()
+        }
+        XCTAssertTrue(browse.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(browse.isHittable, app.debugDescription)
+
+        let more = app.navigationBars.buttons.matching(identifier: "TopOverflowBarButtonItem").element
+        let newFolder = app.buttons[labels.newFolder]
+        XCTAssertTrue(more.waitForExistence(timeout: 5), app.debugDescription)
         more.tap()
         // При возврате из папки первый тап может попасть на анимацию перехода.
         if !newFolder.waitForExistence(timeout: 3) {
             more.tap()
-            XCTAssertTrue(newFolder.waitForExistence(timeout: 5))
+            XCTAssertTrue(newFolder.waitForExistence(timeout: 5), app.debugDescription)
         }
         newFolder.tap()
         let name = app.collectionViews.textViews.firstMatch
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        let keyboardIntro = app.buttons["Continue"]
+        let keyboardIntro = app.buttons[labels.keyboardContinue]
         if keyboardIntro.exists && keyboardIntro.isHittable {
             keyboardIntro.tap()
         }
         name.typeText(folder + XCUIKeyboardKey.return.rawValue)
-        XCTAssertTrue(app.navigationBars.buttons["\(folder), Actions Menu"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Folder is Empty"].waitForExistence(timeout: 10))
+        let title = app.navigationBars.buttons["\(folder), \(labels.actionsMenu)"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts[labels.emptyFolder].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(name.waitForNonExistence(timeout: 10))
 
         save.tap()
