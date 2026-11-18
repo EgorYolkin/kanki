@@ -22,6 +22,9 @@ final class MacShellUITests: XCTestCase {
         app.typeKey("3", modifierFlags: .command)
         XCTAssertEqual(app.windows.firstMatch.title, "Обучение")
 
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertEqual(waitForWindowTitle("Статистика", in: app), .completed)
+
         app.typeKey("4", modifierFlags: .command)
         XCTAssertEqual(waitForWindowTitle("Настройки", in: app), .completed)
         // На macOS подпись `Label` попадает в `value`, а не в `label`, поэтому
@@ -53,7 +56,9 @@ final class MacShellUITests: XCTestCase {
         let any = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
         let target = control.exists ? control : (checkBox.exists ? checkBox : any)
         XCTAssertTrue(target.waitForExistence(timeout: 20), "Нет тумблера \(identifier)")
-        target.tap()
+        target.click()
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 1"), object: target)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 5), .completed, "Не включён \(identifier): \(target.debugDescription)")
     }
 
     /// Заголовок окна меняется вместе с `navigationTitle` раздела, поэтому

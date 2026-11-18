@@ -172,6 +172,7 @@ private struct ImportedCardScreen: View {
     private func record(_ rating: RecallRating, shown: ImportedCardDetail) {
         do {
             detail = try LocalCardStore.recordImportedReview(key, shown: shown, rating: rating, at: .now)
+            ServerClient.scheduleActivityUpload()
             isAnswerRevealed = false
             error = nil
         } catch {

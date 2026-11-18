@@ -11,19 +11,19 @@ final class AppSectionTests: XCTestCase {
     }
 
     func testShortcutNumbersMatchTabOrder() {
-        // ⌘1…⌘4 на macOS берутся из rawValue, поэтому нумерация обязана идти
-        // подряд от единицы в порядке вкладок.
-        XCTAssertEqual(AppSection.allCases.map(\.rawValue), [1, 2, 3, 4])
-        XCTAssertEqual(AppSection.allCases, [.learning, .notes, .graph, .settings])
+        XCTAssertEqual(AppSection.allCases.map(\.rawValue), [1, 2, 3, 4, 5])
+        XCTAssertEqual(AppSection.allCases, [.learning, .notes, .graph, .settings, .statistics])
     }
 
     func testVisibleSectionsHidePlaceholderTabsByDefault() {
         XCTAssertEqual(AppSection.visible(notesShown: false, graphShown: false),
-                       [.learning, .settings])
+                       [.learning, .settings, .statistics])
         XCTAssertEqual(AppSection.visible(notesShown: true, graphShown: true),
-                       [.learning, .notes, .graph, .settings])
+                       [.learning, .notes, .graph, .settings, .statistics])
         XCTAssertEqual(AppSection.visible(notesShown: false, graphShown: true),
-                       [.learning, .graph, .settings])
+                       [.learning, .graph, .settings, .statistics])
+        XCTAssertEqual(AppSection.visible(notesShown: true, graphShown: false),
+                       [.learning, .notes, .settings, .statistics])
     }
 
     func testTitles() {
@@ -31,6 +31,7 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(AppSection.notes.title, "Заметки")
         XCTAssertEqual(AppSection.graph.title, "Граф")
         XCTAssertEqual(AppSection.settings.title, "Настройки")
+        XCTAssertEqual(AppSection.statistics.title, "Статистика")
     }
 
     func testSymbols() {
@@ -38,5 +39,6 @@ final class AppSectionTests: XCTestCase {
         XCTAssertEqual(AppSection.notes.symbol, "note.text")
         XCTAssertEqual(AppSection.graph.symbol, "circle.hexagongrid")
         XCTAssertEqual(AppSection.settings.symbol, "gearshape")
+        XCTAssertEqual(AppSection.statistics.symbol, "chart.bar")
     }
 }

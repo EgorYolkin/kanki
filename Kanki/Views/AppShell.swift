@@ -64,6 +64,10 @@ struct AppShell: View {
             NavigationStack {
                 SettingsScreen(pushGate: $pushGate, syncProblem: $syncProblem)
             }
+        case .statistics:
+            NavigationStack {
+                StatisticsScreen()
+            }
         }
     }
 }

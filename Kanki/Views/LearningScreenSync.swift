@@ -20,7 +20,7 @@ extension LearningScreen {
     private func serverCredentials() -> (ServerConfiguration, String)? {
         guard let configuration = ServerConfiguration(rawValue: serverURL) else { return nil }
         do {
-            guard let stored = try ServerTokenStore.load() else { return nil }
+            guard let stored = try ServerTokenStore.load(for: configuration) else { return nil }
             let token = stored.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !token.isEmpty else { return nil }
             return (configuration, token)
@@ -83,7 +83,7 @@ extension LearningScreen {
 
     /// Успех фиксирует ревизию; чистота подтверждается только для отправленного поколения.
     func pushNow(client: ServerClient) async {
-        guard loadError == nil else { return }
+        guard loadError == nil, client.usesCurrentCredentials else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = nil
         let localSnapshot = snapshot
@@ -94,13 +94,14 @@ extension LearningScreen {
                 snapshot: localSnapshot,
                 baseRevision: baseRevision
             )
+            guard client.usesCurrentCredentials else { return }
             serverRevision = result.revision
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
             }
             syncProblem = nil
         } catch {
-            guard let problem = SyncStatus.Problem(error: error) else { return }
+            guard client.usesCurrentCredentials, let problem = SyncStatus.Problem(error: error) else { return }
             recordSyncProblem(problem)
             if problem == .unauthorized {
                 operationAlert = problem.text
@@ -129,10 +130,11 @@ extension LearningScreen {
         let revision = serverRevision
         do {
             let remote = try await client.fetchSnapshot()
-            guard loadError == nil, pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
+            guard client.usesCurrentCredentials, loadError == nil,
+                  pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             await apply(remote, client: client)
         } catch {
-            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
+            guard client.usesCurrentCredentials, pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
                   let problem = SyncStatus.Problem(error: error) else { return }
             recordSyncProblem(problem)
         }
