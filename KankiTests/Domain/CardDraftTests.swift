@@ -13,24 +13,23 @@ final class CardDraftTests: XCTestCase {
         let draft = CardDraft(question: "  \n ", answer: "\t")
 
         XCTAssertFalse(draft.canSubmit)
+        XCTAssertTrue(draft.isBlank)
         XCTAssertNil(draft.makeCard())
     }
 
     func testBothFieldsRequired() {
+        XCTAssertFalse(CardDraft(question: "Вопрос").isBlank)
         XCTAssertFalse(CardDraft(question: "Вопрос", answer: "").canSubmit)
         XCTAssertFalse(CardDraft(question: "", answer: "Ответ").canSubmit)
         XCTAssertTrue(CardDraft(question: "Вопрос", answer: "Ответ").canSubmit)
     }
 
-    func testTrimming() {
+    func testCreatingPreservesWhitespaceInNonblankFields() {
         let draft = CardDraft(question: "  Почему небо голубое? \n", answer: "\t Рассеяние света  ")
 
-        XCTAssertEqual(draft.trimmedQuestion, "Почему небо голубое?")
-        XCTAssertEqual(draft.trimmedAnswer, "Рассеяние света")
-
         let card = draft.makeCard()
-        XCTAssertEqual(card?.question, "Почему небо голубое?")
-        XCTAssertEqual(card?.answer, "Рассеяние света")
+        XCTAssertEqual(card?.question, draft.question)
+        XCTAssertEqual(card?.answer, draft.answer)
     }
 
     func testEditingKeepsIdentityAndRejectsEmptyQuestion() {
@@ -57,8 +56,8 @@ final class CardDraftTests: XCTestCase {
 
         XCTAssertEqual(updated?.id, id)
         XCTAssertEqual(updated?.createdAt, createdAt)
-        XCTAssertEqual(updated?.question, "Новый вопрос")
-        XCTAssertEqual(updated?.answer, "Новый ответ")
+        XCTAssertEqual(updated?.question, draft.question)
+        XCTAssertEqual(updated?.answer, draft.answer)
         XCTAssertEqual(updated?.deck, "Физика")
         XCTAssertEqual(updated?.isArchived, true)
 

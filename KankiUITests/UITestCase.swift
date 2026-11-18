@@ -30,13 +30,30 @@ class UITestCase: XCTestCase {
         XCTAssertLessThanOrEqual(add.frame.maxY, tabBar.frame.minY, "Кнопка не должна перекрывать таб-бар")
     }
 
+    func chooseAddAction(_ title: String, in app: XCUIApplication) {
+        app.buttons["addSessionCard"].tap()
+        let action = app.buttons[title]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.tap()
+    }
+
+    func enterCardText(in app: XCUIApplication, question: String, answer: String) {
+        let questionEditor = app.textViews["cardQuestion"]
+        XCTAssertTrue(questionEditor.waitForExistence(timeout: 5))
+        questionEditor.tap()
+        questionEditor.typeText(question)
+        let answerEditor = app.textViews["cardAnswer"]
+        answerEditor.tap()
+        answerEditor.typeText(answer)
+    }
+
     func addCard(
         in app: XCUIApplication,
         question: String,
         answer: String,
         deck: Deck = .none
     ) {
-        app.buttons["addSessionCard"].tap()
+        chooseAddAction("Новая карточка", in: app)
         XCTAssertTrue(app.navigationBars["Карточка"].waitForExistence(timeout: 5))
 
         switch deck {
@@ -52,14 +69,8 @@ class UITestCase: XCTestCase {
             nameField.typeText(name)
         }
 
-        let questionField = app.descendants(matching: .any)["cardQuestion"]
-        let answerField = app.descendants(matching: .any)["cardAnswer"]
-        // У многострочного поля первая строка выше центра области.
-        questionField.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25)).tap()
-        questionField.typeText(question)
-        answerField.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25)).tap()
-        answerField.typeText(answer)
-        let add = app.buttons["Добавить"]
+        enterCardText(in: app, question: question, answer: answer)
+        let add = app.navigationBars["Карточка"].buttons["Добавить"]
         XCTAssertTrue(add.isEnabled, "Кнопка «Добавить» заблокирована")
         add.tap()
         XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
@@ -76,6 +87,7 @@ class UITestCase: XCTestCase {
 
     func openAllCards(in app: XCUIApplication) {
         let link = app.buttons["Все карточки"]
+        scrollTo(link, in: app)
         XCTAssertTrue(link.waitForExistence(timeout: 5), "Нет перехода «Все карточки»")
         link.tap()
         XCTAssertTrue(app.navigationBars["Все карточки"].waitForExistence(timeout: 5))

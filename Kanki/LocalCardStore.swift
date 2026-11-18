@@ -42,7 +42,6 @@ enum LocalCardStore {
     }
 
     private static func encode(_ snapshot: LearningSnapshot) throws -> Data {
-        try snapshot.validate()
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys]
