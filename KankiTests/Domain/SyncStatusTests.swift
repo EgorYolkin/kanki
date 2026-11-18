@@ -64,6 +64,18 @@ final class SyncStatusTests: XCTestCase {
         XCTAssertEqual(SyncStatus.retainingConflict(.unavailable, onFailure: .unauthorized), .unauthorized)
     }
 
+    func testFailedSaveAfterFetchReplacesNetworkFailureWithoutConfirmingRevision() {
+        let problem = SyncStatus.retainingConflict(.unavailable, onFailure: .localSaveFailed)
+        let text = SyncStatus.text(
+            isConfigured: true,
+            problem: problem,
+            hasUnsyncedChanges: false,
+            knownRevision: 12
+        )
+
+        XCTAssertEqual(text, "Снимок получен, но не сохранён на устройстве")
+    }
+
     func testCancellationDoesNotBecomeAFailure() {
         XCTAssertNil(SyncStatus.Problem(error: CancellationError()))
         XCTAssertNil(SyncStatus.Problem(error: URLError(.cancelled)))

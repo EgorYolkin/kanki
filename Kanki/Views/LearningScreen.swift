@@ -25,15 +25,16 @@ struct LearningScreen: View {
     @Binding var pushGate: PushGate
     @State var isReconciling = false
     @State var operationAlert: String?
-    @State var syncProblem: SyncStatus.Problem?
+    @Binding var syncProblem: SyncStatus.Problem?
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
     @State private var pendingSelectedExport = false
     @State private var exportError: String?
 
-    init(pushGate: Binding<PushGate>) {
+    init(pushGate: Binding<PushGate>, syncProblem: Binding<SyncStatus.Problem?>) {
         _pushGate = pushGate
+        _syncProblem = syncProblem
         var snapshot = LearningSnapshot()
         var loadMessage: String?
         do {
@@ -137,6 +138,8 @@ struct LearningScreen: View {
         }
         .onAppear(perform: reload)
         .task {
+            // Возврат из настроек не должен сразу подменить подтверждённый 409 новой сверкой.
+            if case .conflict = syncProblem { return }
             await reconcile()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -146,12 +149,6 @@ struct LearningScreen: View {
         .onChange(of: pushGate.isManualSyncRunning) { _, isRunning in
             guard !isRunning, hasUnsyncedChanges else { return }
             schedulePush()
-        }
-        .onChange(of: serverURL) { _, _ in
-            syncProblem = nil
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .kankiManualSyncSucceeded)) { _ in
-            syncProblem = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: .kankiSnapshotReloaded)) { _ in
             reload()

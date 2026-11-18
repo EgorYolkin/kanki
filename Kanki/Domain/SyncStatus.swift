@@ -9,6 +9,7 @@ enum SyncStatus {
         case conflict(currentRevision: Int)
         case unauthorized
         case unavailable
+        case localSaveFailed
         case failed
 
         init?(error: Error) {
@@ -30,6 +31,7 @@ enum SyncStatus {
             case .conflict: "Конфликт ревизий — разрешите в настройках"
             case .unauthorized: "Токен отклонён — проверьте настройки сервера"
             case .unavailable: "Сервер недоступен — повтор при следующем открытии"
+            case .localSaveFailed: "Снимок получен, но не сохранён на устройстве"
             case .failed: "Не удалось синхронизировать — повтор при следующем открытии"
             }
         }

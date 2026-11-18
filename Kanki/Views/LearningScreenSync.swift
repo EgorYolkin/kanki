@@ -154,7 +154,7 @@ extension LearningScreen {
             do {
                 try LocalCardStore.save(remoteSnapshot)
             } catch {
-                loadError = "Не удалось сохранить загруженный снимок: \(error.localizedDescription)"
+                recordSyncProblem(.localSaveFailed)
                 return
             }
             serverRevision = remote.revision
@@ -172,7 +172,4 @@ extension Notification.Name {
     /// Ручные push/pull из настроек: отменить ещё не начатый авто-push,
     /// чтобы он не ушёл параллельно и не дал ложный 409.
     static let kankiCancelPendingPush = Notification.Name("kanki.cancelPendingPush")
-
-    /// Успешный ручной обмен сбрасывает ошибку предыдущей автосинхронизации.
-    static let kankiManualSyncSucceeded = Notification.Name("kanki.manualSyncSucceeded")
 }
