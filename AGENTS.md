@@ -39,6 +39,12 @@ Repository-wide rules are here. Directory rules add local constraints and are ma
 
 If two rules conflict, the directory rule wins for files inside that directory; the quality gates in `docs/quality-gates.md` win over both.
 
+For every backend change, update the [canonical API guide](server/kanki_server/guide.md)
+and its dated change history in the same PR. If client behavior is unchanged,
+say so in the entry. Follow the [backend guide rule](docs/quality-gates.md#единые-правила-разработки).
+The `kanki-cards` skill reads `GET /v1/guide.md` from the configured server;
+do not maintain a separate copy of the protocol in the skill.
+
 ## Architecture & Data Flow
 
 `Kanki/KankiApp.swift` contains the `@main` entry point and the `--reset-store` / `--reset-server` / `--reset-sections` launch hooks; the persisted theme lives in `Kanki/Views/AppShell.swift` (`@AppStorage("appearance")` and `.preferredColorScheme`), so changing it in Settings re-renders the whole shell. `AppShell` builds the `TabView` from the visible sections of `AppSection` (`learning`, `notes`, `graph`, `settings`): «Обучение» and «Настройки» are always shown, «Заметки» and «Граф» stay hidden until the Settings toggles (`showNotesSection` / `showGraphSection`) enable them, and each visible tab keeps its own `NavigationStack`. The selected section is bound from `KankiApp`, so the tabs, the ⌘1–⌘4 menu on macOS (`SectionCommands`, compiled only under `#if os(macOS)`, shortcut numbers stable per `AppSection.rawValue`) and its `defaultSize` window share one source of truth; hiding the selected section falls back to «Обучение». `ImportedNoteRoute` connects the import, library, note and first-order graph screens through `.navigationDestination(for:)` in all three stacks. The library and graph read the local import through `LocalCardStore`; `SectionIntro` wraps `ContentUnavailableView` for empty states.

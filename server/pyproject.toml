@@ -34,3 +34,6 @@ asyncio_mode = "auto"
 
 [tool.setuptools.packages.find]
 include = ["kanki_server*"]
+
+[tool.setuptools.package-data]
+kanki_server = ["guide.md"]
