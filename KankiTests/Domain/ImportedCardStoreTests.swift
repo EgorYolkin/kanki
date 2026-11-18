@@ -81,6 +81,18 @@ final class ImportedCardStoreTests: XCTestCase {
         XCTAssertFalse(html.revealed.contains("file:///"))
     }
 
+    func testCardWithEmptyQuestionUsesEscapedTitleBeforeAndAfterReveal() throws {
+        let content = ImportedCardContent(
+            title: "Выражение: &lt;x&gt; &amp; y",
+            question: "",
+            answer: "<p>Ответ <strong>здесь</strong></p>",
+            mod: 1
+        )
+        let html = try ImportedCardHTML(content: content)
+        XCTAssertTrue(html.question.contains("<body>Выражение: &lt;x&gt; &amp; y</body>"))
+        XCTAssertTrue(html.revealed.contains("<body>Выражение: &lt;x&gt; &amp; y<hr><p>Ответ <strong>здесь</strong></p></body>"))
+    }
+
     // These three packages come from experiments/e1.py generate with genanki 0.13.1.
     private func fixture(_ name: String) throws -> URL {
         try XCTUnwrap(Bundle(for: Self.self).url(forResource: name, withExtension: "apkg"))

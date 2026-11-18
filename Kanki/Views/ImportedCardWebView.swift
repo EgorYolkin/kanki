@@ -58,7 +58,12 @@ struct ImportedCardHTML {
         // No attributes (including href, style, src), scripts, template HTML or media enter the page.
         let allowed = try Whitelist.none().addTags("p", "br", "b", "strong", "i", "em", "ul", "ol", "li", "code", "pre")
         let output = OutputSettings().prettyPrint(pretty: false)
-        let question = try SwiftSoup.clean(content.question, "", allowed, output) ?? ""
+        let question = if content.question.isEmpty {
+            // The server exports Title as escaped text; never interpret it as markup.
+            try Entities.escape(Entities.unescape(content.title), output)
+        } else {
+            try SwiftSoup.clean(content.question, "", allowed, output) ?? ""
+        }
         let answer = try SwiftSoup.clean(content.answer, "", allowed, output) ?? ""
         self.question = Self.page(question)
         revealed = Self.page("\(question)<hr>\(answer)")
