@@ -4,13 +4,15 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from zoneinfo import ZoneInfo
 
 import genanki
 
 from .publication import PublicationIdentity, PublishedNote
+from .statistics import Statistics, StatisticsEvent, calculate_statistics
 
 
 class RevisionConflict(Exception):
@@ -92,6 +94,16 @@ class Database:
                     mod INTEGER NOT NULL,
                     content TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS statistics_events (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    kind TEXT NOT NULL CHECK (kind IN ('visit', 'imported_review')),
+                    rating INTEGER,
+                    topic TEXT,
+                    CHECK ((kind = 'visit' AND rating IS NULL AND topic IS NULL)
+                        OR (kind = 'imported_review' AND rating IS NOT NULL AND rating BETWEEN 1 AND 4))
+                );
                 """
             )
 
@@ -152,6 +164,23 @@ class Database:
             data=data,
             updated_at=updated_at,
         )
+
+    def append_statistics_events(self, events: list[StatisticsEvent]) -> None:
+        with self.connect() as connection, connection:
+            connection.executemany(
+                "INSERT INTO statistics_events (id, timestamp, kind, rating, topic) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO NOTHING",
+                ((str(event.id), event.timestamp.isoformat(), event.kind, event.rating, event.topic)
+                 for event in events),
+            )
+
+    def read_statistics(self, zone: ZoneInfo, today: date) -> Statistics:
+        with self.connect() as connection:
+            # Both sources must describe the same committed state.
+            connection.execute("BEGIN")
+            row = connection.execute("SELECT data FROM snapshots WHERE id = 1").fetchone()
+            events = connection.execute("SELECT timestamp, rating, topic FROM statistics_events")
+            return calculate_statistics(json.loads(row["data"]) if row else {}, events, zone, today)
 
     def publish(self, notes: list[PublishedNote]) -> list[PublicationIdentity]:
         payloads = [(note.uid, note.model_dump_json(exclude_none=True)) for note in notes]
