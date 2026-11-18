@@ -66,6 +66,10 @@ struct AppShell: View {
                         PlaceholderScreen(destination: destination)
                     }
             }
+        case .statistics:
+            NavigationStack {
+                StatisticsScreen()
+            }
         }
     }
 }

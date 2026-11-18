@@ -22,6 +22,9 @@ final class MacShellUITests: XCTestCase {
         app.typeKey("3", modifierFlags: .command)
         XCTAssertEqual(app.windows.firstMatch.title, "Обучение")
 
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertEqual(waitForWindowTitle("Статистика", in: app), .completed)
+
         app.typeKey("4", modifierFlags: .command)
         XCTAssertEqual(waitForWindowTitle("Настройки", in: app), .completed)
         // На macOS подпись `Label` попадает в `value`, а не в `label`, поэтому
