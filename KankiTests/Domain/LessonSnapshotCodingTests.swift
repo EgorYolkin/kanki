@@ -85,7 +85,7 @@ final class LessonSnapshotCodingTests: XCTestCase {
         var invalid = try decode(legacyData.merging(["snapshot_version": 4, "lessons": [lesson]]) { _, value in value })
         invalid.snapshotVersion = 3
         XCTAssertThrowsError(try invalid.validate())
-        XCTAssertThrowsError(try encode(invalid))
+        XCTAssertThrowsError(try JSONEncoder().encode(invalid))
         invalid.snapshotVersion = LearningSnapshot.currentSnapshotVersion + 1
         invalid.prepareForLocalMutation()
         XCTAssertThrowsError(try invalid.validate())

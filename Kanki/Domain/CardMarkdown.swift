@@ -161,9 +161,9 @@ private final class Renderer {
 
     private func literalSource(of node: Markup) -> String {
         guard let range = node.range,
-              let lower = index(at: range.lowerBound), let upper = index(at: range.upperBound),
-              lower < upper else { return node.format() }
-        return String(decoding: source.utf8[lower..<upper], as: UTF8.self)
+              let lower = index(at: range.lowerBound), let upper = index(at: range.upperBound), lower < upper,
+              let literal = String(bytes: source.utf8[lower..<upper], encoding: .utf8) else { return node.format() }
+        return literal
     }
 
     private func index(at location: SourceLocation) -> String.Index? {
