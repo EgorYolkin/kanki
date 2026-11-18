@@ -33,14 +33,14 @@ extension LearningScreen {
     /// Дебаунс-задача не выполняет сам PUT: отмена таймера не должна
     /// абортировать уже отправленный запрос.
     func schedulePush() {
-        guard loadError == nil else { return }
+        guard localRead.isReadable else { return }
         hasUnsyncedChanges = true
         pushGate.markChanged()
         guard let client = serverClient() else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(700))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, localRead.isReadable else { return }
             pushDebounceTask = nil
             Task { @MainActor in await requestPush(client: client) }
         }
@@ -61,7 +61,7 @@ extension LearningScreen {
     /// Честный текст статуса синхронизации; `nil` — сервер не настроен, строки нет.
     var syncStatusText: String? {
         let isConfigured = serverCredentials() != nil
-        if isConfigured, loadError != nil {
+        if isConfigured, !localRead.isReadable {
             return "Синхронизация приостановлена: не удалось прочитать карточки"
         }
         return SyncStatus.text(
@@ -75,7 +75,7 @@ extension LearningScreen {
     /// Один пуш в полёте: правка во время отправки ждёт завершения
     /// и повторяется, а не отменяет PUT (отмена дала бы ложный 409).
     func requestPush(client: ServerClient) async {
-        guard loadError == nil, pushGate.begin() else { return }
+        guard localRead.isReadable, pushGate.begin() else { return }
         repeat {
             await pushNow(client: client)
         } while pushGate.finishAndNeedsAnother()
@@ -83,25 +83,27 @@ extension LearningScreen {
 
     /// Успех фиксирует ревизию; чистота подтверждается только для отправленного поколения.
     func pushNow(client: ServerClient) async {
-        guard loadError == nil, client.usesCurrentCredentials else { return }
+        guard localRead.isReadable, client.usesCurrentCredentials else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = nil
         let localSnapshot = snapshot
         let baseRevision = serverRevision
         let generation = pushGate.generation
+        let readGeneration = localRead.generation
         do {
             let result = try await client.push(
                 snapshot: localSnapshot,
                 baseRevision: baseRevision
             )
-            guard client.usesCurrentCredentials else { return }
+            guard localRead.acceptsResult(from: readGeneration), client.usesCurrentCredentials else { return }
             serverRevision = result.revision
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
             }
             syncProblem = nil
         } catch {
-            guard client.usesCurrentCredentials, let problem = SyncStatus.Problem(error: error) else { return }
+            guard localRead.acceptsResult(from: readGeneration), client.usesCurrentCredentials,
+                  let problem = SyncStatus.Problem(error: error) else { return }
             recordSyncProblem(problem)
             if problem == .unauthorized {
                 operationAlert = problem.text
@@ -119,7 +121,7 @@ extension LearningScreen {
     /// Сверяет локальное состояние с сервером и приводит их к согласованности
     /// без тихого мержа: решение принимает `SnapshotSyncPlan`.
     func reconcile() async {
-        guard loadError == nil, let client = serverClient() else { return }
+        guard localRead.isReadable, let client = serverClient() else { return }
         guard !isReconciling, !pushGate.isRunning, !pushGate.isManualSyncRunning else { return }
         isReconciling = true
         defer { isReconciling = false }
@@ -130,11 +132,12 @@ extension LearningScreen {
         let revision = serverRevision
         do {
             let remote = try await client.fetchSnapshot()
-            guard client.usesCurrentCredentials, loadError == nil,
+            guard client.usesCurrentCredentials, localRead.isReadable,
                   pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             await apply(remote, client: client)
         } catch {
-            guard client.usesCurrentCredentials, pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
+            guard localRead.isReadable, client.usesCurrentCredentials,
+                  pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
                   let problem = SyncStatus.Problem(error: error) else { return }
             recordSyncProblem(problem)
         }

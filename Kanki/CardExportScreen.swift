@@ -55,7 +55,7 @@ struct CardExportScreen: View {
     private var selectionList: some View {
         let list = List(selection: $selection) {
             ForEach(cards) { card in
-                Text(card.question)
+                CardQuestionPreview(source: card.question)
             }
         }
         #if os(macOS)

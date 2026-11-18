@@ -17,7 +17,8 @@ per-PR CI намеренно не запускает iOS UI-тесты, чтоб
 | macOS | `./scripts/macos-ui-test.sh` | Сборка native macOS-приложения и `KankiMacUITests`: окно и ⌘1–⌘4 |
 | Покрытие отдельно | `python3 scripts/coverage_gate.py` | Разбор `build/Test.xcresult` через `xcrun xccov` |
 
-Требования к среде: macOS, Xcode с iOS Simulator runtime, XcodeGen 2.46.0, uv,
+Требования к среде: macOS, Xcode со Swift 6.2 или новее для манифеста `swift-markdown`
+и установленным iOS Simulator runtime, XcodeGen 2.46.0, uv,
 SwiftLint 0.65.1 или новее (`brew install swiftlint`), Node 22 для `npx` (Markdown),
 Python 3 (скрипты без сторонних пакетов).
 

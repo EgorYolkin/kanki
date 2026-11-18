@@ -4,7 +4,7 @@ import XCTest
 final class SessionCardUITests: UITestCase {
     func testCardAndReviewsPersistAfterRestart() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
@@ -57,7 +57,7 @@ final class SessionCardUITests: UITestCase {
 
     func testDeletingCardRequiresConfirmationAndPersistsWithoutOtherCardHistory() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
         addCard(in: app, question: "Удаляемая карточка", answer: "Ответ А")
         addCard(in: app, question: "Оставшаяся карточка", answer: "Ответ Б")
@@ -98,7 +98,7 @@ final class SessionCardUITests: UITestCase {
 
     func testReviewSessionCoversQueueAndSummarizes() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Что такое Km?", answer: "Концентрация при половине Vmax")
@@ -143,7 +143,7 @@ final class SessionCardUITests: UITestCase {
 
     func testEasyRatingRemovesCardFromDueQueue() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Что такое FSRS?", answer: "Планировщик повторений")
@@ -168,7 +168,7 @@ final class SessionCardUITests: UITestCase {
 
     func testAheadReviewContinuesWhenDueQueueIsEmpty() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Что такое FSRS?", answer: "Планировщик повторений")
@@ -199,7 +199,7 @@ final class SessionCardUITests: UITestCase {
 
     func testSearchFiltersCardsByQuestion() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Почему небо голубое?", answer: "Рассеяние света")
@@ -218,7 +218,7 @@ final class SessionCardUITests: UITestCase {
 
     func testShellTabsAndEmptyKnowledgeSections() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store", "--reset-sections"]
+        app.launchArguments = ["--reset-store", "--reset-server", "--reset-sections"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
@@ -271,7 +271,8 @@ final class SessionCardUITests: UITestCase {
         app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
         let suffix = UUID().uuidString
-        let firstQuestion = "Экспорт Альфа \(suffix)"
+        let firstQuestion = "Экспорт **Альфа**\n\(suffix)"
+        let firstPreview = "Экспорт Альфа \(suffix)"
         let secondQuestion = "Экспорт Бета \(suffix)"
         addCard(in: app, question: firstQuestion, answer: "Ответ А")
         addCard(in: app, question: secondQuestion, answer: "Ответ Б")
@@ -280,7 +281,7 @@ final class SessionCardUITests: UITestCase {
         app.buttons["Выбрать карточки"].tap()
         XCTAssertTrue(app.navigationBars["Выбор карточек"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["exportSelectedCards"].isEnabled)
-        app.staticTexts[firstQuestion].tap()
+        app.staticTexts[firstPreview].tap()
         XCTAssertTrue(app.buttons["exportSelectedCards"].isEnabled)
         app.buttons["exportSelectedCards"].tap()
 
@@ -298,7 +299,7 @@ final class SessionCardUITests: UITestCase {
 
     func testEditingCardUpdatesQuestionAnswerAndCategory() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Старый вопрос", answer: "Старый ответ", deck: .new("Математика"))
@@ -309,11 +310,11 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 5), "Нет кнопки «Изменить» на карточке")
         edit.tap()
 
-        let questionField = app.descendants(matching: .any)["cardQuestion"]
+        let questionField = app.textViews["cardQuestion"]
         XCTAssertTrue(questionField.waitForExistence(timeout: 5), "Форма редактирования не открылась")
         XCTAssertEqual(questionField.value as? String, "Старый вопрос", "Форма не заполнена текущим вопросом")
         replaceText(in: questionField, with: "Новый вопрос")
-        replaceText(in: app.descendants(matching: .any)["cardAnswer"], with: "Новый ответ")
+        replaceText(in: app.textViews["cardAnswer"], with: "Новый ответ")
 
         let save = app.buttons["Сохранить"]
         XCTAssertTrue(save.isEnabled, "Кнопка «Сохранить» заблокирована")
@@ -326,9 +327,12 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(app.staticTexts["Новый ответ"].waitForExistence(timeout: 5), "Ответ не сохранился")
         XCTAssertTrue(app.staticTexts["Математика"].exists, "Категория потерялась при правке")
 
-        app.buttons["Закрыть"].tap()
+        app.buttons["Хорошо"].tap()
         XCTAssertTrue(app.buttons["Новый вопрос"].waitForExistence(timeout: 5), "Список не обновился")
         XCTAssertFalse(app.buttons["Старый вопрос"].exists, "Старый вопрос остался в списке")
+        backToLearning(in: app)
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 0")
     }
 
     /// Заменяет текст поля новым значением и проверяет результат.

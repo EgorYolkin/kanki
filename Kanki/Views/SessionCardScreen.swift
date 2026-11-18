@@ -13,7 +13,7 @@ struct SessionCardScreen: View {
     @State private var isEditing = false
     @Environment(\.dismiss) private var dismiss
     let availableDecks: [String]
-    let onReview: (RecallRating) throws -> Void
+    let onReview: (SessionCard, RecallRating) throws -> Void
     /// Смена категории возвращает обновлённую карточку (или `nil`, если ничего не изменилось).
     let onChangeDeck: (String?) throws -> SessionCard?
     /// Сохранение правки вопроса, ответа и категории.
@@ -24,7 +24,7 @@ struct SessionCardScreen: View {
         card: SessionCard,
         history: [SessionReview],
         availableDecks: [String],
-        onReview: @escaping (RecallRating) throws -> Void,
+        onReview: @escaping (SessionCard, RecallRating) throws -> Void,
         onChangeDeck: @escaping (String?) throws -> SessionCard?,
         onUpdate: @escaping (String, String, String?) throws -> SessionCard?,
         onDelete: @escaping () throws -> Void
@@ -69,12 +69,12 @@ struct SessionCardScreen: View {
                     }
                     .accessibilityIdentifier("cardDeckChip")
                 }
-                 Section("Вопрос") {
-                    Text(displayedCard.question)
-                 }
+                Section("Вопрос") {
+                    CardMarkdownView(source: displayedCard.question)
+                }
                 if isAnswerVisible {
                     Section("Ответ") {
-                        Text(displayedCard.answer)
+                        CardMarkdownView(source: displayedCard.answer)
                     }
                 } else {
                     Button("Показать ответ") {
@@ -89,7 +89,7 @@ struct SessionCardScreen: View {
                                     guard !didSubmitRating else { return }
                                     didSubmitRating = true
                                     do {
-                                        try onReview(rating)
+                                        try onReview(displayedCard, rating)
                                         dismiss()
                                     } catch {
                                         didSubmitRating = false
@@ -158,6 +158,7 @@ struct SessionCardScreen: View {
                 }
             }
         }
+        .cardSheetSize()
         .alert("Удалить карточку и историю повторений?", isPresented: $isConfirmingDeletion) {
             Button("Удалить карточку", role: .destructive) {
                 do {

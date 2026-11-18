@@ -47,18 +47,21 @@ struct AllCardsScreen: View {
         List {
             Section {
                 ForEach(filteredCards) { card in
-                    Button {
-                        onOpen(card)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label(card.question, systemImage: "rectangle.on.rectangle")
-                                .foregroundStyle(.primary)
-                            Text(dueText(for: card))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button {
+                            onOpen(card)
+                        } label: {
+                            Label {
+                                CardQuestionPreview(source: card.question)
+                            } icon: {
+                                Image(systemName: "rectangle.on.rectangle")
+                            }
+                            .foregroundStyle(.primary)
                         }
+                        Text(dueText(for: card))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    .accessibilityLabel(card.question)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             cardPendingDeletion = card

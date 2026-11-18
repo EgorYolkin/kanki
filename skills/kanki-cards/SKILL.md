@@ -1,6 +1,6 @@
 ---
 name: kanki-cards
-description: Add, read, edit, archive or delete flashcards in the user's Kanki spaced-repetition app through its sync server (https://kanki.host, REST + MCP stdio), including assigning cards to categories. Use this skill whenever the user asks to add cards to Kanki, put flashcards into a category or deck, push study material to their iPhone review app, dump notes as cards, check their card list, or move cards between categories — even if they just say "закинь в канки", "add these cards", "сделай карточки" without naming the server.
+description: Manage Kanki flashcards, categories, courses and video lessons via revisioned REST or MCP snapshots. Use for requests to add, read, edit, archive, delete or group study cards, including “закинь в канки”, “сделай карточки по видео” and batches for a specific lesson.
 ---
 
 # Kanki cards via sync server
@@ -39,19 +39,26 @@ curl -s "$KANKI_SERVER_URL/v1/me" -H "Authorization: Bearer $KANKI_TOKEN"
    is the record of category renames (see below).
 3. `PUT /v1/snapshot` with `{schema_version: 1, base_revision: <revision from
    step 1>, data: <full modified data>}`.
-4. A `409` response means someone else wrote first (usually the iPhone).
-   Re-read the snapshot, redo the change on the fresh data, retry. Never
-   blind-retry with the same `base_revision`.
+4. On `409` or a lost response, GET again. Keep the original IDs, timestamps,
+   base data and intended changes. Compare them with the fresh snapshot: if
+   already applied, report success without a PUT. Otherwise replay only the
+   missing, nonconflicting changes on the fresh data using its revision.
+   Never resend the old body with a newer revision. If the same field changed
+   independently, or a previously known target disappeared, stop and report
+   the conflict rather than overwriting an edit or resurrecting a deletion.
 
-Never construct `data` from scratch when the server already has cards:
+Never construct `data` from scratch when the server already has a snapshot:
 always start from the current snapshot. A server with no snapshot returns
 `revision: 0, data: null` — then `data` starts as
 `{"snapshot_version": 3, "cards": [], "reviews": [], "schedules": {}, "deck_renames": []}`.
 
 `schema_version` is the server's payload version (currently `1`); the app's
 own format version lives inside `data.snapshot_version`.
+Before **any** write, reject an unknown outer or inner version, including
+on a retry. Missing inner version is legacy; valid versions are 1–4. Reject
+`lessons` in a legacy snapshot and absent or invalid `lessons` in v4.
 
-## Card schema (`snapshot_version: 3`)
+## Card schema (unchanged in v4)
 
 ```json
 {
@@ -70,11 +77,51 @@ own format version lives inside `data.snapshot_version`.
   it from the review queue and from category counters. Prefer archiving over
   deleting when the user says the card is no longer wanted.
 - Do not prefill `schedules[id]` — the app schedules new cards itself on the
-  first review. Deleting a card: remove it from `cards` **and** its entry
-  from `schedules` (reviews may stay; they are a log).
+  first review. To physically delete a card, remove it, its reviews (by
+  `cardID`), schedule and references in **every** lesson in one PUT.
+  Archiving keeps all references; archived cards are not reviewed.
 
-Media, HTML and rich text are out of scope: the app renders plain question
-and answer strings.
+Write `question` and `answer` as ordinary strings containing Markdown source.
+Use real line feeds for line breaks; preserve indentation, blank lines and
+trailing LF. Serialize the object once, not by interpolating JSON strings.
+After one JSON decode, `"a\nb"` is two lines; `"a\\nb"` is one line with a
+literal backslash and `n`. Neither sync nor export decodes escapes again.
+Never replace literal `\n` globally: examples and paths can contain it.
+
+## Add a video lesson in one write
+
+Before the first production v4 write, save the **full revisioned GET response**
+privately outside the live store and confirm every writing app and agent is
+v4-aware. A card export is not a snapshot backup. If any writer is still v3,
+use v3 cards and Markdown only; do not enable lessons on that server yet.
+
+1. GET once for the whole video. Check `schema_version` is 1 and the inner
+   version is absent (legacy) or 1–4. Stop on unknown versions, `lessons`
+   under a legacy version, or missing/invalid `lessons` in v4.
+2. Trim the lesson title (required) and course. An empty course means no
+   course: omit `course` or use `null`, never the reserved name `Без курса`.
+   Course describes the source; `deck` describes the topic. An optional
+   `source_url` must be absolute HTTP(S) with a host.
+3. If the user supplied a lesson UUID, resolve that ID, not a title search.
+   If it is missing, clarify rather than silently choosing another lesson.
+   Otherwise match the exact trimmed `(course, title)` pair, including case;
+   reuse its stored spelling. Identical titles in different courses are
+   different lessons. For a new lesson allocate one UUID and `createdAt`
+   once; empty lessons with `card_ids: []` are valid.
+4. Allocate each new card's UUID and `createdAt` once for the operation.
+   Add the new cards to `cards`; append their IDs to the selected lesson's
+   `card_ids` in video order. To link an existing card, use its original ID.
+   Each ID must exist and appear at most once per lesson; another lesson may
+   reference the same card. Do not copy its schedule or reviews.
+5. In that same PUT, enable `snapshot_version: 4` and add `lessons` when
+   creating the first lesson. Otherwise retain the existing lessons. Never
+   add `lessons` to v3 or downgrade v4, even after deleting its last lesson.
+   Deleting a lesson removes only that lesson, not its cards or progress.
+6. On retry follow the revision rule above. If someone created the same
+   `(course, title)` concurrently, reuse their lesson ID when the original
+   intent was creation by name. Check prepared card IDs and memberships
+   separately; preserve existing rows, edits and order, append only missing
+   links. Do not deduplicate by question text or allocate fresh retry IDs.
 
 ## Categories
 
@@ -136,9 +183,9 @@ Same contract: `get_snapshot` first, pass its `revision` as `base_revision`.
 
 ## After writing
 
-The iPhone does not poll; changes appear after the user pulls in Settings →
-«Загрузить с сервера» (or an empty launch). Say so instead of promising
-instant sync.
+The configured app reconciles on activation, not continuously. For an
+explicit pull use Settings → «Загрузить с сервера». If both sides changed,
+resolve the conflict rather than promising immediate sync.
 
 ## Don'ts
 

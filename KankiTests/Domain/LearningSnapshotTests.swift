@@ -56,6 +56,7 @@ final class LearningSnapshotTests: XCTestCase {
         let renames = try XCTUnwrap(object["deck_renames"] as? [[String: String]])
 
         XCTAssertEqual(object["snapshot_version"] as? Int, 3)
+        XCTAssertNil(object["lessons"])
         XCTAssertEqual(renames, [["from": "Старое", "to": "Математика"]])
         XCTAssertEqual(cards.first?["deck"] as? String, "Математика")
     }
@@ -70,7 +71,8 @@ final class LearningSnapshotTests: XCTestCase {
 
         let decoded = try JSONDecoder().decode(LearningSnapshot.self, from: data)
 
-        XCTAssertEqual(decoded.snapshotVersion, LearningSnapshot.currentSnapshotVersion)
+        XCTAssertEqual(decoded.snapshotVersion, 3)
+        XCTAssertEqual(decoded.lessons, [])
         XCTAssertTrue(decoded.deckRenames.isEmpty)
         XCTAssertEqual(decoded.cards.map(\.deck), [nil])
     }
@@ -93,7 +95,8 @@ final class LearningSnapshotTests: XCTestCase {
     }
 
     func testRemoteSnapshotWithDuplicateCardIDsIsRejected() throws {
-        let payload = try JSONEncoder().encode(LearningSnapshot(cards: [card, card]))
+        let cards = try JSONSerialization.jsonObject(with: JSONEncoder().encode([card, card]))
+        let payload = try JSONSerialization.data(withJSONObject: ["cards": cards])
 
         XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: payload)) { error in
             guard case DecodingError.dataCorrupted(let context) = error else {
@@ -139,6 +142,7 @@ final class LearningSnapshotTests: XCTestCase {
             let decoded = try JSONDecoder().decode(LearningSnapshot.self, from: payload)
 
             XCTAssertEqual(decoded.snapshotVersion, version)
+            XCTAssertTrue(decoded.lessons.isEmpty)
             XCTAssertEqual(decoded.cards.count, 1)
             XCTAssertNil(decoded.cards.first?.deck)
             XCTAssertEqual(decoded.cards.first?.isArchived, false)
@@ -238,19 +242,25 @@ final class LearningSnapshotTests: XCTestCase {
         let updated = snapshot.cards[0]
         XCTAssertEqual(updated.id, card.id)
         XCTAssertEqual(updated.createdAt, card.createdAt)
-        XCTAssertEqual(updated.question, "Новый вопрос")
-        XCTAssertEqual(updated.answer, "Новый ответ")
+        XCTAssertEqual(updated.question, "  Новый вопрос  ")
+        XCTAssertEqual(updated.answer, "Новый ответ ")
         XCTAssertEqual(updated.deck, "Физика")
 
         XCTAssertFalse(snapshot.updateCard(id: card.id, question: " ", answer: "Ответ", deck: nil))
-        XCTAssertEqual(snapshot.cards[0].question, "Новый вопрос")
+        XCTAssertEqual(snapshot.cards[0].question, "  Новый вопрос  ")
 
         XCTAssertFalse(snapshot.updateCard(id: UUID(), question: "Вопрос", answer: "Ответ", deck: nil))
     }
 
     func testFutureSnapshotVersionIsRejected() {
-        let data = Data(#"{"snapshot_version":4,"cards":[],"reviews":[]}"#.utf8)
+        let future = LearningSnapshot.currentSnapshotVersion + 1
+        let data = Data(#"{"snapshot_version":\#(future),"cards":false,"lessons":false}"#.utf8)
 
-        XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: data))
+        XCTAssertThrowsError(try JSONDecoder().decode(LearningSnapshot.self, from: data)) { error in
+            guard case DecodingError.dataCorrupted(let context) = error else {
+                return XCTFail("Expected unknown version to fail before parsing cards or lessons")
+            }
+            XCTAssertEqual(context.codingPath.map(\.stringValue), ["snapshot_version"])
+        }
     }
 }
