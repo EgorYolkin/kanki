@@ -48,6 +48,17 @@ def _metadata_object(fields: dict[str, str]) -> str:
     ) + "}"
 
 
+class _PublishedNote(genanki.Note):
+    """Use the stored modification time, not the package creation time."""
+
+    def __init__(self, model: genanki.Model, guid: str, fields: list[str], mod: int) -> None:
+        super().__init__(model=model, guid=guid, fields=fields)
+        self.mod = mod
+
+    def write_to_db(self, cursor, timestamp, deck_id, id_gen):
+        super().write_to_db(cursor, self.mod, deck_id, id_gen)
+
+
 def build_apkg(rows: list[PublishedNoteRow]) -> bytes:
     """Write the frozen one-card note type and preserve each note's stored mod."""
     model = genanki.Model(
@@ -74,7 +85,7 @@ def build_apkg(rows: list[PublishedNoteRow]) -> bytes:
             _metadata_object(source.model_dump(exclude_none=True))
             for source in note.sources
         ) + "]"
-        deck.add_note(genanki.Note(model=model, guid=row.guid, fields=[
+        deck.add_note(_PublishedNote(mod=row.mod, model=model, guid=row.guid, fields=[
             note.uid,
             escape(note.title).translate(_ANKI_ESCAPES),
             _render_markdown(note.body),
@@ -86,15 +97,10 @@ def build_apkg(rows: list[PublishedNoteRow]) -> bytes:
         ]))
 
     # Use the pinned writer's SQLite schema without its temporary-file ZIP path.
-    # Its timestamp is package-wide; supply the actual per-note mod separately.
     timestamp = max(row.mod for row in rows)
     with closing(sqlite3.connect(":memory:")) as database:
         genanki.Package(deck).write_to_db(
             database.cursor(), timestamp, itertools.count(timestamp * 1000),
-        )
-        database.executemany(
-            "UPDATE notes SET mod = ? WHERE guid = ?",
-            ((row.mod, row.guid) for row in rows if row.mod != timestamp),
         )
         database.commit()
         collection = database.serialize()
