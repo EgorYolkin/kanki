@@ -51,12 +51,61 @@ actor ServerClient {
         return try await request(path: "v1/snapshot", method: "PUT", body: body)
     }
 
+    /// Отправка при посещении или оценке. Неотправленная пачка остаётся в БД;
+    /// открытие статистики повторяет отправку и показывает ошибку при отказе.
+    static func scheduleActivityUpload() {
+        Task {
+            let raw = UserDefaults.standard.string(forKey: "serverURL") ?? ""
+            guard let configuration = ServerConfiguration(rawValue: raw),
+                  let token = try ServerTokenStore.load(), !token.isEmpty else { return }
+
+            try await ServerClient(configuration: configuration, token: token).flushActivity()
+        }
+    }
+
+    func statistics(timeZone: TimeZone) async throws -> StudyStatistics {
+        try await flushActivity()
+        return try await request(
+            path: "v1/statistics",
+            method: "GET",
+            query: [URLQueryItem(name: "timezone", value: timeZone.identifier)]
+        )
+    }
+
+    func flushActivity() async throws {
+        while true {
+            let events = try LocalCardStore.pendingActivity(for: baseURL.absoluteString)
+            guard !events.isEmpty else { return }
+
+            let body = try encoder.encode(["events": events])
+            _ = try await send(path: "v1/statistics/events", method: "POST", body: body)
+            try LocalCardStore.acknowledgeActivity(events)
+        }
+    }
+
     private func request<T: Decodable>(
         path: String,
         method: String,
-        body: Data? = nil
+        body: Data? = nil,
+        query: [URLQueryItem] = []
     ) async throws -> T {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        let data = try await send(path: path, method: method, body: body, query: query)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw ServerError.decoding
+        }
+    }
+
+    private func send(
+        path: String,
+        method: String,
+        body: Data?,
+        query: [URLQueryItem] = []
+    ) async throws -> Data {
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty { url.append(queryItems: query) }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 15
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -71,11 +120,7 @@ actor ServerClient {
         }
         switch http.statusCode {
         case 200..<300:
-            do {
-                return try decoder.decode(T.self, from: data)
-            } catch {
-                throw ServerError.decoding
-            }
+            return data
         case 401:
             throw ServerError.unauthorized
         case 409:

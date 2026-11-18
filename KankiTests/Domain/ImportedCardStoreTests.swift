@@ -50,6 +50,29 @@ final class ImportedCardStoreTests: XCTestCase {
         }
     }
 
+    func testPendingVisitAndReviewRetryWithoutChangingIDsOrCrossingServers() throws {
+        try withStore { url in
+            let raw = UserDefaults.standard.string(forKey: "serverURL") ?? ""
+            let destination = ServerConfiguration(rawValue: raw)?.displayValue ?? "https://study.example"
+            let date = Date(timeIntervalSince1970: 1_800_001_000)
+            try LocalCardStore.recordVisit(at: date, in: url)
+            try LocalCardStore.importAnkiPackage(at: fixture("test1"), into: url)
+            let key = try XCTUnwrap(LocalCardStore.importedCards(from: url).first?.id)
+            let card = try LocalCardStore.importedCard(key, from: url)
+            _ = try LocalCardStore.recordImportedReview(key, shown: card, rating: .hard, at: date, in: url)
+
+            let batch = try LocalCardStore.pendingActivity(for: destination, in: url)
+            XCTAssertEqual(batch.map(\.kind), ["visit", "imported_review"])
+            XCTAssertEqual(batch.map(\.rating), [nil, 2])
+            XCTAssertEqual(batch.map(\.timestamp), [date, date])
+            XCTAssertTrue(try LocalCardStore.pendingActivity(for: "https://other.invalid", in: url).isEmpty)
+            let retry = try LocalCardStore.pendingActivity(for: destination, in: url)
+            XCTAssertEqual(retry.map(\.id), batch.map(\.id))
+            try LocalCardStore.acknowledgeActivity(retry, in: url)
+            XCTAssertTrue(try LocalCardStore.pendingActivity(for: destination, in: url).isEmpty)
+        }
+    }
+
     func testRealPackageAndMalformedInputDoNotOverwriteImportedCards() throws {
         try withStore { url in
             try LocalCardStore.importAnkiPackage(at: fixture("test1"), into: url)
