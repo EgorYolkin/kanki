@@ -15,7 +15,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import __version__
 from .apkg import build_apkg
-from .changes import MAX_CHANGES_BYTES, MAX_INT64, ChangePage, ChangeReceipt, ChangeWrite
+from .changes import (
+    MAX_CHANGES_BYTES,
+    MAX_INT64,
+    UUID_PATTERN,
+    ChangePage,
+    ChangeReceipt,
+    ChangeWrite,
+)
 from .db import (
     ChangesConflict,
     Database,
@@ -299,10 +306,11 @@ def create_app(
         principal: PrincipalDep,
         database: DatabaseDep,
         since: Annotated[int, Query(ge=0, le=MAX_INT64)],
+        anchor: Annotated[str | None, Query(pattern=UUID_PATTERN)] = None,
     ) -> ChangePage:
         del principal
         try:
-            return database.read_changes(since)
+            return database.read_changes(since, anchor)
         except ChangesConflict as error:
             raise HTTPException(status_code=409, detail={"code": error.code}) from error
 

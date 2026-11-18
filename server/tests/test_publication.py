@@ -8,6 +8,7 @@ from contextlib import closing
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
+from uuid import UUID
 
 import genanki
 import pytest
@@ -254,13 +255,18 @@ def test_publication_backfill_pages_match_package_and_survive_restart(tmp_path: 
         assert page["more"] is True
         assert [entry["seq"] for entry in page["changes"]] == list(range(1, 51))
 
-        response = client.get(CHANGES, headers=ADMIN, params={"since": 50})
+        response = client.get(CHANGES, headers=ADMIN, params={
+            "since": 50, "anchor": page["changes"][-1]["anchor"],
+        })
         assert response.status_code == 200
         tail = response.json()
         assert tail["stream"] == stream
         assert tail["more"] is False
         assert [entry["seq"] for entry in tail["changes"]] == [51]
         events = [entry["event"] for entry in page["changes"] + tail["changes"]]
+        anchors = [UUID(entry["anchor"]) for entry in page["changes"] + tail["changes"]]
+        assert len(set(anchors)) == 51
+        assert all(anchor.version == 4 for anchor in anchors)
         assert {event["kind"] for event in events} == {"publication"}
         assert [event["note"]["fields"][0] for event in events] == uids
 
@@ -273,20 +279,24 @@ def test_publication_backfill_pages_match_package_and_survive_restart(tmp_path: 
         assert publish(client, ADMIN, documents[0]) == [
             {"uid": uids[0], "guid": events[0]["note"]["guid"], "mod": events[0]["note"]["mod"]}
         ]
+        cursor = {"since": 51, "anchor": tail["changes"][-1]["anchor"]}
 
     with app_for(database_path) as client:
         assert client.get(CHANGES, headers=ADMIN, params={"since": 0}).json() == page
-        assert client.get(CHANGES, headers=ADMIN, params={"since": 51}).json() == {
+        assert client.get(CHANGES, headers=ADMIN, params=cursor).json() == {
             "stream": stream, "changes": [], "more": False,
         }
         updated = publish(client, ADMIN, document(uids[0], body="Версия два."))[0]
         repeated = publish(client, ADMIN, document(uids[0], body="Версия два."))[0]
         assert repeated == updated
-        latest = client.get(CHANGES, headers=ADMIN, params={"since": 51}).json()
+        latest = client.get(CHANGES, headers=ADMIN, params=cursor).json()
+        new_anchor = UUID(latest["changes"][0]["anchor"])
+        assert new_anchor.version == 4 and new_anchor not in anchors
         assert latest == {
             "stream": stream,
             "changes": [{
                 "seq": 52,
+                "anchor": str(new_anchor),
                 "event": {
                     "kind": "publication",
                     "note": {
@@ -302,6 +312,91 @@ def test_publication_backfill_pages_match_package_and_survive_restart(tmp_path: 
             }],
             "more": False,
         }
+
+
+def test_observations_before_publication_keep_distinct_uids(tmp_path: Path) -> None:
+    guid = genanki.guid_for(UID_A)
+    review = {
+        "kind": "review", "id": "a0000000-0000-4000-8000-000000000001",
+        "uid": UID_A, "guid": guid, "ord": 0, "reviewedAt": 1_800_000_000.25, "rating": 3,
+    }
+    progress = {
+        "kind": "progress", "id": "a0000000-0000-4000-8000-000000000002",
+        "uid": UID_B, "guid": guid, "ord": 0,
+        "progress": {"due": 0, "ivl": 0, "queue": 0, "reviews": []},
+    }
+    with app_for(tmp_path / "server.sqlite3") as client:
+        page = client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()
+        accepted = client.post(CHANGES, headers=ADMIN, json={
+            "since": 0, "stream": page["stream"], "events": [review, progress],
+        })
+        assert accepted.status_code == 200
+        assert publish(client, ADMIN, document(UID_A))[0]["guid"] == guid
+        changes = client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()["changes"]
+        assert [change["event"] for change in changes[:2]] == [review, progress]
+        assert changes[2]["event"]["note"]["fields"][0] == UID_A
+
+
+def test_old_delta_database_keeps_publication_history_but_not_observations(tmp_path: Path) -> None:
+    database_path = tmp_path / "legacy-delta.sqlite3"
+    with app_for(database_path) as client:
+        identity = publish(client, ADMIN, document(UID_A))[0]
+        publish(client, ADMIN, document(UID_A, body="Версия два."))
+        original = client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()
+
+    observations = [
+        {
+            "kind": "review", "id": "a0000000-0000-4000-8000-000000000001",
+            "guid": identity["guid"], "ord": 0, "reviewedAt": 1_800_000_000.25, "rating": 3,
+        },
+        {
+            "kind": "progress", "id": "a0000000-0000-4000-8000-000000000002",
+            "guid": "unpublished-guid", "ord": 0,
+            "progress": {"due": 0, "ivl": 0, "queue": 0, "reviews": []},
+        },
+    ]
+    with closing(sqlite3.connect(database_path)) as connection, connection:
+        connection.executescript("""
+            BEGIN IMMEDIATE;
+            DROP TABLE changes;
+            CREATE TABLE changes (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id TEXT UNIQUE,
+                event TEXT NOT NULL
+            );
+        """)
+        connection.executemany(
+            "INSERT INTO changes (seq, event_id, event) VALUES (?, ?, ?)",
+            [
+                (1, None, json.dumps(original["changes"][0]["event"])),
+                (2, observations[0]["id"], json.dumps(observations[0])),
+                (3, None, json.dumps(original["changes"][1]["event"])),
+                (4, observations[1]["id"], json.dumps(observations[1])),
+            ],
+        )
+
+    with app_for(database_path) as client:
+        migrated = client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()
+        assert migrated["stream"] != original["stream"]
+        assert [change["seq"] for change in migrated["changes"]] == [1, 3]
+        assert [change["event"] for change in migrated["changes"]] == [
+            change["event"] for change in original["changes"]
+        ]
+        assert all(UUID(change["anchor"]).version == 4 for change in migrated["changes"])
+        bad_get = client.get(CHANGES, headers=ADMIN, params={"since": 1})
+        assert bad_get.status_code == 409
+        assert bad_get.json() == {"detail": {"code": "anchor_mismatch"}}
+        bad_post = client.post(CHANGES, headers=ADMIN, json={
+            "stream": original["stream"], "since": 0,
+            "events": [{**observations[0], "uid": UID_A}],
+        })
+        assert bad_post.status_code == 409
+        assert bad_post.json() == {"detail": {"code": "stream_mismatch"}}
+        assert client.get(CHANGES, headers=ADMIN, params={"since": 0}).json() == migrated
+
+    with app_for(database_path) as client:
+        assert client.get(CHANGES, headers=ADMIN, params={"since": 0}).json() == migrated
+        assert client.get(EXPORT, headers=ADMIN).status_code == 200
 
 
 def test_failed_publication_rolls_back_notes_and_changes(tmp_path: Path, monkeypatch) -> None:

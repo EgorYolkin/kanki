@@ -51,19 +51,21 @@ actor ServerClient {
         return try await request(path: "v1/snapshot", method: "PUT", body: body)
     }
 
-    func fetchDelta(since: Int64) async throws -> DeltaPage {
+    func fetchDelta(since cursor: DeltaCursor) async throws -> DeltaPage {
+        var query = [URLQueryItem(name: "since", value: String(cursor.seq))]
+        if let anchor = cursor.anchor {
+            query.append(URLQueryItem(name: "anchor", value: anchor.uuidString.lowercased()))
+        }
         do {
-            return try await request(
-                path: "v1/changes", method: "GET", query: [URLQueryItem(name: "since", value: String(since))]
-            )
+            return try await request(path: "v1/changes", method: "GET", query: query)
         } catch ServerError.conflict {
             throw DeltaError.serverConflict
         }
     }
 
-    func pushDelta(_ batch: DeltaWrite) async throws -> DeltaAcknowledgement {
+    func pushDelta(_ body: Data) async throws -> DeltaAcknowledgement {
         do {
-            return try await request(path: "v1/changes", method: "POST", body: encoder.encode(batch))
+            return try await request(path: "v1/changes", method: "POST", body: body)
         } catch ServerError.conflict {
             throw DeltaError.serverConflict
         }

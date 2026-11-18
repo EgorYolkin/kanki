@@ -6,15 +6,16 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .publication import _UID
+
 MAX_CHANGES_PER_PAGE = 50
 MAX_EVENTS_PER_POST = 50
 MAX_CHANGES_BYTES = 1024 * 1024
 MAX_INT64 = (1 << 63) - 1
 
 _Int64 = Annotated[int, Field(ge=-MAX_INT64 - 1, le=MAX_INT64)]
-_UUID = Annotated[str, Field(
-    pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-)]
+UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+_UUID = Annotated[str, Field(pattern=UUID_PATTERN)]
 _Guid = Annotated[str, Field(min_length=1)]
 
 
@@ -48,6 +49,7 @@ class RawProgress(_StrictModel):
 
 class _CardEvent(_StrictModel):
     id: _UUID
+    uid: _UID
     guid: _Guid
     ord: int = Field(ge=0, le=0)
 
@@ -83,6 +85,7 @@ StreamEvent = Annotated[
 
 class Change(_StrictModel):
     seq: _Int64
+    anchor: _UUID
     event: StreamEvent
 
 
@@ -94,6 +97,8 @@ class ChangePage(_StrictModel):
 
 class ChangeWrite(_StrictModel):
     stream: _UUID
+    since: int = Field(ge=0, le=MAX_INT64)
+    anchor: _UUID | None = None
     events: list[ClientEvent] = Field(max_length=MAX_EVENTS_PER_POST)
 
     @model_validator(mode="after")

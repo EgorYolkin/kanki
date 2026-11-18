@@ -63,6 +63,35 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["appearance-system"].isSelected)
     }
 
+    func testSnapshotConnectionEditsStayDrafts() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-server"]
+        app.launch()
+        app.tabBars.buttons["Настройки"].tap()
+        let check = app.buttons["serverCheck"]
+        scrollTo(check, in: app)
+        check.tap()
+        XCTAssertTrue(app.staticTexts["Укажите адрес вида http://100.x.y.z:8000"].waitForExistence(timeout: 5))
+
+        let draftURL = "http://127.0.0.1:9"
+        let address = app.textFields["serverURL"]
+        address.tap()
+        address.typeText(draftURL)
+        let secret = app.secureTextFields["serverToken"]
+        secret.tap()
+        secret.typeText("draft-snapshot-token\n")
+        XCTAssertEqual(app.staticTexts["serverStatus"].label, "Не подключён")
+
+        app.tabBars.buttons["Обучение"].tap()
+        XCTAssertFalse(app.staticTexts["syncStatus"].exists)
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        app.tabBars.buttons["Настройки"].tap()
+        scrollTo(address, in: app)
+        XCTAssertNotEqual(address.value as? String, draftURL)
+    }
+
     /// Прокручивает список вниз, пока элемент не отрисуется; List ленивый,
     /// поэтому `exists` до прокрутки может быть ложным.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {

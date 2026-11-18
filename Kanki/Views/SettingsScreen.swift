@@ -12,37 +12,25 @@ private extension View {
     }
 }
 
-private enum ServerInputError: LocalizedError {
-    case invalidURL
-    case missingToken
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL:
-            "Укажите адрес вида http://100.x.y.z:8000"
-        case .missingToken:
-            "Укажите токен сервера"
-        }
-    }
-}
-
 struct SettingsScreen: View {
     @Binding var pushGate: PushGate
     @Binding var syncProblem: SyncStatus.Problem?
     @AppStorage("appearance") private var appearance: AppAppearance = .system
-    @AppStorage("serverURL") private var serverURL = ""
+    @AppStorage("snapshotServerURL") private var snapshotAddress = ""
+    @AppStorage("deltaServerURL") private var deltaAddress = ""
     @AppStorage("serverRevision") private var serverRevision = 0
-    @AppStorage("deltaSPKIPin") private var deltaPin = ""
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
     @AppStorage("serverHasUnsyncedChanges") private var hasUnsyncedChanges = false
 
-    @FocusState private var isEnteringServerToken: Bool
-    @State private var serverToken = ""
-    @State private var serverStatus = "Не подключён"
+    @FocusState private var focusedToken: ServerTokenStore.Scope?
+    @State private var snapshot = ServerCredentialDraft()
+    @State private var delta = ServerCredentialDraft()
+    @State private var snapshotStatus: String?
+    @State private var deltaStatus: String?
+    @State private var didLoadDrafts = false
     @State private var isServerBusy = false
     @State private var isConfirmingPull = false
-    @State private var deltaStatus: String?
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
@@ -62,11 +50,7 @@ struct SettingsScreen: View {
             aboutSection
         }
         .navigationTitle("Настройки")
-        .onAppear(perform: loadToken)
-        .onChange(of: serverURL) { _, _ in
-            serverRevision = 0
-            syncProblem = nil
-        }
+        .onAppear(perform: loadDrafts)
         .confirmationDialog(
             "Заменить локальные данные данными сервера?",
             isPresented: $isConfirmingPull,
@@ -78,8 +62,10 @@ struct SettingsScreen: View {
             Button("Отмена", role: .cancel) {}
         }
     }
+}
 
-    private var appearanceSection: some View {
+private extension SettingsScreen {
+    var appearanceSection: some View {
         Section("Оформление") {
             ForEach(AppAppearance.allCases) { option in
                 Button {
@@ -104,7 +90,7 @@ struct SettingsScreen: View {
         }
     }
 
-    private var sectionsSection: some View {
+    var sectionsSection: some View {
         Section("Разделы") {
             Toggle("Заметки", isOn: $showNotesSection)
                 .accessibilityIdentifier("showNotesSection")
@@ -116,25 +102,14 @@ struct SettingsScreen: View {
         }
     }
 
-    private var serverSection: some View {
-        Section("Сервер") {
-            TextField("http://100.x.y.z:8000", text: $serverURL)
-                .autocorrectionDisabled()
-                .noAutocapitalization()
-                .accessibilityIdentifier("serverURL")
-            SecureField("Токен", text: $serverToken)
-                .autocorrectionDisabled()
-                .noAutocapitalization()
-                .accessibilityIdentifier("serverToken")
-                .focused($isEnteringServerToken)
-                .submitLabel(.done)
-                .onSubmit { isEnteringServerToken = false }
-            Button("Проверить соединение") {
-                Task { await checkServer() }
-            }
-            .disabled(isServerBusy)
-            .accessibilityIdentifier("serverCheck")
-            Text(serverStatus)
+    var serverSection: some View {
+        Section("Снимок ручных карточек") {
+            serverField("http://100.x.y.z:8000", id: "serverURL", text: snapshotField(\.address))
+            tokenField(.snapshot, id: "serverToken", text: snapshotField(\.token))
+            Button("Проверить соединение") { Task { await checkServer() } }
+                .disabled(isServerBusy)
+                .accessibilityIdentifier("serverCheck")
+            Text(snapshotStatus ?? "Не подключён")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("serverStatus")
@@ -148,55 +123,111 @@ struct SettingsScreen: View {
             }
             .disabled(isServerBusy)
             .accessibilityIdentifier("serverPull")
-            Text("Снимок отправляется вручную. Автоматического мержа нет: при конфликте ревизий загрузите данные с сервера.")
+            Text("Адрес и токен вступают в силу при проверке, отправке или загрузке снимка.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Text("Автоматического мержа нет: при конфликте ревизий загрузите снимок с сервера.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var deltaSection: some View {
+    var deltaSection: some View {
         Section {
-            TextField("SHA-256 SPKI сервера (необязательно)", text: $deltaPin)
-                .autocorrectionDisabled()
-                .noAutocapitalization()
+            serverField("https://kanki.host", id: "deltaURL", text: deltaField(\.address))
+            tokenField(.delta, id: "deltaToken", text: deltaField(\.token))
+            serverField("SHA-256 SPKI сервера (необязательно)", id: "deltaPin", text: deltaField(\.pin))
+            Button("Обменяться изменениями") { Task { await syncImportedCards() } }
                 .disabled(isServerBusy)
-                .accessibilityIdentifier("deltaPin")
-            Button("Обменяться изменениями") {
-                Task { await syncImportedCards() }
-            }
-            .disabled(isServerBusy)
-            .accessibilityIdentifier("deltaSync")
+                .accessibilityIdentifier("deltaSync")
             if let deltaStatus {
                 Text(deltaStatus).accessibilityIdentifier("deltaStatus")
             }
         } header: {
             Text("Импортированные карточки")
         } footer: {
-            Text("HTTPS. Загружает публикации и передаёт журнал импортированных карточек. Снимок ручных карточек не меняется.")
+            Text("Данные для подключения не используются для снимков. Обмен не меняет ручные карточки.")
         }
     }
 
+    func serverField(_ title: LocalizedStringKey, id: String, text: Binding<String>) -> some View {
+        TextField(title, text: text)
+            .autocorrectionDisabled()
+            .noAutocapitalization()
+            .disabled(isServerBusy)
+            .accessibilityIdentifier(id)
+    }
+
+    func tokenField(_ scope: ServerTokenStore.Scope, id: String, text: Binding<String>) -> some View {
+        SecureField("Токен", text: text)
+            .autocorrectionDisabled()
+            .noAutocapitalization()
+            .disabled(isServerBusy)
+            .accessibilityIdentifier(id)
+            .focused($focusedToken, equals: scope)
+            .submitLabel(.done)
+            .onSubmit { focusedToken = nil }
+    }
+
+    func snapshotField(_ field: WritableKeyPath<ServerCredentialDraft, String>) -> Binding<String> {
+        draftField(field, in: $snapshot, status: $snapshotStatus)
+    }
+
+    func deltaField(_ field: WritableKeyPath<ServerCredentialDraft, String>) -> Binding<String> {
+        draftField(field, in: $delta, status: $deltaStatus)
+    }
+
+    func draftField(
+        _ field: WritableKeyPath<ServerCredentialDraft, String>,
+        in draft: Binding<ServerCredentialDraft>,
+        status: Binding<String?>
+    ) -> Binding<String> {
+        Binding(
+            get: { draft.wrappedValue[keyPath: field] },
+            set: { value in
+                guard !isServerBusy, draft.wrappedValue.update(field, to: value) else { return }
+                status.wrappedValue = nil
+            }
+        )
+    }
+
     @MainActor
-    private func syncImportedCards() async {
+    func syncImportedCards() async {
         guard !isServerBusy else { return }
         isServerBusy = true
+        focusedToken = nil
         defer { isServerBusy = false }
-        defer { NotificationCenter.default.post(name: .kankiImportedCardsChanged, object: nil) }
         deltaStatus = "Обмен изменениями…"
         do {
-            guard let configuration = ServerConfiguration(rawValue: serverURL) else { throw ServerInputError.invalidURL }
-            let token = serverToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !token.isEmpty else { throw ServerInputError.missingToken }
-            try ServerTokenStore.save(token)
-            let result = try await ImportedDeltaSync.run(configuration: configuration, token: token, pin: deltaPin)
-            deltaStatus = "Прочитано: \(result.pulled). Доставлено: \(result.pushed). "
-                + "Расхождения Anki: \(result.progressConflicts), публикаций: \(result.publicationConflicts)."
+            let (configuration, credentials) = try delta.connection(for: .delta)
+            let result = try await ImportedDeltaSync.run(configuration: configuration, token: credentials.token, pin: credentials.pin)
+            deltaStatus = deltaSummary(result, credentials: credentials, configuration: configuration)
+            NotificationCenter.default.post(name: .kankiImportedCardsChanged, object: nil)
         } catch {
             deltaStatus = message(for: error)
         }
     }
 
-    private var dataSection: some View {
+    func deltaSummary(
+        _ result: ImportedDeltaSync.Result,
+        credentials: ServerTokenStore.Credentials,
+        configuration: ServerConfiguration
+    ) -> String {
+        var status = "Прочитано: \(result.pulled). Доставлено: \(result.pushed). "
+            + "Расхождения Anki: \(result.progressConflicts), публикаций: \(result.publicationConflicts)."
+        if result.quarantined > 0 { status += " В карантине: \(result.quarantined)." }
+        if let error = result.pullError { status += " Не удалось получить: \(message(for: error))." }
+        if let error = result.pushError { status += " Не удалось отправить: \(message(for: error))." }
+        do {
+            try ServerTokenStore.save(credentials, for: .delta, configuration: configuration)
+            deltaAddress = configuration.displayValue
+        } catch {
+            status += " Не удалось сохранить настройки: \(message(for: error))."
+        }
+        return status
+    }
+
+    var dataSection: some View {
         Section("Данные") {
             Text(
                 "Карточки и история оценок хранятся на этом устройстве; JSON-экспорт — в меню «Экспорт» раздела «Обучение». "
@@ -207,61 +238,92 @@ struct SettingsScreen: View {
         }
     }
 
-    private var aboutSection: some View {
+    var aboutSection: some View {
         Section("О приложении") {
             LabeledContent("Версия", value: appVersion)
             LabeledContent("Сборка", value: buildNumber)
         }
     }
 
-    private func loadToken() {
-        guard serverToken.isEmpty else { return }
+    func loadDrafts() {
+        guard !didLoadDrafts else { return }
+        didLoadDrafts = true
+        // Старый адрес — только подсказка. Старый токен не был привязан к нему.
+        snapshot.address = snapshotAddress.isEmpty ? UserDefaults.standard.string(forKey: "serverURL") ?? "" : snapshotAddress
+        delta.address = deltaAddress
         do {
-            serverToken = try ServerTokenStore.load() ?? ""
+            if let configuration = ServerConfiguration(rawValue: snapshotAddress) {
+                snapshot.token = try ServerTokenStore.load(for: .snapshot, configuration: configuration)?.token ?? ""
+            }
         } catch {
-            serverStatus = message(for: error)
+            snapshotStatus = message(for: error)
+        }
+        do {
+            if let configuration = ServerConfiguration(rawValue: deltaAddress),
+               let credentials = try ServerTokenStore.load(for: .delta, configuration: configuration) {
+                delta.token = credentials.token
+                delta.pin = credentials.pin
+            }
+        } catch {
+            deltaStatus = message(for: error)
         }
     }
 
-    private func makeClient(token: String) throws -> ServerClient {
-        guard let configuration = ServerConfiguration(rawValue: serverURL) else {
-            throw ServerInputError.invalidURL
+    func activateSnapshot() throws -> ServerClient {
+        let (configuration, credentials) = try snapshot.connection(for: .snapshot)
+        try ServerTokenStore.save(credentials, for: .snapshot, configuration: configuration)
+        let previous = ServerConfiguration(rawValue: snapshotAddress)
+        if previous.map({ ServerTokenStore.sameOrigin($0, configuration) }) != true {
+            serverRevision = 0
+            syncProblem = nil
+            NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         }
-        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            throw ServerInputError.missingToken
-        }
-        try ServerTokenStore.save(trimmed)
-        return ServerClient(configuration: configuration, token: trimmed)
+        pushGate.markChanged()
+        snapshotAddress = configuration.displayValue
+        return ServerClient(configuration: configuration, token: credentials.token, session: DeltaTransport.snapshotSession)
     }
 
     @MainActor
-    private func checkServer() async {
-        isServerBusy = true
-        defer { isServerBusy = false }
-        do {
-            let token = serverToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            let client = try makeClient(token: token)
-            try ServerTokenStore.save(token)
-            let identity = try await client.identity()
-            serverStatus = "Подключено: \(identity.label)"
-        } catch {
-            serverStatus = message(for: error)
-        }
-    }
-
-    @MainActor
-    private func pushSnapshot() async {
-        guard pushGate.beginManualSync() else {
-            serverStatus = "Дождитесь завершения синхронизации и повторите."
+    func checkServer() async {
+        guard !isServerBusy else { return }
+        guard !pushGate.isRunning, !pushGate.isManualSyncRunning else {
+            snapshotStatus = "Дождитесь завершения синхронизации и повторите."
             return
         }
-        defer { pushGate.finishManualSync() }
         isServerBusy = true
+        focusedToken = nil
         defer { isServerBusy = false }
-        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
-            let client = try makeClient(token: serverToken)
+            let identity = try await activateSnapshot().identity()
+            snapshotStatus = "Подключено: \(identity.label)"
+        } catch {
+            snapshotStatus = message(for: error)
+        }
+    }
+
+    func beginManualSnapshotSync() -> Bool {
+        guard !isServerBusy else { return false }
+        guard pushGate.beginManualSync() else {
+            snapshotStatus = "Дождитесь завершения синхронизации и повторите."
+            return false
+        }
+        isServerBusy = true
+        focusedToken = nil
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
+        return true
+    }
+
+    func finishManualSnapshotSync() {
+        pushGate.finishManualSync()
+        isServerBusy = false
+    }
+
+    @MainActor
+    func pushSnapshot() async {
+        guard beginManualSnapshotSync() else { return }
+        defer { finishManualSnapshotSync() }
+        do {
+            let client = try activateSnapshot()
             let local = try LocalCardStore.load()
             let generation = pushGate.generation
             let result = try await client.push(snapshot: local, baseRevision: serverRevision)
@@ -270,36 +332,30 @@ struct SettingsScreen: View {
                 hasUnsyncedChanges = false
             }
             syncProblem = nil
-            serverStatus = "Отправлено, ревизия \(result.revision)"
+            snapshotStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
             if case .conflict(let revision) = error as? ServerError {
                 syncProblem = .conflict(currentRevision: revision)
             }
-            serverStatus = message(for: error)
+            snapshotStatus = message(for: error)
         }
     }
 
     @MainActor
-    private func pullSnapshot() async {
-        guard pushGate.beginManualSync() else {
-            serverStatus = "Дождитесь завершения синхронизации и повторите."
-            return
-        }
-        defer { pushGate.finishManualSync() }
-        isServerBusy = true
-        defer { isServerBusy = false }
-        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
+    func pullSnapshot() async {
+        guard beginManualSnapshotSync() else { return }
+        defer { finishManualSnapshotSync() }
         do {
-            let client = try makeClient(token: serverToken)
+            let client = try activateSnapshot()
             let generation = pushGate.generation
             let revision = serverRevision
             let result = try await client.fetchSnapshot()
             guard pushGate.isCurrent(generation), serverRevision == revision else {
-                serverStatus = "Локальные данные изменились во время загрузки. Повторите загрузку."
+                snapshotStatus = "Локальные данные изменились во время загрузки. Повторите загрузку."
                 return
             }
             guard let snapshot = result.data else {
-                serverStatus = "На сервере пока нет снимка"
+                snapshotStatus = "На сервере пока нет снимка"
                 return
             }
             try LocalCardStore.replaceFromConfirmedPull(snapshot)
@@ -307,13 +363,13 @@ struct SettingsScreen: View {
             hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
             syncProblem = nil
-            serverStatus = "Загружено, ревизия \(result.revision)"
+            snapshotStatus = "Загружено, ревизия \(result.revision)"
         } catch {
-            serverStatus = message(for: error)
+            snapshotStatus = message(for: error)
         }
     }
 
-    private func message(for error: Error) -> String {
+    func message(for error: Error) -> String {
         if let serverError = error as? ServerError {
             switch serverError {
             case .invalidResponse:
@@ -330,9 +386,6 @@ struct SettingsScreen: View {
         }
         if let urlError = error as? URLError {
             return "Не удалось связаться: \(urlError.localizedDescription)"
-        }
-        if let tokenError = error as? ServerTokenStoreError {
-            return tokenError.localizedDescription
         }
         return error.localizedDescription
     }

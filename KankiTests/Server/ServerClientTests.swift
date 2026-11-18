@@ -79,6 +79,94 @@ private func makeResponse(_ status: Int, _ request: URLRequest) throws -> HTTPUR
 }
 
 final class ServerClientTests: XCTestCase {
+    func testDeltaPersistsPullWhenPostIsUnavailableRejectedOrPartiallyAcknowledged() async throws {
+        for status in [503, 409, 200] {
+            let store = try deltaFixtureStore()
+            defer { try? FileManager.default.removeItem(at: store.deletingLastPathComponent()) }
+            try seedOfflineDeltaReviews(in: store)
+            let pending = try deltaFixtureBatch(from: store).ids
+            let partial = try JSONEncoder().encode(["accepted": Array(pending.prefix(1))])
+            StubURLProtocol.install { request in
+                if request.httpMethod == "GET" {
+                    return (try makeResponse(200, request), Self.deltaFixturePage)
+                }
+                let body = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData(from: request)) as? [String: Any])
+                XCTAssertEqual(body["since"] as? Int, 1)
+                XCTAssertEqual(body["anchor"] as? String, "10000000-0000-4000-8000-000000000001")
+                return (try makeResponse(status, request), partial)
+            }
+            let result = try await ImportedDeltaSync.run(client: makeClient(), store: store)
+            XCTAssertEqual(result.pulled, 1)
+            XCTAssertNil(result.pullError)
+            XCTAssertNotNil(result.pushError)
+            XCTAssertEqual(result.pushed, 0)
+            XCTAssertEqual(try LocalCardStore.deltaCursor(from: store).seq, 1)
+            XCTAssertTrue(try LocalCardStore.importedCards(from: store).contains { $0.title == "Из сети" })
+            XCTAssertEqual(try deltaFixtureBatch(from: store).ids, pending)
+        }
+    }
+
+    func testDeltaSplitsOn413AndKeepsRejectedSingletonWithoutBlockingOtherReviews() async throws {
+        let store = try deltaFixtureStore()
+        defer { try? FileManager.default.removeItem(at: store.deletingLastPathComponent()) }
+        try seedOfflineDeltaReviews(in: store)
+        let ids = try deltaFixtureBatch(from: store).ids
+        let rejected = try XCTUnwrap(ids.first)
+        StubURLProtocol.install { request in
+            if request.httpMethod == "GET" {
+                return (try makeResponse(200, request), Self.deltaFixturePage)
+            }
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData(from: request)) as? [String: Any])
+            let events = try XCTUnwrap(body["events"] as? [[String: Any]])
+            let sent = events.compactMap { $0["id"] as? String }
+            if sent.count > 1 || sent == [rejected] {
+                return (try makeResponse(413, request), Data())
+            }
+            return (try makeResponse(200, request), try JSONEncoder().encode(["accepted": sent]))
+        }
+        let result = try await ImportedDeltaSync.run(client: makeClient(), store: store)
+        XCTAssertEqual(result.pushed, 1)
+        XCTAssertNil(result.pushError)
+        XCTAssertEqual(result.quarantined, 1)
+        XCTAssertTrue(try deltaFixtureBatch(from: store).ids.isEmpty)
+        let card = try LocalCardStore.importedCard(.init(guid: "offline", ord: 0), from: store)
+        XCTAssertEqual(card.reviews.map(\.rating), [.good, .hard])
+    }
+
+    private static let deltaFixturePage = Data("""
+        {"stream":"00000000-0000-4000-8000-000000000042","more":false,
+         "changes":[{"seq":1,"anchor":"10000000-0000-4000-8000-000000000001",
+          "event":{"kind":"publication","note":{"guid":"online","modelID":\(AnkiE1Import.modelID),"mod":1,
+          "fields":["n-018f3a2b-7c41-7000-8000-000000000002","Из сети","","","","","","1"]}}}]}
+        """.utf8)
+
+    private func deltaFixtureStore() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appending(path: "cards.sqlite")
+    }
+
+    private func seedOfflineDeltaReviews(in store: URL) throws {
+        let key = AnkiE1Import.CardKey(guid: "offline", ord: 0)
+        let note = AnkiE1Import.SourceNote(
+            guid: key.guid,
+            modelID: AnkiE1Import.modelID,
+            mod: 1,
+            fields: ["n-018f3a2b-7c41-7000-8000-000000000001", "Офлайн", "", "", "", "", "", "1"]
+        )
+        try LocalCardStore.mergeAnkiImport(AnkiE1Import.preparePublication(note), into: store)
+        let card = try LocalCardStore.importedCard(key, from: store)
+        let first = try LocalCardStore.recordImportedReview(key, shown: card, rating: .hard, at: .init(timeIntervalSince1970: 1_800_000_000), in: store)
+        let due = try XCTUnwrap(first.schedule?.due)
+        _ = try LocalCardStore.recordImportedReview(key, shown: first, rating: .good, at: due, in: store)
+    }
+
+    private func deltaFixtureBatch(from store: URL) throws -> DeltaBatch {
+        try LocalCardStore.nextDeltaBatch(
+            stream: UUID(), cursor: LocalCardStore.deltaCursor(from: store), eventLimit: DeltaBatch.eventLimit, from: store
+        )
+    }
+
     func testIdentitySendsBearerToken() async throws {
         StubURLProtocol.install { request in
             StubURLProtocol.lastRequest = request

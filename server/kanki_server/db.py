@@ -35,7 +35,9 @@ class PublicationIdentityConflict(Exception):
 
 class ChangesConflict(Exception):
     def __init__(
-        self, code: Literal["future_cursor", "stream_mismatch", "event_id_conflict"]
+        self, code: Literal[
+            "future_cursor", "anchor_mismatch", "stream_mismatch", "event_id_conflict"
+        ]
     ) -> None:
         super().__init__(code)
         self.code = code
@@ -118,15 +120,10 @@ class Database:
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     stream TEXT NOT NULL
                 );
-
-                CREATE TABLE IF NOT EXISTS changes (
-                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                    event_id TEXT UNIQUE,
-                    event TEXT NOT NULL
-                );
                 """
             )
             if connection.execute("SELECT 1 FROM change_stream WHERE id = 1").fetchone() is None:
+                self._create_changes_table(connection)
                 connection.execute(
                     "INSERT INTO change_stream (id, stream) VALUES (1, ?)",
                     (str(uuid4()),),
@@ -139,6 +136,43 @@ class Database:
                         connection, row["guid"], row["mod"],
                         PublishedNote.model_validate_json(row["content"]),
                     )
+            elif not any(
+                column["name"] == "anchor"
+                for column in connection.execute("PRAGMA table_info(changes)")
+            ):
+                self._migrate_changes(connection)
+
+    @staticmethod
+    def _create_changes_table(connection: sqlite3.Connection) -> None:
+        connection.execute("""
+            CREATE TABLE changes (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                anchor TEXT NOT NULL UNIQUE,
+                event_id TEXT UNIQUE,
+                event TEXT NOT NULL
+            )
+        """)
+
+    def _migrate_changes(self, connection: sqlite3.Connection) -> None:
+        # Legacy observations asserted only a GUID: neither a matching publication
+        # nor its UID can verify the identity of a historical observation.
+        connection.execute("ALTER TABLE changes RENAME TO legacy_changes")
+        self._create_changes_table(connection)
+        connection.executemany(
+            "INSERT INTO changes (seq, anchor, event) VALUES (?, ?, ?)",
+            (
+                (row["seq"], str(uuid4()), row["event"])
+                for row in connection.execute(
+                    """
+                    SELECT seq, event FROM legacy_changes
+                    WHERE event_id IS NULL AND json_extract(event, '$.kind') = 'publication'
+                    ORDER BY seq
+                    """
+                )
+            ),
+        )
+        connection.execute("DROP TABLE legacy_changes")
+        connection.execute("UPDATE change_stream SET stream = ?", (str(uuid4()),))
 
     def ping(self) -> None:
         with self.connect() as connection:
@@ -258,11 +292,28 @@ class Database:
             ),
         )
         connection.execute(
-            "INSERT INTO changes (event) VALUES (?)",
-            (event.model_dump_json(by_alias=True),),
+            "INSERT INTO changes (anchor, event) VALUES (?, ?)",
+            (str(uuid4()), event.model_dump_json(by_alias=True)),
         )
 
-    def read_changes(self, since: int) -> ChangePage:
+    @staticmethod
+    def _validate_checkpoint(
+        connection: sqlite3.Connection, since: int, anchor: str | None
+    ) -> None:
+        if since == 0:
+            if anchor is not None:
+                raise ChangesConflict("anchor_mismatch")
+            return
+
+        row = connection.execute("SELECT anchor FROM changes WHERE seq = ?", (since,)).fetchone()
+        if row is None:
+            latest = connection.execute("SELECT COALESCE(MAX(seq), 0) FROM changes").fetchone()[0]
+            if since > latest:
+                raise ChangesConflict("future_cursor")
+        if row is None or row["anchor"] != anchor:
+            raise ChangesConflict("anchor_mismatch")
+
+    def read_changes(self, since: int, anchor: str | None) -> ChangePage:
         """
         Return one page from a consistent view of the stream and its latest cursor.
         """
@@ -272,14 +323,10 @@ class Database:
             stream = connection.execute(
                 "SELECT stream FROM change_stream WHERE id = 1"
             ).fetchone()["stream"]
-            latest = connection.execute(
-                "SELECT COALESCE(MAX(seq), 0) FROM changes"
-            ).fetchone()[0]
-            if since > latest:
-                raise ChangesConflict("future_cursor")
+            self._validate_checkpoint(connection, since, anchor)
 
             rows = connection.execute(
-                "SELECT seq, event FROM changes WHERE seq > ? ORDER BY seq LIMIT ?",
+                "SELECT seq, anchor, event FROM changes WHERE seq > ? ORDER BY seq LIMIT ?",
                 (since, MAX_CHANGES_PER_PAGE + 1),
             ).fetchall()
         more = len(rows) > MAX_CHANGES_PER_PAGE
@@ -288,7 +335,10 @@ class Database:
 
         return ChangePage(
             stream=stream,
-            changes=[Change(seq=row["seq"], event=json.loads(row["event"])) for row in rows],
+            changes=[
+                Change(seq=row["seq"], anchor=row["anchor"], event=json.loads(row["event"]))
+                for row in rows
+            ],
             more=more,
         )
 
@@ -308,6 +358,7 @@ class Database:
             ).fetchone()["stream"]
             if request.stream != stream:
                 raise ChangesConflict("stream_mismatch")
+            self._validate_checkpoint(connection, request.since, request.anchor)
 
             for event_id, payload in payloads:
                 row = connection.execute(
@@ -315,8 +366,8 @@ class Database:
                 ).fetchone()
                 if row is None:
                     connection.execute(
-                        "INSERT INTO changes (event_id, event) VALUES (?, ?)",
-                        (event_id, payload),
+                        "INSERT INTO changes (anchor, event_id, event) VALUES (?, ?, ?)",
+                        (str(uuid4()), event_id, payload),
                     )
                 elif row["event"] != payload:
                     raise ChangesConflict("event_id_conflict")

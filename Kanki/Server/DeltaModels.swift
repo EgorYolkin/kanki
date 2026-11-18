@@ -1,8 +1,16 @@
 import Foundation
 
+struct DeltaCursor: Equatable {
+    static let start = Self(seq: 0, anchor: nil)
+
+    let seq: Int64
+    let anchor: UUID?
+}
+
 struct DeltaPage: Decodable {
     struct Change: Decodable {
         let seq: Int64
+        let anchor: UUID
         let event: DeltaEvent
     }
 
@@ -15,25 +23,23 @@ enum DeltaKind: String, Codable {
     case publication, review, progress
 }
 
-struct DeltaReview: Codable, Equatable, FetchableDeltaEvent {
+struct DeltaReview: Codable, Equatable {
     let kind: DeltaKind
     let id: String
+    let uid: String
     let guid: String
     let ord: Int
     let reviewedAt: Double
     let rating: RecallRating
 }
 
-struct DeltaProgress: Codable, Equatable, FetchableDeltaEvent {
+struct DeltaProgress: Codable, Equatable {
     let kind: DeltaKind
     let id: String
+    let uid: String
     let guid: String
     let ord: Int
     let progress: AnkiE1Import.Progress
-}
-
-protocol FetchableDeltaEvent: Encodable, Sendable {
-    var id: String { get }
 }
 
 enum DeltaEvent: Decodable {
@@ -53,19 +59,38 @@ enum DeltaEvent: Decodable {
     }
 }
 
-struct DeltaWrite: Encodable, Sendable {
-    let stream: String
-    let events: [any FetchableDeltaEvent]
+enum DeltaIdentity {
+    static func isValidUID(_ uid: String) -> Bool {
+        uid.wholeMatch(of: #/n-[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/#) != nil
+    }
+}
 
-    private enum CodingKeys: String, CodingKey { case stream, events }
+struct DeltaBatch {
+    static let byteLimit = 1_048_576
+    static let eventLimit = 50
 
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(stream, forKey: .stream)
-        var rows = container.nestedUnkeyedContainer(forKey: .events)
-        for event in events {
-            try event.encode(to: rows.superEncoder())
-        }
+    private(set) var body: Data
+    private(set) var ids: [String] = []
+    private let eventLimit: Int
+
+    init(stream: UUID, cursor: DeltaCursor, eventLimit: Int) {
+        let anchor = cursor.anchor.map { ",\"anchor\":\"\($0.uuidString.lowercased())\"" } ?? ""
+        body = Data("{\"stream\":\"\(stream.uuidString.lowercased())\",\"since\":\(cursor.seq)\(anchor),\"events\":[".utf8)
+        self.eventLimit = eventLimit
+    }
+
+    mutating func append(_ event: Data, id: String) -> Bool {
+        let separatorBytes = ids.isEmpty ? 0 : 1
+        guard ids.count < eventLimit, body.count + separatorBytes + event.count + 2 <= Self.byteLimit else { return false }
+
+        if !ids.isEmpty { body.append(0x2c) }
+        body.append(event)
+        ids.append(id)
+        return true
+    }
+
+    mutating func finish() {
+        body.append(contentsOf: [0x5d, 0x7d])
     }
 }
 
@@ -76,6 +101,7 @@ struct DeltaAcknowledgement: Decodable {
 enum DeltaError: LocalizedError {
     case requiresHTTPS
     case wrongStream
+    case unverifiedCursor
     case invalidPage
     case invalidAcknowledgement
     case eventCollision
@@ -85,6 +111,7 @@ enum DeltaError: LocalizedError {
         switch self {
         case .requiresHTTPS: "Для обмена карточками нужен HTTPS."
         case .wrongStream: "База сервера отличается от подключённой ранее. Журнал оставлен на устройстве."
+        case .unverifiedCursor: "Курсор записан без отпечатка истории. Автоматическое восстановление отключено; журнал сохранён."
         case .invalidPage: "Нарушен порядок изменений. Загрузка остановлена."
         case .invalidAcknowledgement: "Сервер не подтвердил журнал. События остались в очереди."
         case .eventCollision: "Один идентификатор соответствует разным событиям. Обмен остановлен."

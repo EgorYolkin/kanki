@@ -10,7 +10,7 @@ struct LearningScreen: View {
     @State var loadError: String?
     @State var isAddingCard = false
     @State var isReviewing = false
-    @AppStorage("serverURL") var serverURL = ""
+    @AppStorage("snapshotServerURL") var snapshotServerURL = ""
     @AppStorage("serverRevision") var serverRevision = 0
     @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
     @Environment(\.scenePhase) private var scenePhase

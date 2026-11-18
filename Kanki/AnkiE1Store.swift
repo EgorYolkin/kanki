@@ -23,15 +23,17 @@ extension LocalCardStore {
             try merge(note, in: db)
         }
         for card in batch.cards {
-            if preserveProgressConflicts {
-                _ = try merge(.init(guid: card.guid, ord: card.ord, progress: nil), in: db)
-                if let progress = card.progress {
-                    try enqueueAnkiProgress(progress, key: card.key, in: db)
-                }
-            } else if try merge(card, in: db), let progress = card.progress {
-                try enqueueAnkiProgress(progress, key: card.key, in: db)
+            guard let uid = try deltaUID(for: card.guid, in: db) else {
+                throw AnkiE1Import.ImportError.invalidCardIdentity(card.key)
             }
-            try applyWaitingAnkiProgress(to: card.key, in: db)
+            _ = try merge(.init(guid: card.guid, ord: card.ord, progress: nil), in: db)
+            try applyWaitingAnkiProgress(to: card.key, uid: uid, in: db)
+            if let progress = card.progress {
+                if !preserveProgressConflicts {
+                    _ = try merge(card, in: db)
+                }
+                try enqueueAnkiProgress(progress, uid: uid, key: card.key, in: db)
+            }
         }
     }
 

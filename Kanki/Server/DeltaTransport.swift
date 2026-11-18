@@ -7,6 +7,8 @@ enum DeltaTransport {
         case invalidPin
     }
 
+    static let snapshotSession = makeSession(delegate: DeltaTransportDelegate(pin: nil))
+
     /// Создаёт сессию без редиректов и кэша. Пустой пин оставляет системную проверку TLS.
     static func session(pin: String) throws -> URLSession {
         makeSession(delegate: DeltaTransportDelegate(pin: try decodePin(pin)))

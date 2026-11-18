@@ -12,21 +12,16 @@ extension LearningScreen {
         )
     }
 
-    func serverClient() -> ServerClient? {
+    private func serverClient() -> ServerClient? {
         guard let (configuration, token) = serverCredentials() else { return nil }
-        return ServerClient(configuration: configuration, token: token)
+        return ServerClient(configuration: configuration, token: token, session: DeltaTransport.snapshotSession)
     }
 
     private func serverCredentials() -> (ServerConfiguration, String)? {
-        guard let configuration = ServerConfiguration(rawValue: serverURL) else { return nil }
-        do {
-            guard let stored = try ServerTokenStore.load() else { return nil }
-            let token = stored.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !token.isEmpty else { return nil }
-            return (configuration, token)
-        } catch {
-            return nil
-        }
+        guard let configuration = ServerConfiguration(rawValue: snapshotServerURL),
+              let credentials = try? ServerTokenStore.load(for: .snapshot, configuration: configuration),
+              !credentials.token.isEmpty else { return nil }
+        return (configuration, credentials.token)
     }
 
     /// Отмечает состояние несинхронизированным и ставит отложенный push после правки.
@@ -36,13 +31,16 @@ extension LearningScreen {
         guard loadError == nil else { return }
         hasUnsyncedChanges = true
         pushGate.markChanged()
-        guard let client = serverClient() else { return }
+        guard serverCredentials() != nil else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(700))
             guard !Task.isCancelled else { return }
             pushDebounceTask = nil
-            Task { @MainActor in await requestPush(client: client) }
+            Task { @MainActor in
+                guard let client = serverClient() else { return }
+                await requestPush(client: client)
+            }
         }
     }
 

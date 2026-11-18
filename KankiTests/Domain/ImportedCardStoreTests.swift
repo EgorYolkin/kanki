@@ -66,6 +66,7 @@ final class ImportedCardStoreTests: XCTestCase {
 
     func testCardHTMLHidesAnswerAndRetainsOnlyPassiveFormatting() throws {
         let content = ImportedCardContent(
+            uid: "n-synthetic",
             title: "Карточка",
             question: #"<p onclick="ignored()">Вопрос <strong>Km</strong></p><script>script text</script>"#,
             answer: #"<a href="https://invalid.example/">Ответ</a><img src="file:///private/local"><pre> a   b</pre>"#,
@@ -84,6 +85,7 @@ final class ImportedCardStoreTests: XCTestCase {
 
     func testCardWithEmptyQuestionUsesEscapedTitleBeforeAndAfterReveal() throws {
         let content = ImportedCardContent(
+            uid: "n-synthetic",
             title: "Выражение: &lt;x&gt; &amp; y",
             question: "",
             answer: "<p>Ответ <strong>здесь</strong></p>",
@@ -97,6 +99,7 @@ final class ImportedCardStoreTests: XCTestCase {
 
     func testRelationsAreVisibleAsLiteralTextOnlyAfterRevealWithEmptyAnswer() throws {
         let content = ImportedCardContent(
+            uid: "n-synthetic",
             title: "Синтетика &lt;x&gt; &amp;lt;y&amp;gt;",
             question: "<p>Вопрос</p>",
             answer: "",

@@ -10,6 +10,7 @@ struct ImportedCardSummary: Identifiable, Decodable, FetchableRecord {
 }
 
 struct ImportedCardContent: Equatable, Decodable, FetchableRecord {
+    let uid: String
     let title: String
     let question: String
     let answer: String
@@ -99,15 +100,15 @@ extension LocalCardStore {
                 ON CONFLICT (guid, ord) DO UPDATE SET state = excluded.state
                 """, arguments: [key.guid, key.ord, try JSONEncoder().encode(next)])
             try db.execute(sql: """
-                INSERT INTO review_log (eventID, guid, ord, reviewedAt, rating, pending) VALUES (?, ?, ?, ?, ?, 1)
-                """, arguments: [deltaID(), key.guid, key.ord, date.timeIntervalSince1970, rating.rawValue])
+                INSERT INTO review_log (eventID, uid, guid, ord, reviewedAt, rating, pending) VALUES (?, ?, ?, ?, ?, ?, 1)
+                """, arguments: [deltaID(), detail.content.uid, key.guid, key.ord, date.timeIntervalSince1970, rating.rawValue])
             return try importedDetail(key, content: detail.content, in: db, schedule: next)
         }
     }
 
     private static func importedContent(_ key: AnkiE1Import.CardKey, in db: Database) throws -> ImportedCardContent? {
         let sql = """
-            SELECT n.title, n.question, n.answer, n.relations, n.mod FROM note_cards c JOIN notes n ON n.guid = c.guid
+            SELECT n.uid, n.title, n.question, n.answer, n.relations, n.mod FROM note_cards c JOIN notes n ON n.guid = c.guid
             WHERE c.guid = ? AND c.ord = ?
             """
         return try ImportedCardContent.fetchOne(db, sql: sql, arguments: [key.guid, key.ord])
@@ -132,12 +133,13 @@ extension LocalCardStore {
         schedule: CardSchedule? = nil
     ) throws -> ImportedCardDetail {
         let sql = """
-            SELECT id, reviewedAt, rating FROM review_log WHERE guid = ? AND ord = ? ORDER BY reviewedAt DESC, id DESC
+            SELECT id, reviewedAt, rating FROM review_log
+            WHERE uid = ? AND guid = ? AND ord = ? ORDER BY reviewedAt DESC, id DESC
             """
         return try ImportedCardDetail(
             content: content,
             schedule: schedule ?? importedSchedule(key, in: db),
-            reviews: ImportedCardReview.fetchAll(db, sql: sql, arguments: [key.guid, key.ord]),
+            reviews: ImportedCardReview.fetchAll(db, sql: sql, arguments: [content.uid, key.guid, key.ord]),
             ankiProgress: rawAnkiProgress(key, in: db)
         )
     }

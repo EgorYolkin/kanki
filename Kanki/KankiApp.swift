@@ -14,8 +14,10 @@ struct KankiApp: App {
             }
         }
         if arguments.contains("--reset-server") {
-            try? ServerTokenStore.delete()
+            try? ServerTokenStore.deleteAll()
             UserDefaults.standard.removeObject(forKey: "serverURL")
+            UserDefaults.standard.removeObject(forKey: "snapshotServerURL")
+            UserDefaults.standard.removeObject(forKey: "deltaServerURL")
             UserDefaults.standard.removeObject(forKey: "serverRevision")
             UserDefaults.standard.removeObject(forKey: "serverHasUnsyncedChanges")
             UserDefaults.standard.removeObject(forKey: "deltaSPKIPin")
