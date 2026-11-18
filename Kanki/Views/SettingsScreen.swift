@@ -218,6 +218,7 @@ struct SettingsScreen: View {
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
             }
+            NotificationCenter.default.post(name: .kankiManualSyncSucceeded, object: nil)
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
@@ -251,6 +252,7 @@ struct SettingsScreen: View {
             serverRevision = result.revision
             hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
+            NotificationCenter.default.post(name: .kankiManualSyncSucceeded, object: nil)
             serverStatus = "Загружено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
