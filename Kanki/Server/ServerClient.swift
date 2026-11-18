@@ -77,10 +77,14 @@ actor ServerClient {
             let events = try LocalCardStore.pendingActivity(for: baseURL.absoluteString)
             guard !events.isEmpty else { return }
 
-            let body = try encoder.encode(["events": events])
-            _ = try await send(path: "v1/statistics/events", method: "POST", body: body)
+            try await uploadActivity(events)
             try LocalCardStore.acknowledgeActivity(events)
         }
+    }
+
+    func uploadActivity(_ events: [StatisticsEvent]) async throws {
+        let body = try encoder.encode(["events": events])
+        _ = try await send(path: "v1/statistics/events", method: "POST", body: body, expectedStatus: 204)
     }
 
     private func request<T: Decodable>(
@@ -101,7 +105,8 @@ actor ServerClient {
         path: String,
         method: String,
         body: Data?,
-        query: [URLQueryItem] = []
+        query: [URLQueryItem] = [],
+        expectedStatus: Int? = nil
     ) async throws -> Data {
         var url = baseURL.appending(path: path)
         if !query.isEmpty { url.append(queryItems: query) }
@@ -120,6 +125,9 @@ actor ServerClient {
         }
         switch http.statusCode {
         case 200..<300:
+            if let expectedStatus, http.statusCode != expectedStatus {
+                throw ServerError.http(status: http.statusCode)
+            }
             return data
         case 401:
             throw ServerError.unauthorized

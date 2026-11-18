@@ -97,6 +97,26 @@ final class ServerClientTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer secret")
     }
 
+    func testActivityUploadRequiresCommitAcknowledgement() async throws {
+        let event = StatisticsEvent(id: UUID(), kind: "visit", timestamp: Date(timeIntervalSince1970: 100), rating: nil)
+        let client = try makeClient()
+        for status in [200, 202] {
+            StubURLProtocol.install { request in (try makeResponse(status, request), Data()) }
+            do {
+                try await client.uploadActivity([event])
+                XCTFail("Очередь не должна получать подтверждение при HTTP \(status)")
+            } catch {
+                XCTAssertEqual(error as? ServerError, .http(status: status))
+            }
+        }
+        StubURLProtocol.install { request in
+            let packet = try JSONSerialization.jsonObject(with: bodyData(from: request)) as? [String: [[String: Any]]]
+            XCTAssertEqual(packet?["events"]?.first?["id"] as? String, event.id.uuidString)
+            return (try makeResponse(204, request), Data())
+        }
+        try await client.uploadActivity([event])
+    }
+
     func testFetchesEmptySnapshot() async throws {
         StubURLProtocol.install { request in
             (
