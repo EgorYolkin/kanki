@@ -3,6 +3,7 @@ import SwiftUI
 
 struct StatisticsDashboard: View {
     let overview: StatisticsOverview
+    @Binding var calendarSelection: StatisticsHeatmap.Selection
 
     private var statistics: StudyStatistics { overview.statistics }
 
@@ -19,7 +20,7 @@ struct StatisticsDashboard: View {
                 dailyChart
             }
             Section("Календарь за год") {
-                StatisticsHeatmap(overview: overview)
+                StatisticsHeatmap(overview: overview, selection: $calendarSelection)
             }
             if statistics.totalReviews > 0 {
                 Section("Оценки за всё время") {

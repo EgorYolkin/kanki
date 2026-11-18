@@ -10,12 +10,13 @@ struct StatisticsScreen: View {
     }
 
     @AppStorage("serverURL") private var serverURL = ""
-    @Environment(\.timeZone) private var timeZone
+    @Environment(\.scenePhase) private var scenePhase
     @State private var phase = Phase.loading
     @State private var refreshID = 0
+    @State private var calendarSelection = StatisticsHeatmap.Selection()
 
     var body: some View {
-        Group {
+        ZStack {
             switch phase {
             case .loading:
                 ProgressView("Загружаем статистику…")
@@ -33,7 +34,7 @@ struct StatisticsScreen: View {
                         detail: "Здесь появятся посещения и повторения, когда они поступят на сервер."
                     )
                 } else {
-                    StatisticsDashboard(overview: overview)
+                    StatisticsDashboard(overview: overview, calendarSelection: $calendarSelection)
                 }
             case .failed(let message):
                 SectionIntro(symbol: "exclamationmark.triangle", title: "Не удалось загрузить статистику", detail: message)
@@ -48,11 +49,17 @@ struct StatisticsScreen: View {
             }
             .accessibilityIdentifier("refreshStatistics")
         }
-        .task(id: refreshID) { await load() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in refreshID += 1 }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in refreshID += 1 }
+        .task(id: scenePhase == .active ? refreshID : nil) {
+            guard scenePhase == .active else { return }
+            await load()
+        }
+        .onDisappear { phase = .loading }
     }
 
     private func load() async {
-        phase = .loading
+        if case .failed = phase { phase = .loading }
         do {
             guard let configuration = ServerConfiguration(rawValue: serverURL),
                   let token = try ServerTokenStore.load(), !token.isEmpty else {
@@ -61,7 +68,7 @@ struct StatisticsScreen: View {
             }
 
             let client = ServerClient(configuration: configuration, token: token)
-            let statistics = try await client.statistics(timeZone: timeZone)
+            let statistics = try await client.statistics(timeZone: .current)
             try Task.checkCancellation()
             phase = .loaded(try StatisticsOverview(statistics))
         } catch {

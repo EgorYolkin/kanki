@@ -8,8 +8,12 @@ struct StatisticsOverview {
         let monthLabel: String?
     }
 
+    // Даты отчёта — календарные дни, а не моменты времени на устройстве.
+    static let dayFormat = Date.ISO8601FormatStyle(timeZone: .gmt).year().month().day()
+
     let statistics: StudyStatistics
     let weeks: [Week]
+    let dateRange: ClosedRange<Date>?
     let isEmpty: Bool
     let largestTopicCount: Int
 
@@ -21,19 +25,31 @@ struct StatisticsOverview {
         self.statistics = statistics
         isEmpty = statistics.totalReviews == 0 && !statistics.days.contains { $0.visits > 0 }
         largestTopicCount = statistics.topics.lazy.map(\.count).max() ?? 0
-        weeks = try Self.weeks(for: statistics.days)
+        if let first = statistics.days.first, let last = statistics.days.last {
+            guard let start = try? Self.dayFormat.parse(first.date),
+                  let end = try? Self.dayFormat.parse(last.date), start <= end else { throw ServerError.decoding }
+
+            dateRange = start...end
+            weeks = try Self.weeks(for: statistics.days, starting: start)
+        } else {
+            dateRange = nil
+            weeks = []
+        }
     }
 
-    private static func weeks(for days: [StudyStatistics.Day]) throws -> [Week] {
-        guard let first = days.first else { return [] }
+    /// Если выбранная дата вышла из окна отчёта, показываем самый свежий день.
+    func day(for selectedDate: String?) -> StudyStatistics.Day? {
+        if let selectedDate, let day = statistics.days.first(where: { $0.date == selectedDate }) {
+            return day
+        }
 
-        // Не преобразуем локальную дату отчёта во время устройства: для раскладки
-        // нужен лишь день недели григорианского календаря.
-        let dateStyle = Date.ISO8601FormatStyle(timeZone: .gmt).year().month().day()
+        return statistics.days.last
+    }
+
+    private static func weeks(for days: [StudyStatistics.Day], starting firstDate: Date) throws -> [Week] {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .gmt
         calendar.locale = Locale(identifier: "ru_RU")
-        guard let firstDate = try? dateStyle.parse(first.date) else { throw ServerError.decoding }
 
         let monthNames = calendar.shortMonthSymbols
         let weekday = calendar.component(.weekday, from: firstDate)

@@ -61,12 +61,38 @@ final class StatisticsUITests: UITestCase {
         XCTAssertTrue(day.label.contains("Посещений:"))
         XCTAssertTrue(day.label.contains("Повторений:"))
         attach("Статистика — календарь посещений", in: app)
+        try await verifySelectionOnReactivation(in: app, url: url, token: token)
 
         let topic = element("statisticsTopic-Демо: география", in: app)
         scrollTo(topic, in: app)
         XCTAssertTrue(topic.exists)
         XCTAssertTrue((topic.value as? String)?.contains("Повторений:") == true)
         attach("Статистика — оценки и темы", in: app)
+    }
+
+    private func verifySelectionOnReactivation(in app: XCUIApplication, url: String, token: String) async throws {
+        let yesterday = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
+        let date = yesterday.formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
+        let button = app.buttons[date]
+        scrollTo(button, in: app)
+        button.tap()
+        let detail = app.staticTexts["statisticsCalendarDay"]
+        let before = detail.label
+        XCTAssertTrue(before.hasPrefix(date))
+        XCTAssertTrue(element("statisticsCalendarDate", in: app).exists)
+
+        XCUIDevice.shared.press(.home)
+        try await post(events: [Event(kind: "visit", timestamp: yesterday)], url: url, token: token)
+        app.activate()
+
+        waitForUpdatedDay(date, previousLabel: before, detail: detail)
+        XCTAssertTrue(app.segmentedControls["statisticsCalendarMetric"].buttons["Посещения"].isSelected)
+    }
+
+    private func waitForUpdatedDay(_ date: String, previousLabel: String, detail: XCUIElement) {
+        let updated = NSPredicate(format: "label BEGINSWITH %@ AND label != %@", date, previousLabel)
+        expectation(for: updated, evaluatedWith: detail)
+        waitForExpectations(timeout: 10)
     }
 
     private func waitForTotal(_ count: Int, on element: XCUIElement) {

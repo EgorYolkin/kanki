@@ -34,12 +34,29 @@ final class StatisticsOverviewTests: XCTestCase {
 
         XCTAssertFalse(overview.isEmpty)
         XCTAssertTrue(overview.weeks.isEmpty)
+        XCTAssertNil(overview.dateRange)
+        XCTAssertNil(overview.day(for: "2024-01-01"))
         XCTAssertEqual(overview.largestTopicCount, 3)
     }
 
     func testMissingRatingOrInvalidCalendarDateIsNotAZeroReport() {
         XCTAssertThrowsError(try StatisticsOverview(statistics(days: [], ratings: [0, 0, 0])))
         XCTAssertThrowsError(try StatisticsOverview(statistics(days: [.init(date: "не дата", visits: 0, reviews: 0)])))
+    }
+
+    func testSelectedDateResolvesInUpdatedReportOrFallsBackToLatestDay() throws {
+        let days = [
+            StudyStatistics.Day(date: "2024-02-29", visits: 4, reviews: 2),
+            StudyStatistics.Day(date: "2024-03-01", visits: 1, reviews: 0)
+        ]
+        let overview = try StatisticsOverview(statistics(days: days))
+        let range = try XCTUnwrap(overview.dateRange)
+
+        XCTAssertEqual(StatisticsOverview.dayFormat.format(range.lowerBound), "2024-02-29")
+        XCTAssertEqual(StatisticsOverview.dayFormat.format(range.upperBound), "2024-03-01")
+        XCTAssertEqual(overview.day(for: "2024-02-29")?.reviews, 2)
+        XCTAssertEqual(overview.day(for: "2023-02-28")?.date, "2024-03-01")
+        XCTAssertEqual(overview.day(for: nil)?.date, "2024-03-01")
     }
 
     func testHeatmapIntensityUsesStableBands() {

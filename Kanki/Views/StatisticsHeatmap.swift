@@ -1,34 +1,37 @@
 import SwiftUI
 
 struct StatisticsHeatmap: View {
-    let overview: StatisticsOverview
-
-    @ScaledMetric(relativeTo: .caption) private var cellSide: CGFloat = 16
-    @State private var showsVisits: Bool
-    @State private var selectedDay: StudyStatistics.Day?
-
-    init(overview: StatisticsOverview) {
-        self.overview = overview
-        _showsVisits = State(initialValue: overview.statistics.totalReviews == 0)
+    struct Selection {
+        var showsVisits: Bool?
+        var date: String?
     }
 
-    private var detailDay: StudyStatistics.Day? { selectedDay ?? overview.statistics.days.last }
+    let overview: StatisticsOverview
+    @Binding var selection: Selection
+
+    @ScaledMetric(relativeTo: .caption) private var cellSide: CGFloat = 16
+
+    private var showsVisits: Bool { selection.showsVisits ?? (overview.statistics.totalReviews == 0) }
 
     var body: some View {
+        let detailDay = overview.day(for: selection.date)
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Показатель календаря", selection: $showsVisits) {
+            Picker("Показатель календаря", selection: Binding(get: { showsVisits }, set: { selection.showsVisits = $0 })) {
                 Text("Повторения").tag(false)
                 Text("Посещения").tag(true)
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("statisticsCalendarMetric")
+            if let day = detailDay {
+                datePicker(for: day)
+            }
 
             HStack(alignment: .top, spacing: 4) {
                 weekdayLabels
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 3) {
                         ForEach(overview.weeks, id: \.days.startIndex) { week in
-                            weekColumn(week)
+                            weekColumn(week, selectedDate: detailDay?.date)
                         }
                     }
                     .padding(.bottom, 5)
@@ -43,6 +46,24 @@ struct StatisticsHeatmap: View {
             }
         }
         .padding(.vertical, 6)
+        .onAppear {
+            if selection.showsVisits == nil { selection.showsVisits = showsVisits }
+        }
+    }
+
+    @ViewBuilder
+    private func datePicker(for day: StudyStatistics.Day) -> some View {
+        if let range = overview.dateRange, let date = try? StatisticsOverview.dayFormat.parse(day.date) {
+            DatePicker(
+                "Выбрать дату",
+                selection: Binding(get: { date }, set: { selection.date = StatisticsOverview.dayFormat.format($0) }),
+                in: range,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .environment(\.timeZone, .gmt)
+            .accessibilityIdentifier("statisticsCalendarDate")
+        }
     }
 
     private var weekdayLabels: some View {
@@ -57,7 +78,7 @@ struct StatisticsHeatmap: View {
         .accessibilityHidden(true)
     }
 
-    private func weekColumn(_ week: StatisticsOverview.Week) -> some View {
+    private func weekColumn(_ week: StatisticsOverview.Week, selectedDate: String?) -> some View {
         VStack(spacing: 3) {
             Color.clear
                 .frame(width: cellSide, height: cellSide)
@@ -70,20 +91,20 @@ struct StatisticsHeatmap: View {
                 Color.clear.frame(width: cellSide, height: cellSide).accessibilityHidden(true)
             }
             ForEach(week.days, id: \.date) { day in
-                dayButton(day)
+                dayButton(day, isSelected: day.date == selectedDate)
             }
         }
     }
 
-    private func dayButton(_ day: StudyStatistics.Day) -> some View {
+    private func dayButton(_ day: StudyStatistics.Day, isSelected: Bool) -> some View {
         Button {
-            selectedDay = day
+            selection.date = day.date
         } label: {
             RoundedRectangle(cornerRadius: 3)
                 .fill(color(for: showsVisits ? day.visits : day.reviews))
                 .frame(width: cellSide, height: cellSide)
                 .overlay {
-                    if detailDay?.date == day.date {
+                    if isSelected {
                         RoundedRectangle(cornerRadius: 3).strokeBorder(.primary, lineWidth: 1.5)
                     }
                 }
@@ -91,7 +112,7 @@ struct StatisticsHeatmap: View {
         .buttonStyle(.plain)
         .accessibilityLabel(day.date)
         .accessibilityValue("Посещений: \(day.visits), повторений: \(day.reviews)")
-        .accessibilityAddTraits(detailDay?.date == day.date ? .isSelected : [])
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var legend: some View {
