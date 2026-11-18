@@ -48,7 +48,7 @@ extension LearningScreen {
     var uncategorizedSection: some View {
         let uncategorized = categorySummaries.filter { $0.deck == nil }
         if !uncategorized.isEmpty {
-            Section(CardCategory.noCategoryTitle) {
+            Section {
                 ForEach(uncategorized, id: \.title) { summary in
                     CategorySummaryRow(
                         summary: summary,
@@ -58,7 +58,7 @@ extension LearningScreen {
                             isReviewingDeck = true
                         },
                         onRename: {},
-                        onDelete: {},
+                        onDelete: { deckToDelete = summary },
                         onMove: { moveDeck(from: nil, to: $0) }
                     )
                 }
@@ -78,7 +78,7 @@ extension LearningScreen {
                     onDelete: { card in try deleteCard(card) }
                 )
             } label: {
-                Label("Все карточки", systemImage: "rectangle.on.rectangle")
+                Text("Все карточки")
             }
         }
     }
@@ -288,6 +288,17 @@ extension LearningScreen {
             try apply(updated)
         } catch {
             syncError = "Не удалось удалить категорию: \(error.localizedDescription)"
+        }
+    }
+
+    func deleteUncategorizedCards() {
+        var updated = snapshot
+        guard updated.removeUncategorizedCards() > 0 else { return }
+        do {
+            try apply(updated)
+            selectedCard = nil
+        } catch {
+            syncError = "Не удалось удалить карточки без категории: \(error.localizedDescription)"
         }
     }
 

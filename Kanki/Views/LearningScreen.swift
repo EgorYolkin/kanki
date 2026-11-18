@@ -190,8 +190,10 @@ struct LearningScreen: View {
                 renameText: $renameText,
                 renameError: $renameError,
                 deckToDelete: $deckToDelete,
+                uncategorizedCardCount: snapshot.uncategorizedCardCount,
                 onRename: { renameDeck(from: $0, to: $1) },
-                onDelete: { deleteDeck($0) }
+                onDelete: { deleteDeck($0) },
+                onDeleteUncategorized: { deleteUncategorizedCards() }
             )
         )
     }

@@ -49,6 +49,29 @@ struct LearningSnapshot: Codable, Equatable {
         return true
     }
 
+    /// Число карточек без категории, включая архивные.
+    var uncategorizedCardCount: Int {
+        cards.reduce(0) { $0 + ($1.deck == nil ? 1 : 0) }
+    }
+
+    /// Удаляет все карточки без категории, включая архивные, с их историей и расписанием.
+    /// История и расписания, не связанные с удалёнными карточками, сохраняются.
+    @discardableResult
+    mutating func removeUncategorizedCards() -> Int {
+        var removedIDs = Set<UUID>()
+        for card in cards where card.deck == nil {
+            removedIDs.insert(card.id)
+        }
+        guard !removedIDs.isEmpty else { return 0 }
+        let previousCount = cards.count
+        cards.removeAll { $0.deck == nil }
+        reviews.removeAll { removedIDs.contains($0.cardID) }
+        for id in removedIDs {
+            schedules.removeValue(forKey: id)
+        }
+        return previousCount - cards.count
+    }
+
     /// Архивирует или возвращает карточку; история и расписание сохраняются.
     @discardableResult
     mutating func setArchived(_ archived: Bool, cardID: UUID) -> Bool {

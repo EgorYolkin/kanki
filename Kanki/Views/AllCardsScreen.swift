@@ -3,6 +3,12 @@ import SwiftUI
 /// Плоский список всех карточек с поиском и чипами-фильтрами по категории.
 /// Открытие карточки делегируется экрану «Обучение» через `onOpen`.
 struct AllCardsScreen: View {
+    private enum CategorySelection: Equatable {
+        case all
+        case uncategorized
+        case deck(String)
+    }
+
     let cards: [SessionCard]
     let schedules: [UUID: CardSchedule]
     let clock: Date
@@ -12,9 +18,7 @@ struct AllCardsScreen: View {
     let onDelete: (SessionCard) throws -> Void
 
     @State private var searchQuery = ""
-    /// `nil` — фильтр не выбран («Все»); внутренний `Optional` различает
-    /// «Все» и «Без категории» при тапе по чипу без категории.
-    @State private var selectedDeck: String??
+    @State private var selectedCategory = CategorySelection.all
     /// Показывать архивные карточки вместо активных.
     @State private var showsArchive = false
     @State private var cardPendingDeletion: SessionCard?
@@ -32,13 +36,20 @@ struct AllCardsScreen: View {
         CardCategory.deckNames(in: scopeCards)
     }
 
+    private var hasUncategorizedCards: Bool {
+        CardCategory.hasUncategorizedCards(in: scopeCards)
+    }
+
     private var filteredCards: [SessionCard] {
         let scoped: [SessionCard]
-        if let deck = selectedDeck {
+        switch selectedCategory {
+        case .all:
+            scoped = scopeCards
+        case .uncategorized:
+            scoped = CardCategory.cards(scopeCards, inDeck: nil, includingArchived: true)
+        case .deck(let deck):
             // Архивные карточки уже отобраны `scopeCards`, повторно их не фильтруем.
             scoped = CardCategory.cards(scopeCards, inDeck: deck, includingArchived: true)
-        } else {
-            scoped = scopeCards
         }
         return CardSearch.filter(scoped, matching: searchQuery)
     }
@@ -84,9 +95,12 @@ struct AllCardsScreen: View {
             } header: {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        deckChip(title: "Все", value: nil)
+                        deckChip(title: "Все", value: .all)
+                        if hasUncategorizedCards {
+                            deckChip(title: CardCategory.noCategoryTitle, value: .uncategorized)
+                        }
                         ForEach(deckNames, id: \.self) { deck in
-                            deckChip(title: deck, value: deck)
+                            deckChip(title: deck, value: .deck(deck))
                         }
                         if hasArchivedCards || showsArchive {
                             archiveChip
@@ -111,7 +125,7 @@ struct AllCardsScreen: View {
         .navigationTitle("Все карточки")
         .toolbarTitleDisplayMode(.inline)
         .onChange(of: showsArchive) { _, _ in
-            selectedDeck = nil
+            selectedCategory = .all
         }
         .alert("Удалить карточку и историю повторений?", isPresented: isConfirmingDeletion) {
             Button("Удалить карточку", role: .destructive) {
@@ -187,10 +201,10 @@ struct AllCardsScreen: View {
         }
     }
 
-    private func deckChip(title: String, value: String?) -> some View {
-        let isSelected = value == nil ? selectedDeck == nil : selectedDeck == .some(value)
+    private func deckChip(title: String, value: CategorySelection) -> some View {
+        let isSelected = selectedCategory == value
         return Button {
-            selectedDeck = value == nil ? nil : .some(value)
+            selectedCategory = value
         } label: {
             Text(title)
                 .font(.footnote.weight(isSelected ? .semibold : .regular))

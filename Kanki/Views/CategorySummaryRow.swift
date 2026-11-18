@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Строка категории в списке экрана «Обучение»: имя, счётчики «к повторению/всего»,
 /// тап — обучение категории, long-press — контекстное меню.
-/// Служебная строка «Без категории» ограничена перемещением карточек.
+/// Карточки служебной группы можно переместить или удалить с подтверждением.
 struct CategorySummaryRow: View {
     let summary: CategorySummary
     let availableDecks: [String]
@@ -28,8 +28,22 @@ struct CategorySummaryRow: View {
             if summary.deck != nil {
                 Button("Переименовать…", action: onRename)
                 Button("Удалить", role: .destructive, action: onDelete)
+            } else {
+                Button("Удалить все карточки", role: .destructive, action: onDelete)
+                    .accessibilityIdentifier("deleteUncategorizedCards")
             }
             moveMenu
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if summary.deck == nil {
+                // Destructive скрывает строку сразу, но здесь удаление ещё не подтверждено.
+                Button(action: onDelete) {
+                    Label("Удалить все", systemImage: "trash")
+                }
+                .tint(.red)
+                .accessibilityLabel("Удалить карточки без категории")
+                .accessibilityIdentifier("deleteUncategorizedCards")
+            }
         }
     }
 

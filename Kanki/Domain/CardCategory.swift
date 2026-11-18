@@ -89,13 +89,18 @@ enum CardCategory {
         Set(cards.compactMap(\.deck)).sorted()
     }
 
+    /// Наличие карточек без категории в уже выбранной области библиотеки.
+    static func hasUncategorizedCards(in cards: [SessionCard]) -> Bool {
+        cards.contains { $0.deck == nil }
+    }
+
     /// Карточки активные (`archived: false`) или архивные — для списка «Все карточки».
     static func cards(_ cards: [SessionCard], archived: Bool) -> [SessionCard] {
         cards.filter { $0.isArchived == archived }
     }
 
     /// Список категорий с счётчиками: по алфавиту, «Без категории» — в конце.
-    /// Пустая секция «Без категории» возвращается только когда других категорий нет.
+    /// Учитываются только непустые группы активных карточек.
     static func summaries(
         of snapshot: LearningSnapshot,
         at date: Date
@@ -123,7 +128,7 @@ enum CardCategory {
             }
 
         let uncategorized = cards(snapshot.cards, inDeck: nil)
-        if !uncategorized.isEmpty || summaries.isEmpty {
+        if !uncategorized.isEmpty {
             summaries.append(
                 CategorySummary(
                     deck: nil,

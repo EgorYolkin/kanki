@@ -7,9 +7,18 @@ final class CardCategoryTests: XCTestCase {
     private func card(
         _ question: String,
         deck: String?,
-        createdAt: Date = Date(timeIntervalSince1970: 100)
+        createdAt: Date = Date(timeIntervalSince1970: 100),
+        id: UUID = UUID(),
+        isArchived: Bool = false
     ) -> SessionCard {
-        SessionCard(question: question, answer: "Ответ", createdAt: createdAt, deck: deck)
+        SessionCard(
+            id: id,
+            question: question,
+            answer: "Ответ",
+            createdAt: createdAt,
+            deck: deck,
+            isArchived: isArchived
+        )
     }
 
     private func schedule(
@@ -61,6 +70,16 @@ final class CardCategoryTests: XCTestCase {
 
         XCTAssertEqual(CardCategory.cards(cards, inDeck: "Математика").map(\.question), ["1", "2"])
         XCTAssertEqual(CardCategory.cards(cards, inDeck: nil).map(\.question), ["4"])
+    }
+
+    func testUncategorizedPresenceReflectsTheProvidedLibraryScope() {
+        let named = card("named", deck: "Физика")
+        let plain = card("plain", deck: nil, isArchived: true)
+        let cards = [named, plain]
+
+        XCTAssertFalse(CardCategory.hasUncategorizedCards(in: []))
+        XCTAssertFalse(CardCategory.hasUncategorizedCards(in: CardCategory.cards(cards, archived: false)))
+        XCTAssertTrue(CardCategory.hasUncategorizedCards(in: CardCategory.cards(cards, archived: true)))
     }
 
     func testArchivedCardsAreExcludedUnlessRequested() {
@@ -151,12 +170,69 @@ final class CardCategoryTests: XCTestCase {
         XCTAssertEqual(summaries[1].newCount, 1)
     }
 
-    func testSummariesHideEmptyUncategorizedWhenNamedDecksExist() {
-        let snapshot = LearningSnapshot(cards: [card("1", deck: "Физика")])
+    func testEmptySnapshotHasNoSummariesOrActiveLibraryCards() {
+        let snapshot = LearningSnapshot()
 
-        let summaries = CardCategory.summaries(of: snapshot, at: now)
+        XCTAssertTrue(CardCategory.summaries(of: snapshot, at: now).isEmpty)
+        XCTAssertTrue(CardCategory.cards(snapshot.cards, archived: false).isEmpty)
+    }
 
-        XCTAssertEqual(summaries.map(\.deck), ["Физика"])
+    func testArchivedOnlySnapshotHasNoSummariesOrActiveLibraryCards() {
+        let archivedPlain = card(
+            "plain",
+            deck: nil,
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)),
+            isArchived: true
+        )
+        let archivedNamed = card(
+            "named",
+            deck: "Физика",
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2)),
+            isArchived: true
+        )
+        for cards in [[archivedPlain], [archivedNamed], [archivedPlain, archivedNamed]] {
+            let snapshot = LearningSnapshot(cards: cards)
+
+            XCTAssertTrue(CardCategory.summaries(of: snapshot, at: now).isEmpty)
+            XCTAssertTrue(CardCategory.cards(snapshot.cards, archived: false).isEmpty)
+            XCTAssertEqual(CardCategory.cards(snapshot.cards, archived: true), cards)
+        }
+    }
+
+    func testMixedSummariesOnlyRepresentActiveLibraryCards() {
+        let named = card(
+            "named",
+            deck: "Физика",
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
+        )
+        let plain = card(
+            "plain",
+            deck: nil,
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2))
+        )
+        let archivedPlain = card(
+            "archived",
+            deck: nil,
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3)),
+            isArchived: true
+        )
+        let namedOnly = LearningSnapshot(cards: [named, archivedPlain])
+        let mixed = LearningSnapshot(cards: [archivedPlain, plain, named])
+
+        XCTAssertEqual(
+            CardCategory.summaries(of: namedOnly, at: now),
+            [CategorySummary(deck: "Физика", dueCount: 1, totalCount: 1, newCount: 1)]
+        )
+        XCTAssertEqual(CardCategory.cards(namedOnly.cards, archived: false), [named])
+        XCTAssertEqual(
+            CardCategory.summaries(of: mixed, at: now),
+            [
+                CategorySummary(deck: "Физика", dueCount: 1, totalCount: 1, newCount: 1),
+                CategorySummary(deck: nil, dueCount: 1, totalCount: 1, newCount: 1)
+            ]
+        )
+        XCTAssertEqual(CardCategory.cards(mixed.cards, archived: false), [plain, named])
+        XCTAssertEqual(CardCategory.cards(mixed.cards, inDeck: nil), [plain])
     }
 
     func testSummariesKeepUncategorizedWhenItIsTheOnlySection() {
