@@ -26,11 +26,13 @@ struct ImportedCardsScreen: View {
             } else if cards.isEmpty {
                 SectionIntro(symbol: "tray", title: "Нет импортированных карточек", detail: "Выберите пакет .apkg профиля Kanki v1.")
             } else {
+                NavigationLink("Библиотека заметок", value: ImportedNoteRoute.library)
+                    .accessibilityIdentifier("importedNoteLibrary")
                 ForEach(cards) { card in
                     NavigationLink {
                         ImportedCardScreen(key: card.id)
                     } label: {
-                        Text(ImportedCardHTML.displayTitle(card.title))
+                        Text(AnkiFieldText.title(card.title))
                     }
                     .accessibilityIdentifier("importedCard-\(card.guid)")
                 }
@@ -170,6 +172,7 @@ private struct ImportedCardScreen: View {
     private func record(_ rating: RecallRating, shown: ImportedCardDetail) {
         do {
             detail = try LocalCardStore.recordImportedReview(key, shown: shown, rating: rating, at: .now)
+            ServerClient.scheduleActivityUpload()
             isAnswerRevealed = false
             error = nil
         } catch {

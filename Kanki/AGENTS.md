@@ -37,7 +37,6 @@ macOS 14+. The same sources ship on both; a screen must work on both.
   it is stored locally by `LocalCardStore`, store failures must surface, and the UI must
   not imply a server or SRS that does not exist. The manual server check and snapshot
   push/pull are real; a revision conflict must be shown, never merged silently.
-- `Destination` has exhaustive `title` and `symbol` switches: a new case requires both.
 - Interactive elements driven by UI tests need a stable `accessibilityIdentifier`
   (`addSessionCard`, `cardQuestion`, `cardAnswer`, `startReviewSession`, `aheadCount`,
   `reviewProgress`, `reviewFinish`, `appearance-system`, `appearance-light`,

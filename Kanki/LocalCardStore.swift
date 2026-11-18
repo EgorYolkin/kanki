@@ -77,6 +77,11 @@ enum LocalCardStore {
             }
         }
         migrator.registerMigration("importedCardReview", migrate: createImportedReviewTables)
+        migrator.registerMigration("importedNoteNavigation", migrate: createNoteNavigationIndex)
+        migrator.registerMigration("importedNoteBodyBoundaries", migrate: refreshNoteLibraryBodies)
+        migrator.registerMigration("importedNotePhrasingBoundaries", migrate: refreshNoteLibraryBodies)
+        migrator.registerMigration("statisticsQueue", migrate: createStatisticsQueue)
+        migrator.registerMigration("verifiedStatisticsOrigin", migrate: migrateStatisticsOrigins)
         let alreadyInitialized = try replacement != nil && queue.read {
             try migrator.appliedIdentifiers($0).contains(initialMigration)
         }

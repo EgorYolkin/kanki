@@ -22,6 +22,11 @@ struct ServerConfiguration: Equatable {
             return nil
         }
         var normalized = components
+        normalized.scheme = scheme
+        normalized.host = host.lowercased()
+        if normalized.port == (scheme == "https" ? 443 : 80) {
+            normalized.port = nil
+        }
         normalized.path = ""
         guard let url = normalized.url else { return nil }
         baseURL = url
@@ -30,4 +35,16 @@ struct ServerConfiguration: Equatable {
     var displayValue: String {
         baseURL.absoluteString
     }
+}
+
+/// Replacing a destination in the form must never carry its secret to another origin.
+struct ServerSettingsDraft {
+    var address = "" {
+        didSet {
+            if ServerConfiguration(rawValue: oldValue) != ServerConfiguration(rawValue: address) {
+                token = ""
+            }
+        }
+    }
+    var token = ""
 }

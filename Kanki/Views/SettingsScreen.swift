@@ -36,7 +36,7 @@ struct SettingsScreen: View {
     @AppStorage("showGraphSection") private var showGraphSection = false
     @AppStorage("serverHasUnsyncedChanges") private var hasUnsyncedChanges = false
 
-    @State private var serverToken = ""
+    @State private var draft = ServerSettingsDraft()
     @State private var serverStatus = "Не подключён"
     @State private var isServerBusy = false
     @State private var isConfirmingPull = false
@@ -58,11 +58,7 @@ struct SettingsScreen: View {
             aboutSection
         }
         .navigationTitle("Настройки")
-        .onAppear(perform: loadToken)
-        .onChange(of: serverURL) { _, _ in
-            serverRevision = 0
-            syncProblem = nil
-        }
+        .onAppear(perform: loadDraft)
         .confirmationDialog(
             "Заменить локальные данные данными сервера?",
             isPresented: $isConfirmingPull,
@@ -106,7 +102,7 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("showNotesSection")
             Toggle("Граф", isOn: $showGraphSection)
                 .accessibilityIdentifier("showGraphSection")
-            Text("Разделы «Заметки» и «Граф» пока заготовки; включите переключатель, чтобы вернуть раздел в панель вкладок.")
+            Text("Выберите, какие разделы показывать в панели вкладок.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -114,11 +110,13 @@ struct SettingsScreen: View {
 
     private var serverSection: some View {
         Section("Сервер") {
-            TextField("http://100.x.y.z:8000", text: $serverURL)
+            TextField("http://100.x.y.z:8000", text: $draft.address)
+                .disabled(isServerBusy)
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .accessibilityIdentifier("serverURL")
-            SecureField("Токен", text: $serverToken)
+            SecureField("Токен", text: $draft.token)
+                .disabled(isServerBusy)
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .accessibilityIdentifier("serverToken")
@@ -141,6 +139,13 @@ struct SettingsScreen: View {
             }
             .disabled(isServerBusy)
             .accessibilityIdentifier("serverPull")
+            if !serverURL.isEmpty {
+                Button("Отключить сервер", role: .destructive, action: disconnect)
+                    .disabled(isServerBusy)
+            }
+            Text("Адрес и токен сохраняются при проверке соединения или обмене снимком.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             Text("Снимок отправляется вручную. Автоматического мержа нет: при конфликте ревизий загрузите данные с сервера.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -165,25 +170,46 @@ struct SettingsScreen: View {
         }
     }
 
-    private func loadToken() {
-        guard serverToken.isEmpty else { return }
+    private func loadDraft() {
         do {
-            serverToken = try ServerTokenStore.load() ?? ""
+            let configuration = ServerTokenStore.configuration
+            let token = try configuration.flatMap { try ServerTokenStore.load(for: $0) }
+            draft = ServerSettingsDraft(address: configuration?.displayValue ?? "", token: token ?? "")
         } catch {
             serverStatus = message(for: error)
         }
     }
 
-    private func makeClient(token: String) throws -> ServerClient {
-        guard let configuration = ServerConfiguration(rawValue: serverURL) else {
+    private func commitDraft() throws -> ServerClient {
+        guard let configuration = ServerConfiguration(rawValue: draft.address) else {
             throw ServerInputError.invalidURL
         }
-        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = draft.token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             throw ServerInputError.missingToken
         }
-        try ServerTokenStore.save(trimmed)
+        let switching = configuration != ServerTokenStore.configuration
+        try ServerTokenStore.commit(trimmed, for: configuration)
+        if switching { resetSyncDestination() }
         return ServerClient(configuration: configuration, token: trimmed)
+    }
+
+    private func disconnect() {
+        do {
+            try ServerTokenStore.delete()
+            resetSyncDestination()
+            draft = ServerSettingsDraft()
+            serverStatus = "Не подключён"
+        } catch {
+            serverStatus = message(for: error)
+        }
+    }
+
+    private func resetSyncDestination() {
+        serverRevision = 0
+        syncProblem = nil
+        pushGate.markChanged()
+        NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
     }
 
     @MainActor
@@ -191,10 +217,8 @@ struct SettingsScreen: View {
         isServerBusy = true
         defer { isServerBusy = false }
         do {
-            let token = serverToken.trimmingCharacters(in: .whitespacesAndNewlines)
-            let client = try makeClient(token: token)
-            try ServerTokenStore.save(token)
-            let identity = try await client.identity()
+            let client = try commitDraft()
+            let identity = try await client.verifyDestination()
             serverStatus = "Подключено: \(identity.label)"
         } catch {
             serverStatus = message(for: error)
@@ -211,11 +235,14 @@ struct SettingsScreen: View {
         isServerBusy = true
         defer { isServerBusy = false }
         NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
+        var attemptedClient: ServerClient?
         do {
-            let client = try makeClient(token: serverToken)
+            let client = try commitDraft()
+            attemptedClient = client
             let local = try LocalCardStore.load()
             let generation = pushGate.generation
             let result = try await client.push(snapshot: local, baseRevision: serverRevision)
+            guard client.usesCurrentCredentials else { return }
             serverRevision = result.revision
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
@@ -223,6 +250,7 @@ struct SettingsScreen: View {
             syncProblem = nil
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
+            guard attemptedClient?.usesCurrentCredentials != false else { return }
             if case .conflict(let revision) = error as? ServerError {
                 syncProblem = .conflict(currentRevision: revision)
             }
@@ -241,10 +269,11 @@ struct SettingsScreen: View {
         defer { isServerBusy = false }
         NotificationCenter.default.post(name: .kankiCancelPendingPush, object: nil)
         do {
-            let client = try makeClient(token: serverToken)
+            let client = try commitDraft()
             let generation = pushGate.generation
             let revision = serverRevision
             let result = try await client.fetchSnapshot()
+            guard client.usesCurrentCredentials else { return }
             guard pushGate.isCurrent(generation), serverRevision == revision else {
                 serverStatus = "Локальные данные изменились во время загрузки. Повторите загрузку."
                 return

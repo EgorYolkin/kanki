@@ -1,12 +1,13 @@
 import Foundation
 
-/// Разделы оболочки. `rawValue` задаёт номер горячей клавиши на macOS (⌘1–⌘4),
+/// Разделы оболочки. `rawValue` задаёт номер горячей клавиши на macOS (⌘1–⌘5),
 /// поэтому порядок и значения менять нельзя без обновления теста и документации.
 enum AppSection: Int, CaseIterable {
     case learning = 1
     case notes
     case graph
     case settings
+    case statistics
 
     var title: String {
         switch self {
@@ -14,6 +15,7 @@ enum AppSection: Int, CaseIterable {
         case .notes: "Заметки"
         case .graph: "Граф"
         case .settings: "Настройки"
+        case .statistics: "Статистика"
         }
     }
 
@@ -23,6 +25,7 @@ enum AppSection: Int, CaseIterable {
         case .notes: "note.text"
         case .graph: "circle.hexagongrid"
         case .settings: "gearshape"
+        case .statistics: "chart.bar"
         }
     }
 
@@ -31,7 +34,7 @@ enum AppSection: Int, CaseIterable {
     static func visible(notesShown: Bool, graphShown: Bool) -> [AppSection] {
         allCases.filter { section in
             switch section {
-            case .learning, .settings: true
+            case .learning, .settings, .statistics: true
             case .notes: notesShown
             case .graph: graphShown
             }

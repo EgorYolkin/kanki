@@ -97,6 +97,7 @@ extension LocalCardStore {
             try db.execute(sql: """
                 INSERT INTO review_log (guid, ord, reviewedAt, rating) VALUES (?, ?, ?, ?)
                 """, arguments: [key.guid, key.ord, date.timeIntervalSince1970, rating.rawValue])
+            try enqueueActivity(at: date, rating: rating.rawValue, in: db)
             return try importedDetail(key, content: detail.content, in: db, schedule: next)
         }
     }

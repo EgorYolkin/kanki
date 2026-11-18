@@ -37,7 +37,20 @@ enum ServerTokenStore {
         ]
     }
 
-    static func load() throws -> String? {
+    static var configuration: ServerConfiguration? {
+        UserDefaults.standard.string(forKey: "serverURL").flatMap(ServerConfiguration.init(rawValue:))
+    }
+
+    static func load(for destination: ServerConfiguration) throws -> String? {
+        guard configuration == destination, let record = try loadRecord() else { return nil }
+        // Legacy devices stored a bare bearer token alongside the saved serverURL.
+        // A newline cannot occur in a bearer token; new records carry their own origin.
+        guard let separator = record.firstIndex(of: "\n") else { return record }
+        guard record[..<separator] == destination.displayValue else { return nil }
+        return String(record[record.index(after: separator)...])
+    }
+
+    private static func loadRecord() throws -> String? {
         do {
             if let token = try keychainToken() {
                 return token
@@ -51,7 +64,13 @@ enum ServerTokenStore {
         }
     }
 
-    static func save(_ token: String) throws {
+    @MainActor
+    static func commit(_ token: String, for destination: ServerConfiguration) throws {
+        try saveRecord(destination.displayValue + "\n" + token)
+        UserDefaults.standard.set(destination.displayValue, forKey: "serverURL")
+    }
+
+    private static func saveRecord(_ token: String) throws {
         do {
             try keychainSave(token)
         } catch let error as ServerTokenStoreError {
@@ -69,6 +88,7 @@ enum ServerTokenStore {
             throw ServerTokenStoreError.keychain(status)
         }
         try fileDelete()
+        UserDefaults.standard.removeObject(forKey: "serverURL")
     }
 
     /// Токен из Keychain; internal — тест проверяет, какой источник реально
