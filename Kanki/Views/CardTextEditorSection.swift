@@ -4,7 +4,6 @@ struct CardTextEditorSection: View {
     let title: String
     let identifier: String
     @Binding var text: String
-    @State private var showingCorrection = false
 
     var body: some View {
         Section(title) {
@@ -13,12 +12,13 @@ struct CardTextEditorSection: View {
                 .accessibilityLabel(title)
                 .accessibilityIdentifier(identifier)
             if text.range(of: #"\n"#, options: .literal) != nil {
-                Button("Исправить переносы…") { showingCorrection = true }
-                    .accessibilityIdentifier(identifier + "Repair")
+                NavigationLink {
+                    NewlineCorrectionScreen(title: title, source: text) { text = $0 }
+                } label: {
+                    Text("Исправить переносы…")
+                }
+                .accessibilityIdentifier(identifier + "Repair")
             }
-        }
-        .sheet(isPresented: $showingCorrection) {
-            NewlineCorrectionScreen(title: title, source: text) { text = $0 }
         }
     }
 }
@@ -36,42 +36,40 @@ private struct NewlineCorrectionScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Исходный текст") { Text(verbatim: correction.source) }
-                Section("Какие переносы исправить?") {
-                    Button("Выбрать все") { correction.selected = Set(correction.matches.map(\.id)) }
-                        .accessibilityIdentifier("newlineSelectAll")
-                    ForEach(correction.matches) { match in
-                        Toggle(isOn: selection(for: match.id)) {
-                            Text(verbatim: "\(match.id + 1). \(match.context)")
-                        }
-                        .accessibilityIdentifier("newlineMatch\(match.id)")
+        List {
+            Section("Исходный текст") { Text(verbatim: correction.source) }
+            Section("Какие переносы исправить?") {
+                Button("Выбрать все") { correction.selected = Set(correction.matches.map(\.id)) }
+                    .accessibilityIdentifier("newlineSelectAll")
+                ForEach(correction.matches) { match in
+                    Toggle(isOn: selection(for: match.id)) {
+                        Text(verbatim: "\(match.id + 1). \(match.context)")
                     }
-                }
-                Section("Предпросмотр") {
-                    Text(verbatim: correction.preview)
-                        .accessibilityIdentifier("newlinePreview")
+                    .accessibilityIdentifier("newlineMatch\(match.id)")
                 }
             }
-            .navigationTitle("Переносы: \(title)")
-            .toolbarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
-                        .accessibilityIdentifier("newlineCancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Применить") {
-                        onApply(correction.preview)
-                        dismiss()
-                    }
-                    .disabled(correction.selected.isEmpty)
-                    .accessibilityIdentifier("newlineApply")
-                }
+            Section("Предпросмотр") {
+                Text(verbatim: correction.preview)
+                    .accessibilityIdentifier("newlinePreview")
             }
         }
-        .cardSheetSize()
+        .navigationTitle("Переносы: \(title)")
+        .toolbarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Отмена") { dismiss() }
+                    .accessibilityIdentifier("newlineCancel")
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Применить") {
+                    onApply(correction.preview)
+                    dismiss()
+                }
+                .disabled(correction.selected.isEmpty)
+                .accessibilityIdentifier("newlineApply")
+            }
+        }
     }
 
     private func selection(for id: Int) -> Binding<Bool> {
