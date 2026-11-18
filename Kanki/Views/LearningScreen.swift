@@ -10,6 +10,7 @@ struct LearningScreen: View {
     @State var loadError: String?
     @State var isAddingCard = false
     @State var isReviewing = false
+    @AppStorage("serverURL") var serverURL = ""
     @AppStorage("serverRevision") var serverRevision = 0
     @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
     @Environment(\.scenePhase) private var scenePhase
@@ -23,16 +24,17 @@ struct LearningScreen: View {
     @State var pushDebounceTask: Task<Void, Never>?
     @Binding var pushGate: PushGate
     @State var isReconciling = false
-    @State var syncError: String?
-    @State var lastSyncFailed = false
+    @State var operationAlert: String?
+    @Binding var syncProblem: SyncStatus.Problem?
     @State private var isChoosingCards = false
     @State private var exportDocument: CardExportDocument?
     @State private var isExporting = false
     @State private var pendingSelectedExport = false
     @State private var exportError: String?
 
-    init(pushGate: Binding<PushGate>) {
+    init(pushGate: Binding<PushGate>, syncProblem: Binding<SyncStatus.Problem?>) {
         _pushGate = pushGate
+        _syncProblem = syncProblem
         var snapshot = LearningSnapshot()
         var loadMessage: String?
         do {
@@ -49,6 +51,13 @@ struct LearningScreen: View {
 
     var body: some View {
         List {
+            if let syncStatusText {
+                Section {
+                    Text(syncStatusText)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("syncStatus")
+                }
+            }
             if let loadError {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)
@@ -129,6 +138,8 @@ struct LearningScreen: View {
         }
         .onAppear(perform: reload)
         .task {
+            // Возврат из настроек не должен сразу подменить подтверждённый 409 новой сверкой.
+            if case .conflict = syncProblem { return }
             await reconcile()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -180,10 +191,10 @@ struct LearningScreen: View {
         } message: {
             Text(exportError ?? "")
         }
-        .alert("Синхронизация", isPresented: isSyncErrorPresented) {
+        .alert("Синхронизация", isPresented: isOperationAlertPresented) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(syncError ?? "")
+            Text(operationAlert ?? "")
         }
         .modifier(
             DeckManagementAlertsModifier(
