@@ -1,6 +1,6 @@
 # Kanki
 
-<p align="center"><img src="docs/images/kanki-icon.png" alt="Иконка Kanki" width="112"></p>
+<p align="center"><img src="Kanki/Assets.xcassets/AppIcon.appiconset/icon-ios-1024.png" alt="Иконка Kanki" width="112"></p>
 
 [![CI](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml/badge.svg)](https://github.com/EgorYolkin/kanki/actions/workflows/ci.yml)
 
