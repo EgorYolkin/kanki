@@ -127,14 +127,17 @@ struct LearningScreen: View {
         .sheet(isPresented: $isReviewing) {
             ReviewSessionScreen(
                 cards: dueCards.isEmpty ? aheadCards : dueCards,
-                title: dueCards.isEmpty ? "Досрочное повторение" : "Повторение"
+                isAheadReview: dueCards.isEmpty
             ) { card, rating in
                 guard isReviewing else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
         .sheet(isPresented: $isReviewingDeck) {
-            ReviewSessionScreen(cards: categoryCards) { card, rating in
+            ReviewSessionScreen(
+                cards: categoryCards,
+                isAheadReview: ReviewQueue.isAheadReview(categoryCards, schedules: schedules, at: clock)
+            ) { card, rating in
                 guard isReviewingDeck else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }

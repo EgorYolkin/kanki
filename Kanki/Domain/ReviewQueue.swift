@@ -44,6 +44,17 @@ enum ReviewQueue {
         return due.isEmpty ? aheadCards(selected, schedules: schedules, at: date) : due
     }
 
+    /// Режим уже выбранной очереди; пустая очередь не считается досрочной.
+    static func isAheadReview(
+        _ selectedCards: [SessionCard],
+        schedules: [UUID: CardSchedule],
+        at date: Date
+    ) -> Bool {
+        !selectedCards.isEmpty && selectedCards.allSatisfy { card in
+            schedules[card.id].map { $0.due > date } ?? false
+        }
+    }
+
     private static func isOrderedBefore(
         _ lhs: SessionCard,
         _ rhs: SessionCard,

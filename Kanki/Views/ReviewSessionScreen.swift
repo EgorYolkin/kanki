@@ -2,8 +2,8 @@ import SwiftUI
 
 struct ReviewSessionScreen: View {
     let onReview: (SessionCard, RecallRating) throws -> Void
-    /// Заголовок сеанса: «Повторение» или «Досрочное повторение».
-    private let title: String
+    /// Режим фиксируется при открытии, как и очередь: оценки не меняют его.
+    @State private var isAheadReview: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var session: ReviewSessionState
@@ -12,11 +12,11 @@ struct ReviewSessionScreen: View {
 
     init(
         cards: [SessionCard],
-        title: String = "Повторение",
+        isAheadReview: Bool = false,
         onReview: @escaping (SessionCard, RecallRating) throws -> Void
     ) {
         self.onReview = onReview
-        self.title = title
+        _isAheadReview = State(initialValue: isAheadReview)
         _session = State(initialValue: ReviewSessionState(cards: cards))
     }
 
@@ -29,7 +29,7 @@ struct ReviewSessionScreen: View {
                     summaryView
                 }
             }
-            .navigationTitle(title)
+            .navigationTitle(isAheadReview ? "Досрочное повторение" : "Повторение")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -47,6 +47,12 @@ struct ReviewSessionScreen: View {
     private func reviewView(for card: SessionCard) -> some View {
         List {
             Section {
+                if isAheadReview {
+                    Text("Повторяете раньше срока. Оценка изменит дату следующего показа.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("aheadReviewExplanation")
+                }
                 Text(session.progressText)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
