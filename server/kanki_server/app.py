@@ -6,6 +6,7 @@ import secrets
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -64,6 +65,7 @@ CONTENT_LENGTH_SLACK_BYTES = 64 * 1024
 PUBLISH_PATH = "/v1/publish"
 EVENTS_PATH = "/v1/statistics/events"
 APKG_MEDIA_TYPE = "application/zip"
+GUIDE_MEDIA_TYPE = "text/markdown"
 
 
 def hash_token(token: str) -> str:
@@ -217,6 +219,21 @@ def create_app(
             label=row.label,
             created_at=row.created_at,
             revoked_at=row.revoked_at,
+        )
+
+    @app.get(
+        "/v1/guide.md",
+        response_class=Response,
+        responses={200: {
+            "description": "Руководство по API этой версии сервера",
+            "content": {GUIDE_MEDIA_TYPE: {"schema": {"type": "string"}}},
+        }},
+    )
+    def get_guide() -> Response:
+        return Response(
+            resources.files("kanki_server").joinpath("guide.md").read_bytes(),
+            media_type=GUIDE_MEDIA_TYPE,
+            headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/v1/health", response_model=Health)
