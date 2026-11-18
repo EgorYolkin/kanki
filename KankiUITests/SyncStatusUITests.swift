@@ -236,30 +236,9 @@ final class SyncStatusUITests: UITestCase {
         let (_, finalRevision) = try await readServerRevision(url: url, token: token)
         XCTAssertEqual(finalRevision, remoteRevision)
     }
+}
 
-    private func appContainerRoot() -> String {
-        ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"]
-            ?? URL(fileURLWithPath: NSHomeDirectory()).deletingLastPathComponent().path
-    }
-
-    // Xcode может переустановить приложение и изменить UUID контейнера перед тестом.
-    private func snapshotFolder(in root: String) throws -> URL {
-        let containers = try FileManager.default.contentsOfDirectory(
-            at: URL(fileURLWithPath: root, isDirectory: true),
-            includingPropertiesForKeys: nil
-        )
-        let matches = containers.filter { container in
-            let metadata = container.appending(path: ".com.apple.mobile_container_manager.metadata.plist")
-            guard let data = try? Data(contentsOf: metadata),
-                  let values = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
-                return false
-            }
-            return values["MCMMetadataIdentifier"] as? String == "app.kanki.ios"
-        }
-        let container = try XCTUnwrap(matches.count == 1 ? matches.first : nil, "Ожидается один контейнер приложения")
-        return container.appending(path: "Library/Application Support/Kanki")
-    }
-
+extension SyncStatusUITests {
     private func reactivate(_ app: XCUIApplication) {
         XCUIDevice.shared.press(.home)
         app.activate()
@@ -355,6 +334,29 @@ final class SyncStatusUITests: UITestCase {
 }
 
 extension SyncStatusUITests {
+    private func appContainerRoot() -> String {
+        ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"]
+            ?? URL(fileURLWithPath: NSHomeDirectory()).deletingLastPathComponent().path
+    }
+
+    // Xcode может переустановить приложение и изменить UUID контейнера перед тестом.
+    private func snapshotFolder(in root: String) throws -> URL {
+        let containers = try FileManager.default.contentsOfDirectory(
+            at: URL(fileURLWithPath: root, isDirectory: true),
+            includingPropertiesForKeys: nil
+        )
+        let matches = containers.filter { container in
+            let metadata = container.appending(path: ".com.apple.mobile_container_manager.metadata.plist")
+            guard let data = try? Data(contentsOf: metadata),
+                  let values = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+                return false
+            }
+            return values["MCMMetadataIdentifier"] as? String == "app.kanki.ios"
+        }
+        let container = try XCTUnwrap(matches.count == 1 ? matches.first : nil, "Ожидается один контейнер приложения")
+        return container.appending(path: "Library/Application Support/Kanki")
+    }
+
     func snapshotPayload(in file: URL) throws -> Data {
         try withDatabase(at: file, flags: SQLITE_OPEN_READONLY) { db in
             var statement: OpaquePointer?

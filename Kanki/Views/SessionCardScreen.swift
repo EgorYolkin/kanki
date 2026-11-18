@@ -158,6 +158,7 @@ struct SessionCardScreen: View {
                 }
             }
         }
+        .cardSheetSize()
         .alert("Удалить карточку и историю повторений?", isPresented: $isConfirmingDeletion) {
             Button("Удалить карточку", role: .destructive) {
                 do {

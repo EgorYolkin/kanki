@@ -40,6 +40,7 @@ struct ReviewSessionScreen: View {
                 }
             }
         }
+        .cardSheetSize()
         .alert("Не удалось сохранить оценку", isPresented: $showSaveError) {
             Button("Закрыть", role: .cancel) {}
         } message: {

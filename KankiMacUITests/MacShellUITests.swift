@@ -104,12 +104,13 @@ final class MacShellUITests: XCTestCase {
         app.launchEnvironment["CFFIXED_USER_HOME"] = home.path
         app.launchEnvironment["HOME"] = home.path
         // Новый home уже пуст. Не сбрасываем рабочую БД или Keychain пользователя.
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-serverURL", ""]
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-serverURL", "", "--reset-sections"]
         addTeardownBlock { @MainActor in
             app.terminate()
             try FileManager.default.removeItem(at: home)
         }
         app.launch()
+        app.activate()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 60))
         return app
     }

@@ -71,6 +71,7 @@ private struct NewlineCorrectionScreen: View {
                 }
             }
         }
+        .cardSheetSize()
     }
 
     private func selection(for id: Int) -> Binding<Bool> {

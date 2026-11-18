@@ -127,6 +127,7 @@ struct SessionCardFormScreen: View {
                 }
             }
         }
+        .cardSheetSize()
         .alert("Не удалось сохранить карточку", isPresented: $showSaveError) {
             Button("Закрыть", role: .cancel) {}
         } message: {

@@ -56,11 +56,13 @@
 		57F5B421C058EF326B0AB360 /* SessionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0A4013C1076D774BBD30F1 /* SessionCard.swift */; };
 		5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283B368D15032ED87CD7B9CD /* NotesScreen.swift */; };
 		5F7463464082BB36EBD024F6 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E475D1F1CC902C13FEAEFB9B /* ServerConfiguration.swift */; };
+		601DF0E5CB1535D760819465 /* CardSheetSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653A63FC45DF72B3D77F064C /* CardSheetSize.swift */; };
 		60635333899EC58628024AC4 /* test4-type-change.apkg in Resources */ = {isa = PBXBuildFile; fileRef = E47B2B5820CC7C5E85C46AE3 /* test4-type-change.apkg */; };
 		6161F3BF71097F0536AF8827 /* AnkiE1Import.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0053646E432A6B8449F7850A /* AnkiE1Import.swift */; };
 		655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4F72F29D01441D198664F1 /* SessionLogTests.swift */; };
 		66983890909BEE61F74EF186 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = E3C55AFCBFB6EF821DEB677A /* SwiftSoup */; };
 		68BE118E87380D3B6B94577B /* PushGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61AA6010F939A75DCAAC05C /* PushGate.swift */; };
+		6AD1AB1392E8BAE4801C4F70 /* SyncStatusUITests+Lessons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC40A5F9BE59FDE39609358 /* SyncStatusUITests+Lessons.swift */; };
 		6B9D1975C63B2A6B9D822515 /* LessonDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0430B6FC2D0FD822EE3A423E /* LessonDraftTests.swift */; };
 		6CCADEA75353A3D2480CA318 /* ServerTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60366F71075F2D649B01D98F /* ServerTokenStore.swift */; };
 		71AB1219D5BB9BA0E569786D /* StatisticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7066433470D651084F540585 /* StatisticsScreen.swift */; };
@@ -118,6 +120,7 @@
 		E0BFA31B5421F674BA45017B /* ImportedNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65BC116A549CC73A68B755EF /* ImportedNote.swift */; };
 		E2176C0A1FD0FA649813316A /* PushGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6BF35AF322D7690039DD4D /* PushGateTests.swift */; };
 		E22AA5362FDE35DDD91ABB1A /* ImportedCardWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD45077D20329D747C54677 /* ImportedCardWebView.swift */; };
+		E244F8EC0FDF975CE29901E5 /* LessonUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF88BB3D379D5A01E5E8E23E /* LessonUITests.swift */; };
 		E35DD0C884B321362D7121B5 /* SessionCardUITests+Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B2AF22CC0EC4FA33F9B1E09 /* SessionCardUITests+Export.swift */; };
 		E40017F8F6D0C4E1A6C70B1C /* ServerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD5F2D164BA2D6817E928B5 /* ServerModelsTests.swift */; };
 		E4295739727B3E2F46D33FF9 /* SnapshotReadStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64326A75F5FAF5C7AA2AAF6 /* SnapshotReadStateTests.swift */; };
@@ -132,6 +135,7 @@
 		F2BD940504CB5DD76601019C /* LessonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14619283B980082928F8D46E /* LessonTests.swift */; };
 		F54CB52ACFCDBECD46C57F98 /* CardScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */; };
 		FAD934EF0CD52491415576DC /* ServerTokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8506DC13B0DB92812AE0A7B3 /* ServerTokenStoreTests.swift */; };
+		FDEF1A2B0E9AC0CCA46AAA45 /* CardTextUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C68F67CB0BDE9B45368F11 /* CardTextUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -211,6 +215,7 @@
 		635944F7D7BBBF4DB591A2C5 /* MacShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacShellUITests.swift; sourceTree = "<group>"; };
 		63640C1159C68D4D35FFA046 /* LessonSnapshotCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonSnapshotCodingTests.swift; sourceTree = "<group>"; };
 		63B4D4B014206400D470D862 /* CardScheduling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduling.swift; sourceTree = "<group>"; };
+		653A63FC45DF72B3D77F064C /* CardSheetSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSheetSize.swift; sourceTree = "<group>"; };
 		65BC116A549CC73A68B755EF /* ImportedNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedNote.swift; sourceTree = "<group>"; };
 		690B4C72A928A06894F3ADDB /* CardDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDraft.swift; sourceTree = "<group>"; };
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
@@ -238,6 +243,7 @@
 		992D0672A4A7313F1A3E9E12 /* ServerClientIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClientIntegrationTests.swift; sourceTree = "<group>"; };
 		9975E00DAC1BD495F65D2F28 /* ReviewSessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionScreen.swift; sourceTree = "<group>"; };
 		9AEB4A35315EE6EB0A7A4A0F /* CardScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardScheduleTests.swift; sourceTree = "<group>"; };
+		9DC40A5F9BE59FDE39609358 /* SyncStatusUITests+Lessons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncStatusUITests+Lessons.swift"; sourceTree = "<group>"; };
 		9E3252F25729C7B4B4471BF2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A51837FFCBF63F48920BF01A /* LocalCardStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCardStoreTests.swift; sourceTree = "<group>"; };
 		A63BE3D9BD7C50DED99CFE8E /* ImportedNoteRefreshUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedNoteRefreshUITests.swift; sourceTree = "<group>"; };
@@ -257,6 +263,7 @@
 		BE01052182F5AFE3E720981C /* refresh-target.apkg */ = {isa = PBXFileReference; path = "refresh-target.apkg"; sourceTree = "<group>"; };
 		BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSessionState.swift; sourceTree = "<group>"; };
 		C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewQueueTests.swift; sourceTree = "<group>"; };
+		C5C68F67CB0BDE9B45368F11 /* CardTextUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardTextUITests.swift; sourceTree = "<group>"; };
 		C9D0CCFB2B7AE1D2AD59DDB1 /* StatisticsOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsOverview.swift; sourceTree = "<group>"; };
 		CF15689DA2A920F45308E742 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CF2614A07F8C3CCE91236146 /* ImportedCardsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedCardsScreen.swift; sourceTree = "<group>"; };
@@ -281,6 +288,7 @@
 		F8189E8FA37C82639800E122 /* test1.apkg */ = {isa = PBXFileReference; path = test1.apkg; sourceTree = "<group>"; };
 		FB831B39DAD454C0745B9692 /* StatisticsDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsDashboard.swift; sourceTree = "<group>"; };
 		FCFE616AAF1E29EC49333D29 /* ImportedNoteStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedNoteStoreTests.swift; sourceTree = "<group>"; };
+		FF88BB3D379D5A01E5E8E23E /* LessonUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -388,13 +396,16 @@
 			isa = PBXGroup;
 			children = (
 				DBF6D7038B0B54DB681E0B69 /* CardArchiveUITests.swift */,
+				C5C68F67CB0BDE9B45368F11 /* CardTextUITests.swift */,
 				21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */,
 				A63BE3D9BD7C50DED99CFE8E /* ImportedNoteRefreshUITests.swift */,
+				FF88BB3D379D5A01E5E8E23E /* LessonUITests.swift */,
 				6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */,
 				2B2AF22CC0EC4FA33F9B1E09 /* SessionCardUITests+Export.swift */,
 				34ACA24FB3C922FEBDFE628E /* SettingsUITests.swift */,
 				783B5361272C0257AA562684 /* StatisticsUITests.swift */,
 				73630BF536A4BA8AD8872A30 /* SyncStatusUITests.swift */,
+				9DC40A5F9BE59FDE39609358 /* SyncStatusUITests+Lessons.swift */,
 				4145F341B1F928BFF033253F /* UITestCase.swift */,
 				351DB62DFD5D671E17E407B7 /* Fixtures */,
 			);
@@ -459,6 +470,7 @@
 				53F47B7A3C153F86AD1AA9D7 /* AllCardsScreen.swift */,
 				E78083BD8306FF6E06837F69 /* AppShell.swift */,
 				5BB6F6A29474548B65F41A60 /* CardMarkdownView.swift */,
+				653A63FC45DF72B3D77F064C /* CardSheetSize.swift */,
 				3878BBD6FE06B9FDCF1832D0 /* CardTextEditorSection.swift */,
 				BCD23689E3AC04DF5AAED184 /* CategorySummaryRow.swift */,
 				895DE69FECE0431295FFC150 /* GraphScreen.swift */,
@@ -758,6 +770,7 @@
 				9B3E7394067D9782CBAC8BC1 /* CardSchedule.swift in Sources */,
 				3BAAFA1E294FE5025AFA5C5D /* CardScheduling.swift in Sources */,
 				04631EDB2A53B789FA933B2B /* CardSearch.swift in Sources */,
+				601DF0E5CB1535D760819465 /* CardSheetSize.swift in Sources */,
 				3FF90E0D3AD57CB0F352073B /* CardTextEditorSection.swift in Sources */,
 				B42EC05BAC34CA6B900C85CB /* CategorySummaryRow.swift in Sources */,
 				2674D9A3C240BD23DD2E4AAE /* GraphScreen.swift in Sources */,
@@ -825,12 +838,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				BD374A48827DC3AB4B6EEC5D /* CardArchiveUITests.swift in Sources */,
+				FDEF1A2B0E9AC0CCA46AAA45 /* CardTextUITests.swift in Sources */,
 				DAAF0BA7C27C0C1B0C262B1E /* CategoryUITests.swift in Sources */,
 				291A313A9B2472EFEF9CA78C /* ImportedNoteRefreshUITests.swift in Sources */,
+				E244F8EC0FDF975CE29901E5 /* LessonUITests.swift in Sources */,
 				E35DD0C884B321362D7121B5 /* SessionCardUITests+Export.swift in Sources */,
 				DDD03FFA66764B72C0E11EAE /* SessionCardUITests.swift in Sources */,
 				1F16E47FEE8079660AFD8F08 /* SettingsUITests.swift in Sources */,
 				9BFC0FC104B287CE4F729541 /* StatisticsUITests.swift in Sources */,
+				6AD1AB1392E8BAE4801C4F70 /* SyncStatusUITests+Lessons.swift in Sources */,
 				044F031166D3A6EBA819AE89 /* SyncStatusUITests.swift in Sources */,
 				CAE07A0DDCD1295A3E4D78C8 /* UITestCase.swift in Sources */,
 			);
@@ -1011,6 +1027,45 @@
 			};
 			name = Release;
 		};
+		7AA0C2E4000FB833EBFC0C03 /* MacUITesting */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.kanki.ios.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kanki.app/Kanki";
+			};
+			name = MacUITesting;
+		};
+		88BDF8B3B5FAEAB33131E32A /* MacUITesting */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Kanki/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = "app.kanki.macos.test-host";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = MacUITesting;
+		};
 		8983964C9A7926599BF3284E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1026,6 +1081,89 @@
 				TEST_TARGET_NAME = Kanki;
 			};
 			name = Debug;
+		};
+		A0BC0BF1252F6C8A43285200 /* MacUITesting */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.kanki.macos.uitests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Kanki;
+			};
+			name = MacUITesting;
+		};
+		A3AC951938CD20B8F4D3DEA5 /* MacUITesting */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kanki.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				"TARGETED_DEVICE_FAMILY[sdk=iphone*]" = "1,2";
+			};
+			name = MacUITesting;
 		};
 		AF1120423F98D5A95B612CFE /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1110,6 +1248,22 @@
 			};
 			name = Debug;
 		};
+		F9E6DD84F318D183654CD6BA /* MacUITesting */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.kanki.ios.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kanki;
+			};
+			name = MacUITesting;
+		};
 		FC256BFA693CF1C0DE12626B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1133,6 +1287,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				30A684E1D5770D8C30F58B3A /* Debug */,
+				88BDF8B3B5FAEAB33131E32A /* MacUITesting */,
 				4966382DADFC12AA1ED43668 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1142,6 +1297,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B7627BE0EC8091A3D39E3FCC /* Debug */,
+				7AA0C2E4000FB833EBFC0C03 /* MacUITesting */,
 				51C9B2D478D8B0FF66BFFCEB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1151,6 +1307,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AF1120423F98D5A95B612CFE /* Debug */,
+				A3AC951938CD20B8F4D3DEA5 /* MacUITesting */,
 				6BDAA4CA7B2A079AA886CCFF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1160,6 +1317,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				6BD8E794E7502518AB1E2DA8 /* Debug */,
+				A0BC0BF1252F6C8A43285200 /* MacUITesting */,
 				549A3DDF6E7D2AA62B06658B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1169,6 +1327,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8983964C9A7926599BF3284E /* Debug */,
+				F9E6DD84F318D183654CD6BA /* MacUITesting */,
 				FC256BFA693CF1C0DE12626B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;

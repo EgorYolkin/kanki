@@ -83,6 +83,7 @@ struct LessonFormScreen: View {
                 }
             }
         }
+        .cardSheetSize()
     }
 
     @ViewBuilder
