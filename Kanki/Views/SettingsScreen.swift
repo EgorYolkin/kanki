@@ -253,7 +253,7 @@ struct SettingsScreen: View {
                 serverStatus = "На сервере пока нет снимка"
                 return
             }
-            try LocalCardStore.save(snapshot)
+            try LocalCardStore.replaceFromConfirmedPull(snapshot)
             serverRevision = result.revision
             hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)

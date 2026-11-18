@@ -117,6 +117,6 @@ final class CardExportArchiveTests: XCTestCase {
 
     private func makeStoreLocation() -> (URL, URL) {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        return (directory, directory.appendingPathComponent("cards.json"))
+        return (directory, directory.appendingPathComponent("kanki.sqlite"))
     }
 }

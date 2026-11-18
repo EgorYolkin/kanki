@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import XCTest
 
 @MainActor
@@ -119,9 +120,7 @@ final class SyncStatusUITests: XCTestCase {
 
     func testAutomaticFetchReportsLocalWriteFailureUntilSnapshotCanBeSaved() async throws {
         let url = try localServerURL()
-        guard let root = ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"] else {
-            throw XCTSkip("Задайте KANKI_STATUS_UI_APP_CONTAINER_ROOT для отдельного симулятора без клонирования")
-        }
+        let root = try appContainerRoot()
         let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
         let revision = try await advanceServerRevision(url: url, token: token)
         let app = XCUIApplication()
@@ -131,32 +130,102 @@ final class SyncStatusUITests: XCTestCase {
         restart(app)
         let status = app.staticTexts["syncStatus"]
         assertLabel("Синхронизировано, ревизия \(revision)", on: status)
+        addCard(in: app)
+        assertLabel("Синхронизировано, ревизия \(revision + 1)", on: status)
 
-        let folder = try snapshotFolder(in: root)
-        let file = folder.appending(path: "cards.json")
-        let localData = try Data(contentsOf: file)
+        let file = try snapshotFolder(in: root).appending(path: "kanki.sqlite")
+        let localData = try snapshotPayload(in: file)
+        let original = try XCTUnwrap(String(bytes: localData, encoding: .utf8))
+        XCTAssertTrue(original.contains("Synthetic question"))
         let remoteCard = """
             [{"id":"11111111-2222-4333-8444-555555555555","question":"Synthetic remote card","answer":"Synthetic answer",
               "createdAt":"2026-01-01T00:00:00Z"}]
             """
         let remoteRevision = try await advanceServerRevision(url: url, token: token, cards: remoteCard)
-        let manager = FileManager.default
-        let permissions = try XCTUnwrap(manager.attributesOfItem(atPath: folder.path)[.posixPermissions] as? Int)
-        addTeardownBlock {
-            try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: folder.path)
-        }
-        try manager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+        // Abort the real SQLite write without preventing reads or changing the snapshot row.
+        let unblock = "DROP TRIGGER IF EXISTS block_snapshot_write"
+        addTeardownBlock { try self.executeSQL(unblock, in: file) }
+        try executeSQL("""
+            CREATE TRIGGER block_snapshot_write BEFORE INSERT ON learning_snapshot
+            BEGIN SELECT RAISE(ABORT, 'snapshot write blocked'); END;
+            """, in: file)
         reactivate(app)
 
         assertLabel("Снимок получен, но не сохранён на устройстве", on: status)
-        XCTAssertTrue(app.staticTexts["Карточек пока нет"].exists)
-        XCTAssertEqual(try Data(contentsOf: file), localData)
+        XCTAssertFalse(app.staticTexts["Карточек пока нет"].exists)
+        XCTAssertEqual(try snapshotPayload(in: file), localData)
 
-        try manager.setAttributes([.posixPermissions: permissions], ofItemAtPath: folder.path)
+        try executeSQL(unblock, in: file)
         reactivate(app)
         assertLabel("Синхронизировано, ревизия \(remoteRevision)", on: status)
         XCTAssertFalse(app.staticTexts["Карточек пока нет"].exists)
-        XCTAssertTrue(try String(contentsOf: file, encoding: .utf8).contains("Synthetic remote card"))
+        let savedData = try snapshotPayload(in: file)
+        let saved = try XCTUnwrap(String(bytes: savedData, encoding: .utf8))
+        XCTAssertTrue(saved.contains("Synthetic remote card"))
+        XCTAssertFalse(saved.contains("Synthetic question"))
+        restart(app)
+        assertLabel("Синхронизировано, ревизия \(remoteRevision)", on: status)
+        XCTAssertEqual(try snapshotPayload(in: file), savedData)
+    }
+
+    func testCorruptLegacyRequiresConfirmedPull() async throws {
+        let url = try localServerURL()
+        let root = try appContainerRoot()
+        let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
+        let revision = try await advanceServerRevision(url: url, token: token)
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store", "--reset-server"]
+        app.launch()
+        configureServer(in: app, url: url, token: token, expected: "Подключено:")
+        restart(app)
+        let status = app.staticTexts["syncStatus"]
+        assertLabel("Синхронизировано, ревизия \(revision)", on: status)
+        app.terminate()
+
+        let folder = try snapshotFolder(in: root)
+        let file = folder.appending(path: "kanki.sqlite")
+        let legacy = folder.appending(path: "cards.json")
+        let original = Data([0xff, 0x00, 0x7b])
+        try FileManager.default.removeItem(at: file)
+        try original.write(to: legacy)
+        app.launchArguments = ["-serverHasUnsyncedChanges", "YES"]
+        app.launch()
+        let paused = "Синхронизация приостановлена: не удалось прочитать карточки"
+        assertLabel(paused, on: status)
+        let (_, serverRevision) = try await readServerRevision(url: url, token: token)
+        XCTAssertEqual(serverRevision, revision, "Corrupt is not an empty snapshot to push")
+
+        let remoteRevision = try await advanceServerRevision(url: url, token: token, cards: """
+            [{"id":"11111111-2222-4333-8444-555555555555","question":"Recovered from server","answer":"Synthetic answer",
+              "createdAt":"2026-01-01T00:00:00Z"}]
+            """)
+        restart(app)
+        assertLabel(paused, on: status)
+        XCTAssertTrue(app.buttons["Повторить чтение"].exists)
+        XCTAssertFalse(app.staticTexts["Карточек пока нет"].exists)
+        XCTAssertThrowsError(try snapshotPayload(in: file))
+        XCTAssertEqual(try Data(contentsOf: legacy), original)
+
+        app.tabBars.buttons["Настройки"].tap()
+        let pull = app.buttons["serverPull"]
+        if !pull.isHittable { app.swipeUp() }
+        pull.tap()
+        app.buttons["Заменить"].tap()
+        assertLabel("Загружено, ревизия \(remoteRevision)", on: app.staticTexts["serverStatus"])
+        restart(app)
+        assertLabel("Синхронизировано, ревизия \(remoteRevision)", on: status)
+        let saved = try XCTUnwrap(String(bytes: snapshotPayload(in: file), encoding: .utf8))
+        XCTAssertTrue(saved.contains("Recovered from server"))
+        XCTAssertEqual(try Data(contentsOf: legacy), original)
+        let (_, finalRevision) = try await readServerRevision(url: url, token: token)
+        XCTAssertEqual(finalRevision, remoteRevision)
+    }
+
+    private func appContainerRoot() throws -> String {
+        try XCTUnwrap(
+            ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"],
+            "Передайте родительскую папку контейнера отдельного симулятора без клонирования"
+        )
     }
 
     // Передайте родительскую папку `simctl get_app_container <id> app.kanki.ios data`:
@@ -194,20 +263,24 @@ final class SyncStatusUITests: XCTestCase {
 
     // Второй клиент меняет ревизию настоящего сервера, не локальный снимок приложения.
     private func advanceServerRevision(url: String, token: String, cards: String = "[]") async throws -> Int {
-        let endpoint = try XCTUnwrap(URL(string: "\(url)/v1/snapshot"))
-        var request = URLRequest(url: endpoint, timeoutInterval: 5)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
-        let snapshot = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let revision = try XCTUnwrap(snapshot?["revision"] as? Int)
-
+        let (getRequest, revision) = try await readServerRevision(url: url, token: token)
+        var request = getRequest
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = Data(#"{"base_revision":\#(revision),"data":{"cards":\#(cards)}}"#.utf8)
         let (_, putResponse) = try await URLSession.shared.data(for: request)
         XCTAssertEqual((putResponse as? HTTPURLResponse)?.statusCode, 200)
         return revision + 1
+    }
+
+    private func readServerRevision(url: String, token: String) async throws -> (URLRequest, Int) {
+        let endpoint = try XCTUnwrap(URL(string: "\(url)/v1/snapshot"))
+        var request = URLRequest(url: endpoint, timeoutInterval: 5)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let snapshot = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return (request, try XCTUnwrap(snapshot?["revision"] as? Int))
     }
 
     private func addCard(in app: XCUIApplication) {
@@ -251,5 +324,41 @@ final class SyncStatusUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+}
+
+extension SyncStatusUITests {
+    private func snapshotPayload(in file: URL) throws -> Data {
+        try withDatabase(at: file, flags: SQLITE_OPEN_READONLY) { db in
+            var statement: OpaquePointer?
+            defer { sqlite3_finalize(statement) }
+            let query = "SELECT payload FROM learning_snapshot WHERE id = 1"
+            try requireSQLite(sqlite3_prepare_v2(db, query, -1, &statement, nil), equals: SQLITE_OK, in: db)
+            try requireSQLite(sqlite3_step(statement), equals: SQLITE_ROW, in: db)
+            let bytes = try XCTUnwrap(sqlite3_column_blob(statement, 0))
+            return Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, 0)))
+        }
+    }
+
+    private func executeSQL(_ sql: String, in file: URL) throws {
+        try withDatabase(at: file, flags: SQLITE_OPEN_READWRITE) { db in
+            try requireSQLite(sqlite3_exec(db, sql, nil, nil, nil), equals: SQLITE_OK, in: db)
+        }
+    }
+
+    private func withDatabase<T>(at file: URL, flags: Int32, _ read: (OpaquePointer) throws -> T) throws -> T {
+        var connection: OpaquePointer?
+        let result = sqlite3_open_v2(file.path, &connection, flags, nil)
+        defer { sqlite3_close(connection) }
+        let db = try XCTUnwrap(connection)
+        try requireSQLite(result, equals: SQLITE_OK, in: db)
+        try requireSQLite(sqlite3_busy_timeout(db, 5_000), equals: SQLITE_OK, in: db)
+        return try read(db)
+    }
+
+    private func requireSQLite(_ result: Int32, equals expected: Int32, in db: OpaquePointer) throws {
+        guard result == expected else {
+            throw NSError(domain: "SQLite", code: Int(result), userInfo: [NSLocalizedDescriptionKey: String(cString: sqlite3_errmsg(db))])
+        }
     }
 }

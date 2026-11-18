@@ -5,11 +5,13 @@ Kanki schema or a general-purpose Anki importer.
 """
 
 import argparse
-import io
+import contextlib
 import json
+import shutil
 import sqlite3
 import tempfile
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import zstandard
@@ -19,18 +21,30 @@ from e1 import FIELDS
 INVERSE = {"requires": "required_for", "part_of": "has_part", "related": "related", "contrast": "contrast"}
 
 
-def package_rows(package: Path):
+@contextlib.contextmanager
+def package_database(package: Path) -> Iterator[sqlite3.Connection]:
+    """Open a temporary, read-only copy of the collection in an E1 package."""
     with zipfile.ZipFile(package) as archive, tempfile.TemporaryDirectory() as temp:
         source = Path(temp) / "collection.anki2"
         if "collection.anki21b" in archive.namelist():
-            with zstandard.ZstdDecompressor().stream_reader(io.BytesIO(archive.read("collection.anki21b"))) as stream:
-                source.write_bytes(stream.read())
+            with (
+                archive.open("collection.anki21b") as compressed,
+                zstandard.ZstdDecompressor().stream_reader(compressed) as stream,
+                source.open("wb") as destination,
+            ):
+                shutil.copyfileobj(stream, destination)
         else:
-            source.write_bytes(archive.read("collection.anki2"))
-        with sqlite3.connect(source) as connection:
-            notes = connection.execute("SELECT id, guid, mid, flds FROM notes").fetchall()
-            cards = connection.execute("SELECT id, nid, ord, due, ivl, queue FROM cards").fetchall()
-            reviews = connection.execute("SELECT id, cid, ease, ivl, lastIvl, factor, time, type FROM revlog").fetchall()
+            with archive.open("collection.anki2") as stream, source.open("wb") as destination:
+                shutil.copyfileobj(stream, destination)
+        with contextlib.closing(sqlite3.connect(f"{source.as_uri()}?mode=ro", uri=True)) as connection:
+            yield connection
+
+
+def package_rows(package: Path):
+    with package_database(package) as connection:
+        notes = connection.execute("SELECT id, guid, mid, flds FROM notes").fetchall()
+        cards = connection.execute("SELECT id, nid, ord, due, ivl, queue FROM cards").fetchall()
+        reviews = connection.execute("SELECT id, cid, ease, ivl, lastIvl, factor, time, type FROM revlog").fetchall()
     return notes, cards, reviews
 
 

@@ -33,6 +33,7 @@ extension LearningScreen {
     /// Дебаунс-задача не выполняет сам PUT: отмена таймера не должна
     /// абортировать уже отправленный запрос.
     func schedulePush() {
+        guard loadError == nil else { return }
         hasUnsyncedChanges = true
         pushGate.markChanged()
         guard let client = serverClient() else { return }
@@ -59,8 +60,12 @@ extension LearningScreen {
 
     /// Честный текст статуса синхронизации; `nil` — сервер не настроен, строки нет.
     var syncStatusText: String? {
-        SyncStatus.text(
-            isConfigured: serverCredentials() != nil,
+        let isConfigured = serverCredentials() != nil
+        if isConfigured, loadError != nil {
+            return "Синхронизация приостановлена: не удалось прочитать карточки"
+        }
+        return SyncStatus.text(
+            isConfigured: isConfigured,
             problem: syncProblem,
             hasUnsyncedChanges: hasUnsyncedChanges,
             knownRevision: serverRevision
@@ -70,7 +75,7 @@ extension LearningScreen {
     /// Один пуш в полёте: правка во время отправки ждёт завершения
     /// и повторяется, а не отменяет PUT (отмена дала бы ложный 409).
     func requestPush(client: ServerClient) async {
-        guard pushGate.begin() else { return }
+        guard loadError == nil, pushGate.begin() else { return }
         repeat {
             await pushNow(client: client)
         } while pushGate.finishAndNeedsAnother()
@@ -78,6 +83,7 @@ extension LearningScreen {
 
     /// Успех фиксирует ревизию; чистота подтверждается только для отправленного поколения.
     func pushNow(client: ServerClient) async {
+        guard loadError == nil else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = nil
         let localSnapshot = snapshot
@@ -112,7 +118,7 @@ extension LearningScreen {
     /// Сверяет локальное состояние с сервером и приводит их к согласованности
     /// без тихого мержа: решение принимает `SnapshotSyncPlan`.
     func reconcile() async {
-        guard let client = serverClient() else { return }
+        guard loadError == nil, let client = serverClient() else { return }
         guard !isReconciling, !pushGate.isRunning, !pushGate.isManualSyncRunning else { return }
         isReconciling = true
         defer { isReconciling = false }
@@ -123,7 +129,7 @@ extension LearningScreen {
         let revision = serverRevision
         do {
             let remote = try await client.fetchSnapshot()
-            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
+            guard loadError == nil, pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             await apply(remote, client: client)
         } catch {
             guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
