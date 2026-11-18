@@ -113,14 +113,21 @@ final class LessonTests: XCTestCase {
         let localURL = try XCTUnwrap(URL(string: "https://example.org/local"))
         let remoteURL = try XCTUnwrap(URL(string: "https://example.org/remote"))
         let original = snapshot
-        let changes: [(String, String, URL?)] = [("Удалённый", "Курс", nil), ("Исходный", "Другой", nil), ("Исходный", "Курс", remoteURL)]
-        for (title, course, url) in changes {
+        let changes = [
+            Lesson.Metadata(id: id(1), title: "Удалённый", course: "Курс", sourceURL: nil),
+            Lesson.Metadata(id: id(1), title: "Исходный", course: "Другой", sourceURL: nil),
+            Lesson.Metadata(id: id(1), title: "Исходный", course: "Курс", sourceURL: remoteURL)
+        ]
+        for metadata in changes {
             snapshot = original
-            try snapshot.updateLesson(id: id(1), title: title, course: course, sourceURL: url)
+            try snapshot.updateLesson(id: id(1), title: metadata.title, course: metadata.course, sourceURL: metadata.sourceURL)
             let remote = snapshot
             XCTAssertThrowsError(try snapshot.updateLesson(
-                id: id(1), title: baseline.title, course: baseline.course,
-                sourceURL: localURL, expectedMetadata: baseline
+                id: id(1),
+                title: baseline.title,
+                course: baseline.course,
+                sourceURL: localURL,
+                expectedMetadata: baseline
             )) { error in
                 XCTAssertEqual(error as? LessonError, .staleMetadata)
             }

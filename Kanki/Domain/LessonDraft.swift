@@ -4,7 +4,7 @@ struct LessonDraft {
     var title: String
     var course: String?
     var source: String
-    var originalMetadata: Lesson.Metadata? = nil
+    var originalMetadata: Lesson.Metadata?
 
     func hasMetadataConflict(in snapshot: LearningSnapshot) -> Bool {
         guard let originalMetadata else { return false }

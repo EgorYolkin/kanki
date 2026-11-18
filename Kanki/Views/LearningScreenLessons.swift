@@ -65,8 +65,11 @@ extension LearningScreen {
             onSave: { draft in
                 var updated = snapshot
                 try updated.updateLesson(
-                    id: id, title: draft.normalizedTitle, course: draft.normalizedCourse,
-                    sourceURL: draft.sourceURL, expectedMetadata: draft.originalMetadata
+                    id: id,
+                    title: draft.normalizedTitle,
+                    course: draft.normalizedCourse,
+                    sourceURL: draft.sourceURL,
+                    expectedMetadata: draft.originalMetadata
                 )
                 try apply(updated)
             },
