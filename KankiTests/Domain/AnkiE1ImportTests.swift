@@ -43,11 +43,14 @@ final class AnkiE1ImportTests: XCTestCase {
             XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url), restored)
             XCTAssertEqual(try LocalCardStore.load(from: url), snapshot)
 
-            // Тот же путь записи, которым пользуются ручная правка и загрузка снимка.
+            // Ручная правка и подтверждённая загрузка снимка не затрагивают импорт.
             var edited = snapshot
             XCTAssertTrue(edited.updateCard(id: snapshot.cards[0].id, question: "Исправленный вопрос", answer: "Ответ", deck: nil))
             try LocalCardStore.save(edited, to: url)
             XCTAssertEqual(try LocalCardStore.load(from: url), edited)
+            XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url), restored)
+            try LocalCardStore.replaceFromConfirmedPull(snapshot, to: url)
+            XCTAssertEqual(try LocalCardStore.load(from: url), snapshot)
             XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url), restored)
         }
     }
@@ -92,6 +95,47 @@ final class AnkiE1ImportTests: XCTestCase {
         }
         XCTAssertThrowsError(try E1Data.prepare(content: duplicates, reviewed: nil)) { error in
             XCTAssertEqual(error as? E1Data.ImportError, .invalidCardIdentity(first.cards[0].key))
+        }
+    }
+
+    func testRejectsStoredIdentityCollisionsAndSameModContentWithoutPartialUpdate() throws {
+        try withStore { url in
+            let first = package()
+            let updated = package(updated: true)
+            try LocalCardStore.importAnkiE1(content: encode(first), into: url)
+            let original = try LocalCardStore.loadAnkiE1(from: url)
+            let bytes = try Data(contentsOf: url)
+            let note = first.notes[0]
+            var fieldsWithOtherUID = note.fields
+            fieldsWithOtherUID[0] = "n-other"
+            let collisions: [(E1Data.SourceNote, E1Data.ImportError)] = [
+                (.init(guid: "guid-other", modelID: modelID, mod: 2, fields: updated.notes[0].fields), .invalidNoteIdentity(uidA)),
+                (.init(guid: note.guid, modelID: modelID, mod: 2, fields: fieldsWithOtherUID), .invalidNoteIdentity("n-other")),
+                (.init(guid: note.guid, modelID: modelID, mod: note.mod, fields: updated.notes[0].fields), .conflictingContent(uidA))
+            ]
+
+            for (incoming, error) in collisions {
+                let card = E1Data.Card(guid: incoming.guid, ord: 0, progress: nil)
+                // A valid update precedes each conflict inside the same transaction.
+                let conflicting = E1Data.Package(notes: [updated.notes[1], incoming], models: first.models, cards: [first.cards[1], card])
+                try assertRejected(encode(conflicting), as: error, in: url)
+                XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url), original)
+                XCTAssertEqual(try Data(contentsOf: url), bytes)
+            }
+        }
+    }
+
+    func testRejectsNonzeroOrdinalForTheSingleE1TemplateWithoutChangingStore() throws {
+        try withStore { url in
+            let first = package()
+            try LocalCardStore.importAnkiE1(content: encode(first), into: url)
+            let bytes = try Data(contentsOf: url)
+            let updated = package(updated: true)
+            let card = E1Data.Card(guid: updated.notes[0].guid, ord: 1, progress: nil)
+            let wrong = E1Data.Package(notes: updated.notes, models: updated.models, cards: [card, updated.cards[1]])
+
+            try assertRejected(encode(wrong), as: .invalidCardIdentity(card.key), in: url)
+            XCTAssertEqual(try Data(contentsOf: url), bytes)
         }
     }
 

@@ -10,6 +10,8 @@ enum LocalCardStore {
     private static let folderName = "Kanki"
     private static let fileName = "kanki.sqlite"
     private static let legacyFileName = "cards.json"
+    private static let initialMigration = "initialLocalStore"
+    private static let migrationLock = NSLock()
 
     static var fileURL: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -27,24 +29,42 @@ enum LocalCardStore {
     }
 
     static func save(_ snapshot: LearningSnapshot, to url: URL = fileURL) throws {
-        try snapshot.validate()
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(snapshot)
+        let data = try encode(snapshot)
         try open(at: url).write { db in
             try writeSnapshot(data, in: db)
         }
     }
 
+    /// Only for a confirmed manual pull. Leave the original legacy file untouched,
+    /// even when it cannot be read or decoded.
+    static func replaceFromConfirmedPull(_ snapshot: LearningSnapshot, to url: URL = fileURL) throws {
+        try open(at: url, replacingWith: encode(snapshot))
+    }
+
+    private static func encode(_ snapshot: LearningSnapshot) throws -> Data {
+        try snapshot.validate()
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(snapshot)
+    }
+
     static func open(at url: URL) throws -> DatabaseQueue {
+        try open(at: url, replacingWith: nil)
+    }
+
+    @discardableResult
+    private static func open(at url: URL, replacingWith replacement: Data?) throws -> DatabaseQueue {
+        // GRDB reads the applied migration list before beginning the migration transaction.
+        migrationLock.lock()
+        defer { migrationLock.unlock() }
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         var configuration = Configuration()
         configuration.busyMode = .timeout(5)
         let queue = try DatabaseQueue(path: url.path, configuration: configuration)
         let legacyURL = legacyFile(beside: url)
         var migrator = DatabaseMigrator()
-        migrator.registerMigration("initialLocalStore") { db in
+        migrator.registerMigration(initialMigration) { db in
             try db.execute(sql: """
                 CREATE TABLE learning_snapshot (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -52,18 +72,35 @@ enum LocalCardStore {
                 );
                 """)
             try createImportTables(in: db)
-            if FileManager.default.fileExists(atPath: legacyURL.path) {
-                let data = try Data(contentsOf: legacyURL)
-                _ = try decode(data)
+            if let data = try replacement ?? readLegacy(at: legacyURL) {
                 try writeSnapshot(data, in: db)
             }
         }
+        let alreadyInitialized = try replacement != nil && queue.read {
+            try migrator.appliedIdentifiers($0).contains(initialMigration)
+        }
         try migrator.migrate(queue)
+        if let replacement, alreadyInitialized {
+            try queue.write { db in
+                try writeSnapshot(replacement, in: db)
+            }
+        }
         return queue
     }
 
     private static func legacyFile(beside url: URL) -> URL {
         url.deletingLastPathComponent().appending(path: legacyFileName)
+    }
+
+    private static func readLegacy(at url: URL) throws -> Data? {
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return nil
+        }
+        _ = try decode(data)
+        return data
     }
 
     private static func decode(_ data: Data) throws -> LearningSnapshot {
@@ -79,9 +116,22 @@ enum LocalCardStore {
             """, arguments: [data])
     }
 
-    static func reset() {
-        try? FileManager.default.removeItem(at: legacyFile(beside: fileURL))
-        try? FileManager.default.removeItem(at: fileURL)
+    /// Launch-only UI test hook, before any database connection is opened.
+    static func reset(at url: URL = fileURL) throws {
+        // Remove legacy first, so a fresh database cannot reimport the test fixture.
+        try removeIfPresent(legacyFile(beside: url))
+        try removeIfPresent(url)
+        for suffix in ["-journal", "-wal", "-shm"] {
+            try removeIfPresent(URL(fileURLWithPath: url.path + suffix))
+        }
+    }
+
+    private static func removeIfPresent(_ url: URL) throws {
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            return
+        }
     }
 }
 

@@ -61,6 +61,7 @@ struct LearningScreen: View {
             if let loadError {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)
+                    Text("Чтобы заменить локальные карточки снимком сервера, подтвердите загрузку в настройках.")
                     Button("Повторить чтение") { reload() }
                 }
             } else if cards.isEmpty {

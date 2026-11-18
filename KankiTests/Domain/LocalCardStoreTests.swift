@@ -93,4 +93,95 @@ final class LocalCardStoreTests: XCTestCase {
         XCTAssertThrowsError(try LocalCardStore.load(from: url))
         XCTAssertEqual(try Data(contentsOf: legacy), payload)
     }
+
+    func testConfirmedPullRecoversBrokenLegacyWithoutChangingItsBytes() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
+        let recovered = makeSnapshot(question: "Снимок с сервера")
+        for bytes in [Data([0xff, 0x00, 0x7b]), Data(#"{"snapshot_version":999,"cards":[]}"#.utf8)] {
+            try bytes.write(to: legacy)
+            XCTAssertThrowsError(try LocalCardStore.load(from: url))
+            XCTAssertThrowsError(try LocalCardStore.save(recovered, to: url))
+
+            var invalid = recovered
+            invalid.cards.append(contentsOf: recovered.cards)
+            XCTAssertThrowsError(try LocalCardStore.replaceFromConfirmedPull(invalid, to: url))
+            XCTAssertThrowsError(try LocalCardStore.load(from: url))
+
+            try LocalCardStore.replaceFromConfirmedPull(recovered, to: url)
+            XCTAssertEqual(try LocalCardStore.load(from: url), recovered)
+            XCTAssertEqual(try Data(contentsOf: legacy), bytes)
+            try LocalCardStore.reset(at: url)
+        }
+    }
+
+    func testFailedMigrationCanRetryWithRepairedLegacy() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
+        try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: false)
+        XCTAssertThrowsError(try LocalCardStore.load(from: url))
+        try FileManager.default.removeItem(at: legacy)
+
+        let original = makeSnapshot(question: "Исправленный legacy")
+        try writeLegacy(original, to: legacy)
+        XCTAssertEqual(try LocalCardStore.load(from: url), original)
+    }
+
+    func testConcurrentFirstReadsAndWritesPreserveMigration() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
+        let original = makeSnapshot(question: "Старый вопрос")
+        let updated = makeSnapshot(question: "Новый вопрос")
+        try writeLegacy(original, to: legacy)
+        let bytes = try Data(contentsOf: legacy)
+
+        DispatchQueue.concurrentPerform(iterations: 16) { index in
+            do {
+                if index.isMultiple(of: 2) {
+                    let snapshot = try LocalCardStore.load(from: url)
+                    XCTAssertTrue(snapshot == original || snapshot == updated)
+                } else {
+                    try LocalCardStore.save(updated, to: url)
+                }
+            } catch {
+                XCTFail("Concurrent open \(index): \(error)")
+            }
+        }
+
+        XCTAssertEqual(try LocalCardStore.load(from: url), updated)
+        XCTAssertEqual(try Data(contentsOf: legacy), bytes)
+    }
+
+    func testResetClearsActiveStoreAndLegacyWithoutRemovingServerToken() throws {
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
+        let token = directory.appending(path: "server-token")
+        try writeLegacy(makeSnapshot(question: "Старый вопрос"), to: legacy)
+        try LocalCardStore.save(makeSnapshot(question: "Новый вопрос"), to: url)
+        let tokenBytes = Data("synthetic-token".utf8)
+        try tokenBytes.write(to: token)
+        let sidecars = ["-journal", "-wal", "-shm"].map { URL(fileURLWithPath: url.path + $0) }
+        for sidecar in sidecars {
+            try Data([0x00]).write(to: sidecar)
+        }
+
+        try LocalCardStore.reset(at: url)
+        try LocalCardStore.reset(at: url)
+
+        for file in [url, legacy] + sidecars {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        }
+        XCTAssertEqual(try Data(contentsOf: token), tokenBytes)
+        XCTAssertEqual(try LocalCardStore.load(from: url), LearningSnapshot())
+    }
+
+    private func writeLegacy(_ snapshot: LearningSnapshot, to url: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(snapshot).write(to: url)
+    }
+
+    private func makeSnapshot(question: String) -> LearningSnapshot {
+        LearningSnapshot(cards: [SessionCard(question: question, answer: "Ответ", createdAt: Date(timeIntervalSince1970: 100))])
+    }
 }
