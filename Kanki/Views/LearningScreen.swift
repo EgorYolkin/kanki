@@ -60,6 +60,12 @@ struct LearningScreen: View {
                         .accessibilityIdentifier("syncStatus")
                 }
             }
+            NavigationLink {
+                ImportedCardsScreen()
+            } label: {
+                Label("Импортированные карточки", systemImage: "tray.and.arrow.down")
+            }
+            .accessibilityIdentifier("importedCards")
             if let loadError {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)

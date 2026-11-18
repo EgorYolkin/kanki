@@ -34,5 +34,25 @@
 	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Anki Deck Package</string>
+			<key>UTTypeIdentifier</key>
+			<string>app.kanki.anki-package</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>apkg</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>
