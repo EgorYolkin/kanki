@@ -40,11 +40,17 @@ final class ImportedNoteStoreTests: XCTestCase {
 
     func testImportSeparatesHTMLBlocksAndBreaksButPreservesInlineWords() throws {
         try withStore { url in
-            let source = note("n-source", title: "Оптика", body: "Луч<div>Альфа</div>Бета<br>диф<strong>ракция</strong> света")
+            let source = note(
+                "n-source",
+                title: "Оптика",
+                body: "Луч<div>Альфа</div>Бета<br>диф<strong>ракция</strong> интер<s>ферен</s>ция поля<ins>риза</ins>ция спек<del>тро</del>скопия"
+            )
             try LocalCardStore.mergeAnkiImport(.init(notes: [source], cards: []), into: url)
 
             XCTAssertEqual(try LocalCardStore.importedNotes(matching: "опт—дифр", from: url).map(\.uid), [source.uid])
             XCTAssertEqual(try LocalCardStore.importedNotes(matching: "луч альфа бета дифракция", from: url).map(\.uid), [source.uid])
+            let phrasingMatches = try LocalCardStore.importedNotes(matching: "интерференция поляризация спектроскопия", from: url)
+            XCTAssertEqual(phrasingMatches.map(\.uid), [source.uid])
             XCTAssertTrue(try LocalCardStore.importedNotes(matching: "ракция", from: url).isEmpty)
         }
     }
@@ -60,6 +66,29 @@ final class ImportedNoteStoreTests: XCTestCase {
 
             XCTAssertEqual(try LocalCardStore.importedNotes(matching: "бета", from: url).map(\.uid), [source.uid])
             XCTAssertTrue(try LocalCardStore.importedNotes(matching: "альфабета", from: url).isEmpty)
+            XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url).notes, [source])
+        }
+    }
+
+    func testPreviouslyMigratedIndexRepairsSplitPhrasingWords() throws {
+        try withStore { url in
+            let source = note(
+                "n-source",
+                title: "Оптика",
+                body: "<p>интер<s>ферен</s>ция поля<ins>риза</ins>ция</p>луч<br>спек<del>тро</del>скопия"
+            )
+            try LocalCardStore.mergeAnkiImport(.init(notes: [source], cards: []), into: url)
+            try DatabaseQueue(path: url.path).write { db in
+                try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'importedNotePhrasingBoundaries'")
+                try db.execute(
+                    sql: "UPDATE note_library SET body = ? WHERE uid = ?",
+                    arguments: ["интер ферен ция поля риза ция луч спек тро скопия", source.uid]
+                )
+            }
+
+            let matches = try LocalCardStore.importedNotes(matching: "интерференция поляризация луч спектроскопия", from: url)
+            XCTAssertEqual(matches.map(\.uid), [source.uid])
+            XCTAssertTrue(try LocalCardStore.importedNotes(matching: "ферен", from: url).isEmpty)
             XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url).notes, [source])
         }
     }

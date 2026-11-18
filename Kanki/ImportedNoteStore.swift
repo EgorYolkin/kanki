@@ -153,18 +153,30 @@ enum AnkiFieldText {
 }
 
 private final class NoteBodyText: NodeVisitor {
+    // Default HTML block, list and table boundaries, independent of parser flags or author CSS.
+    private static let blockBoundaries: Set<String> = [
+        "address", "article", "aside", "blockquote", "caption", "center", "dd", "details", "dialog", "dir",
+        "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4",
+        "h5", "h6", "header", "hgroup", "hr", "legend", "li", "listing", "main", "menu", "nav", "ol",
+        "p", "plaintext", "pre", "search", "section", "summary", "table", "tbody", "td", "tfoot",
+        "th", "thead", "tr", "ul", "xmp"
+    ]
+
     private(set) var value = ""
 
     func head(_ node: Node, _ depth: Int) {
         if let text = node as? TextNode {
             value.append(text.getWholeText())
-        } else if let element = node as? Element, element.isBlock() || element.tagNameNormal() == "br" {
-            value.append(" ")
+        } else if let element = node as? Element {
+            let tag = element.tagNameNormal()
+            if tag == "br" || Self.blockBoundaries.contains(tag) {
+                value.append(" ")
+            }
         }
     }
 
     func tail(_ node: Node, _ depth: Int) {
-        if let element = node as? Element, element.isBlock() {
+        if let element = node as? Element, Self.blockBoundaries.contains(element.tagNameNormal()) {
             value.append(" ")
         }
     }
