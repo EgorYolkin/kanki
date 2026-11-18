@@ -28,6 +28,8 @@ class _FrontmatterLoader(yaml.SafeLoader):
     def compose_node(self, parent, index):
         if self._depth >= 16 or self.check_event(AliasEvent):
             raise yaml.YAMLError("Unsupported YAML structure")
+        if self.peek_event().tag is not None:
+            raise yaml.YAMLError("Explicit YAML tags are not supported")
         self._depth += 1
         try:
             return super().compose_node(parent, index)
@@ -40,6 +42,8 @@ class _FrontmatterLoader(yaml.SafeLoader):
             key = self.construct_object(key_node, deep=deep)
             if not isinstance(key, str) or key in mapping:
                 raise yaml.YAMLError("Frontmatter keys must be unique strings")
+            if value_node.tag == "tag:yaml.org,2002:null":
+                raise yaml.YAMLError("Omit absent fields instead of specifying null")
             mapping[key] = self.construct_object(value_node, deep=deep)
         return mapping
 
