@@ -7,7 +7,11 @@ struct KankiApp: App {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains(LocalCardStore.resetArgument) {
-            LocalCardStore.reset()
+            do {
+                try LocalCardStore.reset()
+            } catch {
+                preconditionFailure("Не удалось сбросить тестовое хранилище: \(error)")
+            }
         }
         if arguments.contains("--reset-server") {
             try? ServerTokenStore.delete()
