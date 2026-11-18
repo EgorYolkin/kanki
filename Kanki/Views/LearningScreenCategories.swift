@@ -175,8 +175,9 @@ extension LearningScreen {
     }
 
     var deckReviewCards: [SessionCard] {
-        ReviewQueue.cards(
-            CardCategory.cards(cards, inDeck: selectedDeck),
+        ReviewQueue.categoryCards(
+            cards,
+            inDeck: selectedDeck,
             schedules: schedules,
             at: clock
         )
