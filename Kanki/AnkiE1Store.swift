@@ -9,6 +9,10 @@ extension LocalCardStore {
             content: decoder.decode(AnkiE1Import.Package.self, from: content),
             reviewed: reviewed.map { try decoder.decode(AnkiE1Import.Package.self, from: $0) }
         )
+        try mergeAnkiImport(batch, into: url)
+    }
+
+    static func mergeAnkiImport(_ batch: AnkiE1Import, into url: URL) throws {
         try open(at: url).write { db in
             for note in batch.notes {
                 try merge(note, in: db)

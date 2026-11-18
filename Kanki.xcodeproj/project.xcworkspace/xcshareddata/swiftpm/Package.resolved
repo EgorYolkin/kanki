@@ -1,5 +1,5 @@
 {
-  "originHash" : "e1918dd462da796f62f73a1418a9ace15d9995bcfb815259db6719e1042744b3",
+  "originHash" : "2cf224b85a774c9c2bccf98edf5eff5aa7f8390a70dbfaab2661b238c86b3ca5",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -16,6 +16,24 @@
       "location" : "https://github.com/open-spaced-repetition/swift-fsrs.git",
       "state" : {
         "revision" : "4fbaf20184d62f82a9f44f343337c61a2c5483e9"
+      }
+    },
+    {
+      "identity" : "swiftsoup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/scinfu/SwiftSoup.git",
+      "state" : {
+        "revision" : "dee225a3da7b68d34936abc4dc8f34f2264db647",
+        "version" : "2.9.6"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
       }
     }
   ],
