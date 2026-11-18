@@ -4,8 +4,8 @@ struct AppShell: View {
     @Binding var section: AppSection
     @State private var pushGate = PushGate()
     @State private var syncProblem: SyncStatus.Problem?
+    @State private var importRevision = 0
     @AppStorage("appearance") private var appearance: AppAppearance = .system
-    /// Разделы-заготовки скрыты по умолчанию; тумблеры живут в настройках.
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
 
@@ -23,6 +23,12 @@ struct AppShell: View {
                     .tag(visibleSection)
             }
         }
+        .environment(\.importRevision, importRevision)
+        .onReceive(NotificationCenter.default.publisher(for: .kankiImportCommitted).receive(on: DispatchQueue.main)) { notification in
+            if notification.object as? URL == LocalCardStore.fileURL {
+                importRevision += 1
+            }
+        }
         .preferredColorScheme(appearance.colorScheme)
         .onChange(of: visibleSections) { _, visible in
             if !visible.contains(section) {
@@ -36,35 +42,27 @@ struct AppShell: View {
         }
     }
 
-    /// Стек раздела. У «Графа» нет регистрации направлений — ссылок туда не ведёт
-    /// ни один экран; добавить регистрацию до появления ссылок.
     @ViewBuilder
     private func sectionStack(for section: AppSection) -> some View {
         switch section {
         case .learning:
             NavigationStack {
                 LearningScreen(pushGate: $pushGate, syncProblem: $syncProblem)
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .notes:
             NavigationStack {
                 NotesScreen()
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .graph:
             NavigationStack {
-                GraphScreen()
+                NotesScreen(mode: .graph)
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .settings:
             NavigationStack {
                 SettingsScreen(pushGate: $pushGate, syncProblem: $syncProblem)
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
             }
         case .statistics:
             NavigationStack {
@@ -72,4 +70,8 @@ struct AppShell: View {
             }
         }
     }
+}
+
+extension EnvironmentValues {
+    @Entry var importRevision = 0
 }

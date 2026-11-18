@@ -21,6 +21,7 @@ extension LocalCardStore {
                 try merge(card, in: db)
             }
         }
+        NotificationCenter.default.post(name: .kankiImportCommitted, object: url)
     }
 
     static func loadAnkiE1(from url: URL = fileURL) throws -> AnkiE1Import {
@@ -58,15 +59,16 @@ extension LocalCardStore {
 
     private static func merge(_ note: AnkiE1Import.Note, in db: Database) throws {
         if let current = try AnkiE1Import.Note.fetchOne(db, key: note.uid) {
-            if try AnkiE1Import.shouldUpdate(note, replacing: current) {
-                try note.update(db)
-            }
+            guard try AnkiE1Import.shouldUpdate(note, replacing: current) else { return }
+
+            try note.update(db)
         } else {
             guard try !AnkiE1Import.Note.exists(db, key: ["guid": note.guid]) else {
                 throw AnkiE1Import.ImportError.invalidNoteIdentity(note.uid)
             }
             try note.insert(db)
         }
+        try indexImportedNote(note, in: db)
     }
 
     private static func merge(_ card: AnkiE1Import.Card, in db: Database) throws {
@@ -86,4 +88,8 @@ extension AnkiE1Import.Note: FetchableRecord, PersistableRecord {
 
 extension AnkiE1Import.Card: FetchableRecord, PersistableRecord {
     static let databaseTableName = "note_cards"
+}
+
+extension Notification.Name {
+    static let kankiImportCommitted = Notification.Name("kanki.importCommitted")
 }

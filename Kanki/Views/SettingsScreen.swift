@@ -102,7 +102,7 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("showNotesSection")
             Toggle("Граф", isOn: $showGraphSection)
                 .accessibilityIdentifier("showGraphSection")
-            Text("Разделы «Заметки» и «Граф» пока заготовки; включите переключатель, чтобы вернуть раздел в панель вкладок.")
+            Text("Выберите, какие разделы показывать в панели вкладок.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

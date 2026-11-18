@@ -12,9 +12,8 @@ Presentation only. Behaviour lives in `Kanki/Domain/`; these rules keep the boun
   (for example `ReviewSessionState`, `CardDraft`, `SessionLog`).
 - Keep Russian copy and `accessibilityIdentifier` values byte-stable: `KankiUITests`
   asserts exact strings, and changing a string requires updating the test in the same PR.
-- Every tab keeps its own `NavigationStack`; destinations are registered with
-  `.navigationDestination(for: Destination.self)`. Graph has no registration yet — add
-  one before linking to a `Destination` from the graph tab.
+- Every tab keeps its own `NavigationStack`. Register the shared
+  `ImportedNoteRoute` on stacks that navigate to the import, library, notes or graph.
 - Do not add `#if DEBUG` fakes, placeholder success states or test-only branches.
 - Empty states use `SectionIntro`; pushed screens use
   `.toolbarTitleDisplayMode(.inline)` (works on iOS 17+ and macOS 14+; the iOS-only
