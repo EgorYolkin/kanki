@@ -4,6 +4,7 @@ struct AppShell: View {
     @Binding var section: AppSection
     @State private var pushGate = PushGate()
     @State private var syncProblem: SyncStatus.Problem?
+    @State private var importRevision = 0
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
@@ -20,6 +21,12 @@ struct AppShell: View {
                         Label(visibleSection.title, systemImage: visibleSection.symbol)
                     }
                     .tag(visibleSection)
+            }
+        }
+        .environment(\.importRevision, importRevision)
+        .onReceive(NotificationCenter.default.publisher(for: .kankiImportCommitted).receive(on: DispatchQueue.main)) { notification in
+            if notification.object as? URL == LocalCardStore.fileURL {
+                importRevision += 1
             }
         }
         .preferredColorScheme(appearance.colorScheme)
@@ -59,4 +66,8 @@ struct AppShell: View {
             }
         }
     }
+}
+
+extension EnvironmentValues {
+    @Entry var importRevision = 0
 }

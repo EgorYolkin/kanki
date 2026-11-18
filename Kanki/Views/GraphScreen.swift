@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GraphScreen: View {
     let uid: String
+    @Environment(\.importRevision) private var importRevision
     @State private var note: Result<ImportedNote?, Error>?
 
     var body: some View {
@@ -19,7 +20,7 @@ struct GraphScreen: View {
         }
         .navigationTitle("Граф заметки")
         .toolbarTitleDisplayMode(.inline)
-        .task {
+        .task(id: importRevision) {
             let result = await Task.detached { [uid] in Result { try LocalCardStore.importedNote(uid) } }.value
             if !Task.isCancelled { note = result }
         }

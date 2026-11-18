@@ -8,9 +8,12 @@ final class ImportedNoteStoreTests: XCTestCase {
 
     func testStageFiveDatabaseIsBackfilledWithoutChangingCardsSchedulesOrSnapshot() throws {
         try withStore { url in
-            let source = note("n-source", title: "Синтетика &amp; оптика", body: "<p>Дифракция <strong>света</strong>.</p>", relations: [
-                .init(kind: .requires, targetUID: "n-missing", note: "Сначала прочитать")
-            ])
+            let source = note(
+                "n-source",
+                title: "Синтетика &amp; оптика",
+                body: "<div>Дифракция</div>света<br>интер<strong>ференция</strong>.",
+                relations: [.init(kind: .requires, targetUID: "n-missing", note: "Сначала прочитать")]
+            )
             let progress = AnkiE1Import.Progress(due: 40, ivl: 2, queue: 2, reviews: [])
             let card = AnkiE1Import.Card(guid: source.guid, ord: 0, progress: progress)
             let snapshot = LearningSnapshot(cards: [SessionCard(question: "Ручная карточка", answer: "Ответ", createdAt: date)])
@@ -18,10 +21,11 @@ final class ImportedNoteStoreTests: XCTestCase {
             try createOldDatabase(at: url, note: source, card: card, snapshot: snapshot, schedule: schedule)
 
             XCTAssertEqual(try LocalCardStore.importedNotes(matching: "ОПТИК", from: url).map(\.title), ["Синтетика & оптика"])
-            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "дифракц свет", from: url).map(\.uid), [source.uid])
+            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "опт—дифракц", from: url).map(\.uid), [source.uid])
+            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "свет интерференция", from: url).map(\.uid), [source.uid])
             XCTAssertTrue(try LocalCardStore.importedNotes(matching: "strong", from: url).isEmpty)
             let detail = try XCTUnwrap(LocalCardStore.importedNote(source.uid, from: url))
-            XCTAssertEqual(detail.body, "Дифракция света.")
+            XCTAssertEqual(detail.body, "Дифракция света интерференция.")
             XCTAssertEqual(detail.outgoing.first?.uid, "n-missing")
             XCTAssertNil(detail.outgoing.first?.title)
             XCTAssertEqual(detail.outgoing.first?.comment, "Сначала прочитать")
@@ -31,6 +35,32 @@ final class ImportedNoteStoreTests: XCTestCase {
             XCTAssertEqual(imported.reviews.map(\.rating), [.good])
             XCTAssertEqual(imported.reviews.map(\.reviewedAt), [date])
             XCTAssertEqual(try LocalCardStore.load(from: url), snapshot)
+        }
+    }
+
+    func testImportSeparatesHTMLBlocksAndBreaksButPreservesInlineWords() throws {
+        try withStore { url in
+            let source = note("n-source", title: "Оптика", body: "Луч<div>Альфа</div>Бета<br>диф<strong>ракция</strong> света")
+            try LocalCardStore.mergeAnkiImport(.init(notes: [source], cards: []), into: url)
+
+            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "опт—дифр", from: url).map(\.uid), [source.uid])
+            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "луч альфа бета дифракция", from: url).map(\.uid), [source.uid])
+            XCTAssertTrue(try LocalCardStore.importedNotes(matching: "ракция", from: url).isEmpty)
+        }
+    }
+
+    func testAlreadyIndexedDatabaseRepairsStaleBodyAndSearchTerms() throws {
+        try withStore { url in
+            let source = note("n-source", title: "Оптика", body: "<div>Альфа</div>Бета")
+            try LocalCardStore.mergeAnkiImport(.init(notes: [source], cards: []), into: url)
+            try DatabaseQueue(path: url.path).write { db in
+                try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'importedNoteBodyBoundaries'")
+                try db.execute(sql: "UPDATE note_library SET body = 'АльфаБета' WHERE uid = ?", arguments: [source.uid])
+            }
+
+            XCTAssertEqual(try LocalCardStore.importedNotes(matching: "бета", from: url).map(\.uid), [source.uid])
+            XCTAssertTrue(try LocalCardStore.importedNotes(matching: "альфабета", from: url).isEmpty)
+            XCTAssertEqual(try LocalCardStore.loadAnkiE1(from: url).notes, [source])
         }
     }
 

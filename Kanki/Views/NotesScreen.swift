@@ -34,6 +34,7 @@ struct NotesScreen: View {
     }
 
     var mode: Mode = .notes
+    @Environment(\.importRevision) private var importRevision
     @State private var query = ""
     @State private var notes: Result<[ImportedNoteSummary], Error>?
 
@@ -61,7 +62,14 @@ struct NotesScreen: View {
         }
         .navigationTitle(mode.title)
         .searchable(text: $query, prompt: "Заголовок или текст")
-        .task(id: query) { await loadNotes(matching: query) }
+        .task(id: SearchRequest(query: query, importRevision: importRevision)) {
+            await loadNotes(matching: query)
+        }
+    }
+
+    private struct SearchRequest: Equatable {
+        let query: String
+        let importRevision: Int
     }
 
     private var emptyState: some View {
@@ -94,6 +102,7 @@ struct NotesScreen: View {
 
 struct ImportedNoteScreen: View {
     let uid: String
+    @Environment(\.importRevision) private var importRevision
     @State private var note: Result<ImportedNote?, Error>?
 
     var body: some View {
@@ -119,7 +128,7 @@ struct ImportedNoteScreen: View {
         }
         .navigationTitle(title)
         .toolbarTitleDisplayMode(.inline)
-        .task {
+        .task(id: importRevision) {
             let result = await Task.detached { [uid] in Result { try LocalCardStore.importedNote(uid) } }.value
             if !Task.isCancelled { note = result }
         }

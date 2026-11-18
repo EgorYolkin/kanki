@@ -21,6 +21,7 @@ extension LocalCardStore {
                 try merge(card, in: db)
             }
         }
+        NotificationCenter.default.post(name: .kankiImportCommitted, object: url)
     }
 
     static func loadAnkiE1(from url: URL = fileURL) throws -> AnkiE1Import {
@@ -87,4 +88,8 @@ extension AnkiE1Import.Note: FetchableRecord, PersistableRecord {
 
 extension AnkiE1Import.Card: FetchableRecord, PersistableRecord {
     static let databaseTableName = "note_cards"
+}
+
+extension Notification.Name {
+    static let kankiImportCommitted = Notification.Name("kanki.importCommitted")
 }

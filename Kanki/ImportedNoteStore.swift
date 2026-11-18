@@ -3,6 +3,8 @@ import GRDB
 import SwiftSoup
 
 extension LocalCardStore {
+    private static let noteTokenizer = FTS5TokenizerDescriptor.unicode61()
+
     static func createNoteNavigationIndex(in db: Database) throws {
         try db.execute(sql: """
             CREATE TABLE note_library (
@@ -28,16 +30,26 @@ extension LocalCardStore {
             try indexImportedNote(note, in: db)
         }
         try db.create(virtualTable: "note_fts", using: FTS5()) { definition in
+            definition.tokenizer = noteTokenizer
             definition.synchronize(withTable: "note_library")
             definition.column("title")
             definition.column("body")
         }
     }
 
+    static func refreshNoteLibraryBodies(in db: Database) throws {
+        let notes = try Row.fetchCursor(db, sql: "SELECT uid, body FROM notes")
+        while let note = try notes.next() {
+            let uid: String = note["uid"]
+            let body = try AnkiFieldText.body(note["body"])
+            try db.execute(sql: "UPDATE note_library SET body = ? WHERE uid = ? AND body != ?", arguments: [body, uid, body])
+        }
+    }
+
     /// Called in the same transaction as a change to the canonical note.
     static func indexImportedNote(_ note: AnkiE1Import.Note, in db: Database) throws {
         let title = AnkiFieldText.title(note.title)
-        let body = try SwiftSoup.parseBodyFragment(note.body).body()?.text() ?? ""
+        let body = try AnkiFieldText.body(note.body)
         try db.execute(sql: """
             INSERT INTO note_library (uid, title, body) VALUES (?, ?, ?)
             ON CONFLICT(uid) DO UPDATE SET title = excluded.title, body = excluded.body
@@ -60,7 +72,11 @@ extension LocalCardStore {
                     SELECT uid, title FROM note_library ORDER BY title COLLATE NOCASE, uid
                     """)
             }
-            guard let pattern = FTS5Pattern(matchingAllPrefixesIn: query) else { return [] }
+            let tokens = try db.makeTokenizer(noteTokenizer).tokenize(query: query)
+            guard !tokens.isEmpty else { return [] }
+            let prefixes = tokens.map { token in
+                "\"\(token.token.replacingOccurrences(of: "\"", with: "\"\""))\"*"
+            }
 
             let sql = """
                 SELECT note_library.uid, note_library.title
@@ -68,7 +84,7 @@ extension LocalCardStore {
                 WHERE note_fts MATCH ?
                 ORDER BY bm25(note_fts, 4.0, 1.0), note_library.title COLLATE NOCASE, note_library.uid
                 """
-            return try ImportedNoteSummary.fetchAll(db, sql: sql, arguments: [pattern])
+            return try ImportedNoteSummary.fetchAll(db, sql: sql, arguments: [prefixes.joined(separator: " ")])
         }
     }
 
@@ -126,5 +142,30 @@ enum AnkiFieldText {
     static func title(_ value: String) -> String {
         // Title is escaped plain text, not an HTML fragment.
         (try? Entities.unescape(value)) ?? value
+    }
+
+    static func body(_ value: String) throws -> String {
+        let body = try SwiftSoup.parseBodyFragment(value).body()
+        let text = NoteBodyText()
+        try NodeTraversor(text).traverse(body)
+        return text.value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+}
+
+private final class NoteBodyText: NodeVisitor {
+    private(set) var value = ""
+
+    func head(_ node: Node, _ depth: Int) {
+        if let text = node as? TextNode {
+            value.append(text.getWholeText())
+        } else if let element = node as? Element, element.isBlock() || element.tagNameNormal() == "br" {
+            value.append(" ")
+        }
+    }
+
+    func tail(_ node: Node, _ depth: Int) {
+        if let element = node as? Element, element.isBlock() {
+            value.append(" ")
+        }
     }
 }
