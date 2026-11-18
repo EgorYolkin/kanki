@@ -276,36 +276,35 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
     }
 
-    func testExportMenuSavesSelectedAndAllCards() {
+    func testExportMenuSavesSelectedAndAllCards() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        continueAfterFailure = false
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
-        addCard(in: app, question: "Экспорт Альфа", answer: "Ответ А")
-        addCard(in: app, question: "Экспорт Бета", answer: "Ответ Б")
+        let suffix = UUID().uuidString
+        let firstQuestion = "Экспорт Альфа \(suffix)"
+        let secondQuestion = "Экспорт Бета \(suffix)"
+        addCard(in: app, question: firstQuestion, answer: "Ответ А")
+        addCard(in: app, question: secondQuestion, answer: "Ответ Б")
 
         app.buttons["cardExportMenu"].tap()
         app.buttons["Выбрать карточки"].tap()
         XCTAssertTrue(app.navigationBars["Выбор карточек"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["exportSelectedCards"].isEnabled)
-        app.staticTexts["Экспорт Альфа"].firstMatch.tap()
+        app.staticTexts[firstQuestion].tap()
         XCTAssertTrue(app.buttons["exportSelectedCards"].isEnabled)
         app.buttons["exportSelectedCards"].tap()
 
-        let filename = app.textFields["DOCPicker.filenameTextField"]
-        XCTAssertTrue(filename.waitForExistence(timeout: 5))
-        let suffix = UUID().uuidString.prefix(8)
-        filename.tap()
-        filename.typeText("-\(suffix)-selected")
-        app.buttons["Save"].tap()
-        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+        let selected = try saveExport(in: app, folder: "Kanki-selected-\(suffix)")
+        XCTAssertEqual(selected, [ExportedCard(question: firstQuestion, answer: "Ответ А")])
 
         app.buttons["cardExportMenu"].tap()
         app.buttons["Экспортировать все"].tap()
-        XCTAssertTrue(filename.waitForExistence(timeout: 5))
-        filename.tap()
-        filename.typeText("-\(suffix)-all")
-        app.buttons["Save"].tap()
-        XCTAssertTrue(app.buttons["cardExportMenu"].waitForExistence(timeout: 5))
+        let all = try saveExport(in: app, folder: "Kanki-all-\(suffix)")
+        XCTAssertEqual(all.sorted { $0.question < $1.question }, [
+            ExportedCard(question: firstQuestion, answer: "Ответ А"),
+            ExportedCard(question: secondQuestion, answer: "Ответ Б")
+        ])
     }
 
     func testEditingCardUpdatesQuestionAnswerAndCategory() {
