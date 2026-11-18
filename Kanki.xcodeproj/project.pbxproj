@@ -23,24 +23,28 @@
 		2BECA0763E524F5C2EC2507C /* ServerClientIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992D0672A4A7313F1A3E9E12 /* ServerClientIntegrationTests.swift */; };
 		2C649C8AAF58860A24E62615 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = DE3AF4CA9A74379C41649CA8 /* FSRS */; };
 		31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */; };
+		33744B27690EB1DF7A3938CA /* AnkiE1ImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DBD74F765AEF9BC76D04C9E /* AnkiE1ImportTests.swift */; };
 		3BAAFA1E294FE5025AFA5C5D /* CardScheduling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B4D4B014206400D470D862 /* CardScheduling.swift */; };
 		3BBB7520F81E426AB0590089 /* CardExportArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89D2E911F1BB1A0DE1DE33E6 /* CardExportArchive.swift */; };
 		3EBB1F16D86E39C36A32D96E /* ServerClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889A3D893F4A7E23D0D50569 /* ServerClientTests.swift */; };
 		3FAEE456BE886530D1044886 /* AppShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78083BD8306FF6E06837F69 /* AppShell.swift */; };
 		40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */; };
 		414AED36A06BEBBFCA29BFCA /* SyncStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8860FF46CFB7B4B1381E785C /* SyncStatus.swift */; };
+		42B11C6FE0CCC89826DD7328 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 0AE2F80B5C1FDEB3E381549E /* GRDB */; };
 		46251EEC490136F2319692F9 /* SessionCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC24181840A9C83ACC0BEF55 /* SessionCardTests.swift */; };
 		5423550B94EDFA23F30C9CCC /* SessionReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E52C6E14626A98CC3C8D2F2 /* SessionReview.swift */; };
 		567EAB66CB5D660CC489D29D /* MacShellUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635944F7D7BBBF4DB591A2C5 /* MacShellUITests.swift */; };
 		57F5B421C058EF326B0AB360 /* SessionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0A4013C1076D774BBD30F1 /* SessionCard.swift */; };
 		5844EBBF2FEE8DA31A5E0F68 /* NotesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283B368D15032ED87CD7B9CD /* NotesScreen.swift */; };
 		5F7463464082BB36EBD024F6 /* ServerConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E475D1F1CC902C13FEAEFB9B /* ServerConfiguration.swift */; };
+		6161F3BF71097F0536AF8827 /* AnkiE1Import.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0053646E432A6B8449F7850A /* AnkiE1Import.swift */; };
 		655127FAD9A655BD021C8263 /* SessionLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4F72F29D01441D198664F1 /* SessionLogTests.swift */; };
 		68BE118E87380D3B6B94577B /* PushGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61AA6010F939A75DCAAC05C /* PushGate.swift */; };
 		6CA62FA154D5A248FEE274FE /* DestinationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48706187509E815F62681E73 /* DestinationTests.swift */; };
 		6CCADEA75353A3D2480CA318 /* ServerTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60366F71075F2D649B01D98F /* ServerTokenStore.swift */; };
 		730325471BB3C3EB7A66AA04 /* ReviewQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C056234A10AFA9689AFEBA3B /* ReviewQueueTests.swift */; };
 		738AB8DFF25CDBC497363B8A /* LearningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B576BC0D00A4522D761422A /* LearningScreen.swift */; };
+		74B0623307B395511F6A73B2 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 58A590D11C8326107585091A /* GRDB */; };
 		7503E6A97B9795F4FCA97EA9 /* SectionIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE0D609C81D308B2B202E60 /* SectionIntro.swift */; };
 		76D15537CB97D5C4C2E993C8 /* LearningScreenSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A5A793FC000541B813F6FB /* LearningScreenSync.swift */; };
 		793EFFFEE80D10A93D5C8826 /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115ABB49A8DE8D52C92718AA /* CardSearchTests.swift */; };
@@ -62,6 +66,7 @@
 		B42EC05BAC34CA6B900C85CB /* CategorySummaryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCD23689E3AC04DF5AAED184 /* CategorySummaryRow.swift */; };
 		B489F2202880AC82CFD0703E /* CardDraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F523497F0B6CEC94FC0981 /* CardDraftTests.swift */; };
 		B9FBDC463424F380B13E8CBA /* CardExportScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */; };
+		BACBE4EAAC2157B7AA4861C5 /* AnkiE1Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73BC899939AEAD615C46E399 /* AnkiE1Store.swift */; };
 		BC9EB485791353F110750C94 /* ServerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A937E6E66EAC7934CABF325D /* ServerModels.swift */; };
 		BD374A48827DC3AB4B6EEC5D /* CardArchiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF6D7038B0B54DB681E0B69 /* CardArchiveUITests.swift */; };
 		C3D75FF8CCCF06BEBD697B3A /* ReviewSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF7F49AB23DDD285FDB16F0 /* ReviewSessionState.swift */; };
@@ -110,6 +115,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0053646E432A6B8449F7850A /* AnkiE1Import.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiE1Import.swift; sourceTree = "<group>"; };
 		08A1350F44A56F3BE86B85CD /* Kanki.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kanki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		09FECFC4807E9E9C95493B88 /* SessionCardScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardScreen.swift; sourceTree = "<group>"; };
 		110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearanceTests.swift; sourceTree = "<group>"; };
@@ -120,6 +126,7 @@
 		1A363F57517DD0567A863A30 /* SnapshotSyncPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotSyncPlan.swift; sourceTree = "<group>"; };
 		1B2E736179A418F50CB67EBB /* Destination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Destination.swift; sourceTree = "<group>"; };
 		1CD5F2D164BA2D6817E928B5 /* ServerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerModelsTests.swift; sourceTree = "<group>"; };
+		1DBD74F765AEF9BC76D04C9E /* AnkiE1ImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiE1ImportTests.swift; sourceTree = "<group>"; };
 		206D429002831316316C7E60 /* ServerConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfigurationTests.swift; sourceTree = "<group>"; };
 		21FBDD7E2D5CA4300EA508E8 /* CategoryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryUITests.swift; sourceTree = "<group>"; };
 		248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSectionTests.swift; sourceTree = "<group>"; };
@@ -147,6 +154,7 @@
 		6B787DB1F7ECAD7550E344F7 /* SessionCardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardUITests.swift; sourceTree = "<group>"; };
 		6EE0D609C81D308B2B202E60 /* SectionIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionIntro.swift; sourceTree = "<group>"; };
 		73630BF536A4BA8AD8872A30 /* SyncStatusUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusUITests.swift; sourceTree = "<group>"; };
+		73BC899939AEAD615C46E399 /* AnkiE1Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiE1Store.swift; sourceTree = "<group>"; };
 		7814F49B17E7F6A0401BA313 /* SessionCardFormScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardFormScreen.swift; sourceTree = "<group>"; };
 		78C94F34970E6F5B204B15CF /* CardSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSchedulingTests.swift; sourceTree = "<group>"; };
 		8329926384A17781F614E660 /* CardExportArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardExportArchiveTests.swift; sourceTree = "<group>"; };
@@ -197,6 +205,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DEDE77EFAB2B93BF6930BAF0 /* FSRS in Frameworks */,
+				42B11C6FE0CCC89826DD7328 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,6 +214,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C649C8AAF58860A24E62615 /* FSRS in Frameworks */,
+				74B0623307B395511F6A73B2 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -214,6 +224,7 @@
 		0553AB699CD3C1D2268B6F3B /* Kanki */ = {
 			isa = PBXGroup;
 			children = (
+				73BC899939AEAD615C46E399 /* AnkiE1Store.swift */,
 				CF15689DA2A920F45308E742 /* Assets.xcassets */,
 				D4EEB5F298699D7FF324C82E /* CardExportScreen.swift */,
 				9E3252F25729C7B4B4471BF2 /* Info.plist */,
@@ -229,6 +240,7 @@
 		2E5C6E9C50E70B60EE053691 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				1DBD74F765AEF9BC76D04C9E /* AnkiE1ImportTests.swift */,
 				110ED074414619875C1A8BB7 /* AppAppearanceTests.swift */,
 				248C7441BB4FDE5E9F8BE6F8 /* AppSectionTests.swift */,
 				B64000A64892970D6CC3EB14 /* CardCategoryTests.swift */,
@@ -351,6 +363,7 @@
 		FF1E0E94D27AC4F318732EC0 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				0053646E432A6B8449F7850A /* AnkiE1Import.swift */,
 				5B15D2BF7F686D3EBB8F59FF /* AppAppearance.swift */,
 				D5298CF1C1CD9C6617351780 /* AppSection.swift */,
 				DEC01065DFF7383120EFB751 /* CardCategory.swift */,
@@ -412,6 +425,7 @@
 			name = KankiTests;
 			packageProductDependencies = (
 				FFCF1B1BCF68255D61B88DDB /* FSRS */,
+				0AE2F80B5C1FDEB3E381549E /* GRDB */,
 			);
 			productName = KankiTests;
 			productReference = 2B2F3C3F8E820305C49AAFB4 /* KankiTests.xctest */;
@@ -450,6 +464,7 @@
 			name = Kanki;
 			packageProductDependencies = (
 				DE3AF4CA9A74379C41649CA8 /* FSRS */,
+				58A590D11C8326107585091A /* GRDB */,
 			);
 			productName = Kanki;
 			productReference = 08A1350F44A56F3BE86B85CD /* Kanki.app */;
@@ -483,6 +498,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */,
+				4EAA6F4AECAF023895A91FA9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A391310A17803DA0F932D4BE /* Products */;
@@ -513,6 +529,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				33744B27690EB1DF7A3938CA /* AnkiE1ImportTests.swift in Sources */,
 				40879300935055F58738B416 /* AppAppearanceTests.swift in Sources */,
 				31F0DD71777F018542A027F4 /* AppSectionTests.swift in Sources */,
 				C78B83086F2EAC7BC862571E /* CardCategoryTests.swift in Sources */,
@@ -545,6 +562,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				284721F61BB1472E6F973A19 /* AllCardsScreen.swift in Sources */,
+				6161F3BF71097F0536AF8827 /* AnkiE1Import.swift in Sources */,
+				BACBE4EAAC2157B7AA4861C5 /* AnkiE1Store.swift in Sources */,
 				A49D5534F3D1D81E8EFC3CF9 /* AppAppearance.swift in Sources */,
 				E899C275914FBF2E1848C731 /* AppSection.swift in Sources */,
 				3FAEE456BE886530D1044886 /* AppShell.swift in Sources */,
@@ -951,6 +970,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4EAA6F4AECAF023895A91FA9 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift.git";
+			requirement = {
+				kind = exactVersion;
+				version = 7.5.0;
+			};
+		};
 		BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/open-spaced-repetition/swift-fsrs.git";
@@ -962,6 +989,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0AE2F80B5C1FDEB3E381549E /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4EAA6F4AECAF023895A91FA9 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		58A590D11C8326107585091A /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4EAA6F4AECAF023895A91FA9 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
 		DE3AF4CA9A74379C41649CA8 /* FSRS */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BDFF6A3D6F7DE9CC58E3E0ED /* XCRemoteSwiftPackageReference "swift-fsrs" */;

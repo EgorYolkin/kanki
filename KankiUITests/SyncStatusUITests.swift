@@ -1,7 +1,5 @@
 import XCTest
 
-@testable import Kanki
-
 @MainActor
 final class SyncStatusUITests: XCTestCase {
     func testStatusHiddenWithoutConfiguredServer() {

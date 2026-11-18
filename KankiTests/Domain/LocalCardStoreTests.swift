@@ -20,7 +20,8 @@ final class LocalCardStoreTests: XCTestCase {
     /// Снимок v1 со старого устройства: без `snapshot_version`, `deck`,
     /// `isArchived` и `deck_renames`, даты — ISO-8601, как их пишет стор.
     func testLoadsLegacySnapshotThroughStoreDecoder() throws {
-        let url = directory.appending(path: "cards.json")
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
         let json = """
         {
           "cards": [
@@ -41,7 +42,8 @@ final class LocalCardStoreTests: XCTestCase {
           "schedules": {}
         }
         """
-        try Data(json.utf8).write(to: url)
+        let bytes = Data(json.utf8)
+        try bytes.write(to: legacy)
 
         let snapshot = try LocalCardStore.load(from: url)
 
@@ -51,10 +53,16 @@ final class LocalCardStoreTests: XCTestCase {
         XCTAssertFalse(snapshot.cards[0].isArchived, "Старый снимок без архива → карточка активна")
         XCTAssertEqual(snapshot.reviews.first?.rating, .hard)
         XCTAssertEqual(snapshot.snapshotVersion, LearningSnapshot.currentSnapshotVersion)
+
+        var updated = snapshot
+        XCTAssertTrue(updated.updateCard(id: snapshot.cards[0].id, question: "Новый вопрос", answer: "Ответ", deck: nil))
+        try LocalCardStore.save(updated, to: url)
+        XCTAssertEqual(try LocalCardStore.load(from: url), updated)
+        XCTAssertEqual(try Data(contentsOf: legacy), bytes)
     }
 
     func testSavingDuplicateCardIDsPreservesExistingSnapshotBytes() throws {
-        let url = directory.appending(path: "cards.json")
+        let url = directory.appending(path: "kanki.sqlite")
         let card = SessionCard(
             id: try XCTUnwrap(UUID(uuidString: "2621F15A-306C-435A-9680-AEEB602F272D")),
             question: "Вопрос",
@@ -74,15 +82,15 @@ final class LocalCardStoreTests: XCTestCase {
     }
 
     func testLoadingDuplicateCardIDsRejectsCorruptSnapshot() throws {
-        let url = directory.appending(path: "cards.json")
+        let url = directory.appending(path: "kanki.sqlite")
+        let legacy = directory.appending(path: "cards.json")
         let card = """
         {"id":"2621F15A-306C-435A-9680-AEEB602F272D",
         "question":"Вопрос","answer":"Ответ","createdAt":"2026-01-02T03:04:05Z"}
         """
         let payload = Data(#"{"cards":[\#(card),\#(card)]}"#.utf8)
-        try payload.write(to: url)
-
+        try payload.write(to: legacy)
         XCTAssertThrowsError(try LocalCardStore.load(from: url))
-        XCTAssertEqual(try Data(contentsOf: url), payload)
+        XCTAssertEqual(try Data(contentsOf: legacy), payload)
     }
 }

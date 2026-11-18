@@ -44,4 +44,77 @@ AnkiDesktop 26.09.3 (`aqt` и `anki` из PyPI, 2026-11-18): полный GUI-с
 | `test4-type-change.apkg` | `1 note could not be imported`, 1 Skipped, 0 Updated, 0 Added. Заметки, расписание и revlog не изменились. |
 | Восстановление | `e1_restore.py` взял контент из `test3.apkg`, прогресс из `test2-gui.apkg`. В экспериментальной SQLite-БД совпали два UID, `SchemaVersion=1`, расписание и две строки revlog по `(guid, ord)`; восстановлены четыре ребра, из них два производных. |
 
-Оффскрин-прогон не проверяет нативную отрисовку или официальный DMG. Продуктовый конвертер и восстановление в БД Kanki не проверены. [Этап #3](https://github.com/EgorYolkin/kanki/issues/3) остаётся открытым, контракт и состав нотетайпа не заморожены.
+Оффскрин-прогон не проверяет нативную отрисовку или официальный DMG. Этот прогон не открывал продуктовую БД. [Этап #3](https://github.com/EgorYolkin/kanki/issues/3) остаётся открытым, контракт и состав нотетайпа не заморожены.
+
+## Проверка продуктового хранилища
+
+В [#149](https://github.com/EgorYolkin/kanki/issues/149) `.apkg` читает
+внешний адаптер `e1_product_input.py`. Он извлекает фактический порядок
+полей, заметки и карты; для пакета с историей также извлекает расписание
+и revlog. NID/CID служат только для соединения строк внутри исходного пакета.
+Адаптер не пишет БД Kanki. JSON на его выходе — внутренний вход этого
+среза, не утверждённый обменный формат или универсальный импорт `.apkg`.
+
+`LocalCardStore.importAnkiE1` и `loadAnkiE1` работают с той же SQLite-БД
+на GRDB, что и `load`/`save` ручных карточек. При первом открытии прежний
+`cards.json` переносится транзакционно в `learning_snapshot` и остаётся
+нетронутым как резервная копия. После миграции активен только `kanki.sqlite`.
+Серверный JSON не меняется; обновление снимка не трогает таблицы импорта.
+В #5 следует расширять эту БД, а не открывать второе хранилище.
+
+- `notes` хранит UID, исходные GUID/нотетайп/версию и канонические Relations
+  в исходном порядке. Обратные связи вычисляются при чтении, не дублируются на диске.
+- `note_cards` использует `(guid, ord)` как ключ. `progress` хранит `due`,
+  `ivl`, `queue` и строки revlog как исходные числа Anki, без перевода в
+  `CardSchedule` или `SessionReview`. Обновление контента без прогресса его
+  не стирает. Другой слепок прогресса для уже восстановленной карты отклоняется
+  целиком: приоритета между планировщиками этот срез не определяет.
+- Поддержан только проверочный тип `1936480171`, восемь полей Э1,
+  `SchemaVersion=1` и одна карта `ord=0` на заметку. Контент обновляется при
+  росте `mod`; изменённый контент с тем же `mod` — конфликт. Теги, колоды,
+  окончательный алгоритм GUID и состав нотетайпа требуют решения владельца;
+  маппинг состояния Anki в FSRS требует Э6. Редактора заметок, импорта в
+  интерфейсе и обучения на импортированных картах здесь нет.
+
+Из корня репозитория соберите синтетические входы и передайте их в тесты.
+Загрузите отдельный пустой iPhone Simulator и задайте `KANKI_E1_SIMULATOR_ID`
+его идентификатором из `xcrun simctl list devices booted`.
+
+```bash
+(
+  set -euo pipefail
+  unset KANKI_TEST_SERVER_URL KANKI_TEST_TOKEN
+  unset TEST_RUNNER_KANKI_TEST_SERVER_URL TEST_RUNNER_KANKI_TEST_TOKEN
+  work="$(mktemp -d)"
+  trap 'rm -rf "$work"' EXIT
+  uv run --no-project --with genanki==0.13.1 python experiments/e1.py generate "$work"
+  uv run --no-project --with anki==26.09.3 --with zstandard==0.25.0 \
+    python experiments/e1_roundtrip.py "$work"
+  for fixture in test1 test3 test4-type-change; do
+    uv run --no-project --with zstandard==0.25.0 python experiments/e1_product_input.py \
+      "$work/$fixture.apkg" "$work/$fixture.json"
+  done
+  uv run --no-project --with zstandard==0.25.0 python experiments/e1_product_input.py \
+    --reviewed "$work/test2.apkg" "$work/test2.json"
+  xcodegen generate
+  mkdir -p build
+  result="build/$(basename "$work").xcresult"
+  TEST_RUNNER_KANKI_E1_INPUT_DIR="$work" xcodebuild test \
+    -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
+    -destination "platform=iOS Simulator,id=${KANKI_E1_SIMULATOR_ID:?}" \
+    -only-testing:KankiTests -derivedDataPath build/DerivedData \
+    -resultBundlePath "$result" CODE_SIGNING_ALLOWED=NO
+  python3 scripts/coverage_gate.py --bundle "$result"
+)
+```
+
+`AnkiE1ImportTests` открывает настоящий `LocalCardStore` на временном пути.
+В логе должны быть четыре строки `E1 package input:`; без переменной
+окружения тот же тест использует встроенные синтетические входы. Ожидания
+сверены с [GUI-отчётом #146](https://github.com/EgorYolkin/kanki/issues/3#issuecomment-6974240772):
+две заметки и две карты, `requires` и `related` с обратными проекциями,
+две записи Good, Learning с Unix due и `cards.ivl=0`, `revlog.ivl=-600`.
+Команды выше создают свежий backend-экспорт Anki 26.09.3, не используют
+удалённый артефакт GUI. Тест сверяет каждое исходное значение расписания и
+revlog с повторно открытым файлом, а также неизменность байтов при повторе
+и отказе, откат при конфликте прогресса и сохранность ручного FSRS-снимка.
