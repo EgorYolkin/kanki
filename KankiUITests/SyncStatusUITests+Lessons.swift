@@ -104,8 +104,7 @@ extension SyncStatusUITests {
         XCTAssertTrue(app.staticTexts["Демо 2"].waitForExistence(timeout: 5))
         app.buttons["Закрыть"].tap()
         app.navigationBars[batch.title].buttons.element(boundBy: 0).tap()
-        app.navigationBars[batch.course].buttons.element(boundBy: 0).tap()
-        app.navigationBars["Все уроки"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
         assertLabel("Синхронизировано, ревизия \(initial.revision + 2)", on: app.staticTexts["syncStatus"])
 
         let synced = try await readWireSnapshot(request)

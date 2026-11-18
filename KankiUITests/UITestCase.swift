@@ -70,7 +70,7 @@ class UITestCase: XCTestCase {
         }
 
         enterCardText(in: app, question: question, answer: answer)
-        let add = app.buttons["Добавить"]
+        let add = app.navigationBars["Карточка"].buttons["Добавить"]
         XCTAssertTrue(add.isEnabled, "Кнопка «Добавить» заблокирована")
         add.tap()
         XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
