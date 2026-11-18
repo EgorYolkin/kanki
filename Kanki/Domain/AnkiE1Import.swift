@@ -16,7 +16,7 @@ struct AnkiE1Import: Equatable {
         let relations: [Relation]
     }
 
-    enum RelationKind: String, Codable {
+    enum RelationKind: String, Codable, Sendable {
         case requires
         case partOf = "part_of"
         case related
