@@ -3,7 +3,23 @@ import SQLite3
 import XCTest
 
 @MainActor
-final class SyncStatusUITests: XCTestCase {
+final class SyncStatusUITests: UITestCase {
+    func testAgentLessonRoundTripsThroughPullReviewAndPush() async throws {
+        let url = try localServerURL()
+        let token = try localServerToken()
+        let request = try snapshotRequest(url: url, token: token)
+        try await exerciseAgentLesson(url: url, token: token, request: request)
+    }
+
+    func testLessonAppendFailureKeepsDraftAndOnlySuccessfulCards() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store", "--reset-server"]
+        app.launch()
+        let database = try snapshotFolder(in: appContainerRoot()).appending(path: "kanki.sqlite")
+        try exerciseFailedAppend(in: app, database: database)
+    }
+
     func testStatusHiddenWithoutConfiguredServer() {
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-server"]
@@ -55,7 +71,7 @@ final class SyncStatusUITests: XCTestCase {
 
     func testConflictSurvivesAlertDismissalAndClearsAfterPull() async throws {
         let url = try localServerURL()
-        let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
+        let token = try localServerToken()
         let revision = try await advanceServerRevision(url: url, token: token)
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-server"]
@@ -88,7 +104,7 @@ final class SyncStatusUITests: XCTestCase {
 
     func testManualPushConflictReachesLearningAndClearsAfterPull() async throws {
         let url = try localServerURL()
-        let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
+        let token = try localServerToken()
         let revision = try await advanceServerRevision(url: url, token: token)
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-server"]
@@ -120,8 +136,8 @@ final class SyncStatusUITests: XCTestCase {
 
     func testAutomaticFetchReportsLocalWriteFailureUntilSnapshotCanBeSaved() async throws {
         let url = try localServerURL()
-        let root = try appContainerRoot()
-        let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
+        let root = appContainerRoot()
+        let token = try localServerToken()
         let revision = try await advanceServerRevision(url: url, token: token)
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-server"]
@@ -170,8 +186,8 @@ final class SyncStatusUITests: XCTestCase {
 
     func testCorruptLegacyRequiresConfirmedPull() async throws {
         let url = try localServerURL()
-        let root = try appContainerRoot()
-        let token = try XCTUnwrap(ProcessInfo.processInfo.environment["KANKI_STATUS_UI_TOKEN"])
+        let root = appContainerRoot()
+        let token = try localServerToken()
         let revision = try await advanceServerRevision(url: url, token: token)
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-server"]
@@ -221,14 +237,11 @@ final class SyncStatusUITests: XCTestCase {
         XCTAssertEqual(finalRevision, remoteRevision)
     }
 
-    private func appContainerRoot() throws -> String {
-        try XCTUnwrap(
-            ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"],
-            "Передайте родительскую папку контейнера отдельного симулятора без клонирования"
-        )
+    private func appContainerRoot() -> String {
+        ProcessInfo.processInfo.environment["KANKI_STATUS_UI_APP_CONTAINER_ROOT"]
+            ?? URL(fileURLWithPath: NSHomeDirectory()).deletingLastPathComponent().path
     }
 
-    // Передайте родительскую папку `simctl get_app_container <id> app.kanki.ios data`:
     // Xcode может переустановить приложение и изменить UUID контейнера перед тестом.
     private func snapshotFolder(in root: String) throws -> URL {
         let containers = try FileManager.default.contentsOfDirectory(
@@ -254,11 +267,27 @@ final class SyncStatusUITests: XCTestCase {
 
     // Opt-in: только одноразовая локальная БД, никаких внешних URL.
     private func localServerURL() throws -> String {
-        guard let rawPort = ProcessInfo.processInfo.environment["KANKI_STATUS_UI_PORT"] else {
-            throw XCTSkip("Задайте KANKI_STATUS_UI_PORT и KANKI_STATUS_UI_TOKEN для одноразового сервера")
+        let env = ProcessInfo.processInfo.environment
+        if let rawURL = env["KANKI_TEST_SERVER_URL"] {
+            let parts = try XCTUnwrap(URLComponents(string: rawURL))
+            let port = try XCTUnwrap(parts.port.flatMap(UInt16.init(exactly:)))
+            // Не передаём адрес как есть: конструируем исключительно loopback origin.
+            guard parts.scheme == "http", parts.host == "127.0.0.1", port != 0 else {
+                throw NSError(domain: "Требуется одноразовый сервер на http://127.0.0.1:port", code: 1)
+            }
+            return "http://127.0.0.1:\(port)"
+        }
+        guard let rawPort = env["KANKI_STATUS_UI_PORT"] else {
+            throw XCTSkip("Задайте KANKI_TEST_SERVER_URL и KANKI_TEST_TOKEN для одноразового сервера")
         }
         let port = try XCTUnwrap(UInt16(rawPort))
         return "http://127.0.0.1:\(port)"
+    }
+
+    private func localServerToken() throws -> String {
+        let env = ProcessInfo.processInfo.environment
+        let key = env["KANKI_TEST_SERVER_URL"] == nil ? "KANKI_STATUS_UI_TOKEN" : "KANKI_TEST_TOKEN"
+        return try XCTUnwrap(env[key].flatMap { $0.isEmpty ? nil : $0 })
     }
 
     // Второй клиент меняет ревизию настоящего сервера, не локальный снимок приложения.
@@ -274,37 +303,35 @@ final class SyncStatusUITests: XCTestCase {
     }
 
     private func readServerRevision(url: String, token: String) async throws -> (URLRequest, Int) {
+        let request = try snapshotRequest(url: url, token: token)
+        let snapshot = try await readWireSnapshot(request)
+        return (request, snapshot.revision)
+    }
+
+    private func snapshotRequest(url: String, token: String) throws -> URLRequest {
         let endpoint = try XCTUnwrap(URL(string: "\(url)/v1/snapshot"))
         var request = URLRequest(url: endpoint, timeoutInterval: 5)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
-        let snapshot = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return (request, try XCTUnwrap(snapshot?["revision"] as? Int))
+        return request
     }
 
     private func addCard(in app: XCUIApplication) {
-        app.buttons["addSessionCard"].tap()
-        let question = app.descendants(matching: .any)["cardQuestion"]
-        XCTAssertTrue(question.waitForExistence(timeout: 5))
-        question.tap()
-        question.typeText("Synthetic question")
-        let answer = app.descendants(matching: .any)["cardAnswer"]
-        answer.tap()
-        answer.typeText("Synthetic answer")
-        app.buttons["Добавить"].tap()
+        addCard(in: app, question: "Synthetic question", answer: "Synthetic answer")
     }
 
-    private func configureServer(in app: XCUIApplication, url: String, token: String, expected: String) {
+    func configureServer(in app: XCUIApplication, url: String, token: String, expected: String) {
         app.tabBars.buttons["Настройки"].tap()
         let serverURL = app.textFields["serverURL"]
+        scrollTo(serverURL, in: app)
         XCTAssertTrue(serverURL.waitForExistence(timeout: 10))
         serverURL.tap()
         serverURL.typeText(url)
         let serverToken = app.secureTextFields["serverToken"]
         serverToken.tap()
         serverToken.typeText(token)
-        app.buttons["serverCheck"].tap()
+        let check = app.buttons["serverCheck"]
+        scrollTo(check, in: app)
+        check.tap()
         assertLabel(expected, on: app.staticTexts["serverStatus"], predicate: "label BEGINSWITH %@")
     }
 
@@ -314,7 +341,7 @@ final class SyncStatusUITests: XCTestCase {
         app.launch()
     }
 
-    private func assertLabel(_ text: String, on element: XCUIElement, predicate: String = "label == %@") {
+    func assertLabel(_ text: String, on element: XCUIElement, predicate: String = "label == %@") {
         expectation(for: NSPredicate(format: predicate, text), evaluatedWith: element)
         waitForExpectations(timeout: 15)
     }
@@ -328,7 +355,7 @@ final class SyncStatusUITests: XCTestCase {
 }
 
 extension SyncStatusUITests {
-    private func snapshotPayload(in file: URL) throws -> Data {
+    func snapshotPayload(in file: URL) throws -> Data {
         try withDatabase(at: file, flags: SQLITE_OPEN_READONLY) { db in
             var statement: OpaquePointer?
             defer { sqlite3_finalize(statement) }
@@ -340,7 +367,7 @@ extension SyncStatusUITests {
         }
     }
 
-    private func executeSQL(_ sql: String, in file: URL) throws {
+    func executeSQL(_ sql: String, in file: URL) throws {
         try withDatabase(at: file, flags: SQLITE_OPEN_READWRITE) { db in
             try requireSQLite(sqlite3_exec(db, sql, nil, nil, nil), equals: SQLITE_OK, in: db)
         }

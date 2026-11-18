@@ -6,7 +6,7 @@ import XCTest
 final class CardArchiveUITests: UITestCase {
     private func launch() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
         return app
     }

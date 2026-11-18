@@ -5,14 +5,9 @@ import XCTest
 /// переключаются горячими клавишами из меню `SectionCommands`.
 final class MacShellUITests: XCTestCase {
     @MainActor
-    func testSectionsOpenFromKeyboardShortcuts() {
-        let app = XCUIApplication()
-        // Без этого macOS может восстановить прошлое состояние «окон нет»
-        // и не открыть новое окно, из-за чего тест не найдёт ни одного Window.
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--reset-store", "--reset-sections"]
-        app.launch()
+    func testSectionsOpenFromKeyboardShortcuts() throws {
+        let app = try launchIsolatedApp()
 
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 60))
         XCTAssertEqual(app.windows.firstMatch.title, "Обучение")
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 20))
 
@@ -45,6 +40,78 @@ final class MacShellUITests: XCTestCase {
 
         app.typeKey("1", modifierFlags: .command)
         XCTAssertEqual(waitForWindowTitle("Обучение", in: app), .completed)
+    }
+
+    @MainActor
+    func testNativeLessonEditorsKeepReturnAndRenderMarkdownAfterRelaunch() throws {
+        let app = try launchIsolatedApp()
+        app.buttons["lessonCreate"].click()
+        let title = app.textFields["lessonTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        title.click()
+        title.typeText("Введение")
+        app.descendants(matching: .any)["lessonCourse"].firstMatch.click()
+        app.menuItems["Новый курс…"].click()
+        let course = app.textFields["lessonNewCourse"]
+        course.click()
+        course.typeText("Swift")
+        app.buttons["lessonSave"].click()
+        app.buttons["lessonAddCard"].click()
+
+        let question = app.textViews["cardQuestion"]
+        let answer = app.textViews["cardAnswer"]
+        XCTAssertTrue(question.waitForExistence(timeout: 10))
+        question.click()
+        question.typeText("**Демо вопрос**")
+        answer.click()
+        answer.typeText("## Демо ответ")
+        answer.typeKey(.return, modifierFlags: [])
+        answer.typeKey(.return, modifierFlags: [])
+        answer.typeText("- **Пункт**")
+        XCTAssertEqual(answer.value as? String, "## Демо ответ\n\n- **Пункт**")
+        app.buttons["cardSaveAndAdd"].click()
+        XCTAssertFalse(app.buttons["cardSaveAndAdd"].isEnabled)
+        app.buttons["cardDone"].click()
+        XCTAssertTrue(app.buttons["Демо вопрос"].waitForExistence(timeout: 10))
+
+        app.terminate()
+        app.launch()
+        let latest = app.buttons["lessonLatest"]
+        XCTAssertTrue(latest.waitForExistence(timeout: 20))
+        XCTAssertEqual(latest.label, "Введение · Swift")
+        app.buttons["lessonReview"].click()
+        XCTAssertTrue(app.staticTexts["Демо вопрос"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Демо ответ"].exists)
+        app.buttons["Показать ответ"].click()
+        XCTAssertTrue(app.staticTexts["Демо ответ"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Пункт"].exists)
+        let screenshot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        screenshot.name = "Демо Markdown в уроке macOS"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["Легко"].click()
+        XCTAssertTrue(app.buttons["reviewFinish"].waitForExistence(timeout: 10))
+        app.buttons["reviewFinish"].click()
+        XCTAssertTrue(app.staticTexts["Оценок: 1"].waitForExistence(timeout: 10))
+    }
+
+    @MainActor
+    private func launchIsolatedApp() throws -> XCUIApplication {
+        continueAfterFailure = false
+        let home = FileManager.default.temporaryDirectory.appending(path: "KankiUITest-\(UUID())", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        let app = XCUIApplication()
+        app.launchEnvironment["CFFIXED_USER_HOME"] = home.path
+        app.launchEnvironment["HOME"] = home.path
+        // Новый home уже пуст. Не сбрасываем рабочую БД или Keychain пользователя.
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "-serverURL", ""]
+        addTeardownBlock { @MainActor in
+            app.terminate()
+            try FileManager.default.removeItem(at: home)
+        }
+        app.launch()
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 60))
+        return app
     }
 
     /// Включает тумблер раздела в настройках; macOS показывает Toggle

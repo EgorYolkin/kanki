@@ -6,7 +6,7 @@ final class CategoryUITests: UITestCase {
     /// фильтр по чипу и чип категории на самой карточке.
     func testCreatingCardWithNewCategoryShowsChipAndFiltersAllCards() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Что такое предел?", answer: "Значение, к которому стремится", deck: .new("Математика"))
@@ -72,7 +72,7 @@ final class CategoryUITests: UITestCase {
     /// чип-фильтр и чип открытой карточки.
     func testRenamingCategoryUpdatesRowChipAndFilter() {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-store"]
+        app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
         addCard(in: app, question: "Что такое предел?", answer: "Значение, к которому стремится", deck: .new("Математика"))
