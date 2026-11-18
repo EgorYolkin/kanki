@@ -8,11 +8,26 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+import genanki
+
+from .publication import PublicationIdentity, PublishedNote
+
 
 class RevisionConflict(Exception):
     def __init__(self, current_revision: int) -> None:
         super().__init__(f"snapshot revision is {current_revision}")
         self.current_revision = current_revision
+
+
+class PublicationIdentityConflict(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class PublishedNoteRow:
+    guid: str
+    mod: int
+    content: PublishedNote
 
 
 @dataclass(frozen=True)
@@ -69,6 +84,13 @@ class Database:
                     token_hash TEXT NOT NULL UNIQUE,
                     created_at TEXT NOT NULL,
                     revoked_at TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS published_notes (
+                    uid TEXT NOT NULL PRIMARY KEY,
+                    guid TEXT NOT NULL UNIQUE,
+                    mod INTEGER NOT NULL,
+                    content TEXT NOT NULL
                 );
                 """
             )
@@ -130,6 +152,50 @@ class Database:
             data=data,
             updated_at=updated_at,
         )
+
+    def publish(self, notes: list[PublishedNote]) -> list[PublicationIdentity]:
+        payloads = [(note.uid, note.model_dump_json(exclude_none=True)) for note in notes]
+        identities = []
+        try:
+            with self.connect() as connection, connection:
+                connection.execute("BEGIN IMMEDIATE")
+                now = int(datetime.now(timezone.utc).timestamp())
+                for uid, content in payloads:
+                    row = connection.execute(
+                        "SELECT guid, mod, content FROM published_notes WHERE uid = ?",
+                        (uid,),
+                    ).fetchone()
+                    if row is None:
+                        guid, mod = genanki.guid_for(uid), now
+                        connection.execute(
+                            "INSERT INTO published_notes (uid, guid, mod, content) "
+                            "VALUES (?, ?, ?, ?)",
+                            (uid, guid, mod, content),
+                        )
+                    else:
+                        guid, mod = row["guid"], row["mod"]
+                        if content != row["content"]:
+                            mod = max(now, mod + 1)
+                            connection.execute(
+                                "UPDATE published_notes SET mod = ?, content = ? WHERE uid = ?",
+                                (mod, content, uid),
+                            )
+                    identities.append(PublicationIdentity(uid=uid, guid=guid, mod=mod))
+        except sqlite3.IntegrityError as error:
+            if error.sqlite_errorcode != sqlite3.SQLITE_CONSTRAINT_UNIQUE:
+                raise
+            raise PublicationIdentityConflict() from error
+        return identities
+
+    def read_publications(self) -> list[PublishedNoteRow]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT guid, mod, content FROM published_notes ORDER BY uid"
+            ).fetchall()
+        return [
+            PublishedNoteRow(row["guid"], row["mod"], PublishedNote.model_validate_json(row["content"]))
+            for row in rows
+        ]
 
     def create_token(self, *, token_id: str, label: str, token_hash: str, created_at: str) -> TokenRow:
         with self.connect() as connection:

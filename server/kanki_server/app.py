@@ -14,7 +14,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import __version__
-from .db import Database, RevisionConflict, SnapshotRow, TokenRow
+from .apkg import build_apkg
+from .db import Database, PublicationIdentityConflict, RevisionConflict, SnapshotRow, TokenRow
 from .models import (
     Health,
     Identity,
@@ -23,6 +24,13 @@ from .models import (
     TokenCreate,
     TokenCreated,
     TokenInfo,
+)
+from .publication import (
+    MAX_PUBLISH_BYTES,
+    InvalidDocument,
+    PublishRequest,
+    PublishResponse,
+    parse_documents,
 )
 
 
@@ -51,10 +59,19 @@ bearer = HTTPBearer(auto_error=False)
 # Запас на конверт {"schema_version","base_revision","data"}: ранний reject по
 # Content-Length не должен отвергать тело, которое пройдёт проверку данных.
 CONTENT_LENGTH_SLACK_BYTES = 64 * 1024
+PUBLISH_PATH = "/v1/publish"
+APKG_MEDIA_TYPE = "application/zip"
 
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    fields = dict(pairs)
+    if len(fields) != len(pairs):
+        raise ValueError("JSON keys must be unique")
+    return fields
 
 
 def create_app(
@@ -91,6 +108,8 @@ def create_app(
     @app.middleware("http")
     async def reject_oversized_body(request: Request, call_next):
         """Отклоняет заведомо большое тело до чтения, а не после буферизации."""
+        if request.url.path == PUBLISH_PATH:
+            return await call_next(request)
         content_length = request.headers.get("content-length")
         if content_length is not None:
             try:
@@ -250,6 +269,69 @@ def create_app(
                 },
             ) from conflict
         return snapshot_response(row)
+
+    async def read_publish_body(request: Request, principal: PrincipalDep) -> bytearray:
+        del principal
+        media_type = request.headers.get("content-type", "").split(";", 1)[0]
+        if media_type.strip().lower() != "application/json":
+            raise HTTPException(status_code=415, detail={"code": "expected_json"})
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > MAX_PUBLISH_BYTES:
+                raise HTTPException(status_code=413, detail={"code": "publication_too_large"})
+            body.extend(chunk)
+        return body
+
+    @app.post(
+        PUBLISH_PATH,
+        response_model=PublishResponse,
+        openapi_extra={"requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": PublishRequest.model_json_schema()}},
+        }},
+    )
+    def publish(
+        raw: Annotated[bytearray, Depends(read_publish_body)],
+        database: DatabaseDep,
+    ) -> PublishResponse:
+        try:
+            data = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_object)
+            request = PublishRequest.model_validate(data)
+        except (ValueError, RecursionError) as error:
+            raise HTTPException(status_code=422, detail={"code": "invalid_publication"}) from error
+        try:
+            notes = parse_documents(request.documents)
+        except InvalidDocument as error:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": error.code, "document_index": error.index},
+            ) from error
+        try:
+            return PublishResponse(notes=database.publish(notes))
+        except PublicationIdentityConflict as error:
+            raise HTTPException(status_code=409, detail={"code": "guid_conflict"}) from error
+
+    @app.get(
+        "/v1/export.apkg",
+        response_class=Response,
+        responses={200: {
+            "description": "Anki exchange v1 package",
+            "content": {APKG_MEDIA_TYPE: {"schema": {"type": "string", "format": "binary"}}},
+        }},
+    )
+    def export_apkg(principal: PrincipalDep, database: DatabaseDep) -> Response:
+        del principal
+        notes = database.read_publications()
+        if not notes:
+            raise HTTPException(status_code=404, detail={"code": "no_publications"})
+        return Response(
+            build_apkg(notes),
+            media_type=APKG_MEDIA_TYPE,
+            headers={
+                "Content-Disposition": 'attachment; filename="kanki.apkg"',
+                "Cache-Control": "no-store",
+            },
+        )
 
     @app.post(
         "/v1/tokens",
