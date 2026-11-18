@@ -12,14 +12,26 @@ extension LocalCardStore {
         try mergeAnkiImport(batch, into: url)
     }
 
-    static func mergeAnkiImport(_ batch: AnkiE1Import, into url: URL) throws {
+    static func mergeAnkiImport(_ batch: AnkiE1Import, into url: URL, preserveProgressConflicts: Bool = false) throws {
         try open(at: url).write { db in
-            for note in batch.notes {
-                try merge(note, in: db)
+            try mergeAnkiImport(batch, in: db, preserveProgressConflicts: preserveProgressConflicts)
+        }
+    }
+
+    static func mergeAnkiImport(_ batch: AnkiE1Import, in db: Database, preserveProgressConflicts: Bool = false) throws {
+        for note in batch.notes {
+            try merge(note, in: db)
+        }
+        for card in batch.cards {
+            if preserveProgressConflicts {
+                _ = try merge(.init(guid: card.guid, ord: card.ord, progress: nil), in: db)
+                if let progress = card.progress {
+                    try enqueueAnkiProgress(progress, key: card.key, in: db)
+                }
+            } else if try merge(card, in: db), let progress = card.progress {
+                try enqueueAnkiProgress(progress, key: card.key, in: db)
             }
-            for card in batch.cards {
-                try merge(card, in: db)
-            }
+            try applyWaitingAnkiProgress(to: card.key, in: db)
         }
     }
 
@@ -69,14 +81,15 @@ extension LocalCardStore {
         }
     }
 
-    private static func merge(_ card: AnkiE1Import.Card, in db: Database) throws {
+    private static func merge(_ card: AnkiE1Import.Card, in db: Database) throws -> Bool {
         if let current = try AnkiE1Import.Card.fetchOne(db, key: ["guid": card.guid, "ord": card.ord]) {
-            if try AnkiE1Import.shouldUpdate(card, replacing: current) {
-                try card.update(db)
-            }
+            guard try AnkiE1Import.shouldUpdate(card, replacing: current) else { return false }
+
+            try card.update(db)
         } else {
             try card.insert(db)
         }
+        return true
     }
 }
 

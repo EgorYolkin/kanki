@@ -6,10 +6,20 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
+from uuid import uuid4
 
 import genanki
 
+from .changes import (
+    MAX_CHANGES_PER_PAGE,
+    Change,
+    ChangePage,
+    ChangeWrite,
+    PublicationEvent,
+    PublicationNote,
+)
+from .exchange import MODEL_ID, exchange_fields
 from .publication import PublicationIdentity, PublishedNote
 
 
@@ -21,6 +31,14 @@ class RevisionConflict(Exception):
 
 class PublicationIdentityConflict(Exception):
     pass
+
+
+class ChangesConflict(Exception):
+    def __init__(
+        self, code: Literal["future_cursor", "stream_mismatch", "event_id_conflict"]
+    ) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -67,9 +85,12 @@ class Database:
 
     def initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as connection:
+        with self.connect() as connection, connection:
+            connection.execute("PRAGMA synchronous=FULL")
             connection.executescript(
                 """
+                BEGIN IMMEDIATE;
+
                 CREATE TABLE IF NOT EXISTS snapshots (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     revision INTEGER NOT NULL,
@@ -92,8 +113,32 @@ class Database:
                     mod INTEGER NOT NULL,
                     content TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS change_stream (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    stream TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS changes (
+                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id TEXT UNIQUE,
+                    event TEXT NOT NULL
+                );
                 """
             )
+            if connection.execute("SELECT 1 FROM change_stream WHERE id = 1").fetchone() is None:
+                connection.execute(
+                    "INSERT INTO change_stream (id, stream) VALUES (1, ?)",
+                    (str(uuid4()),),
+                )
+                rows = connection.execute(
+                    "SELECT guid, mod, content FROM published_notes ORDER BY uid"
+                )
+                for row in rows:
+                    self._append_publication_change(
+                        connection, row["guid"], row["mod"],
+                        PublishedNote.model_validate_json(row["content"]),
+                    )
 
     def ping(self) -> None:
         with self.connect() as connection:
@@ -154,17 +199,20 @@ class Database:
         )
 
     def publish(self, notes: list[PublishedNote]) -> list[PublicationIdentity]:
-        payloads = [(note.uid, note.model_dump_json(exclude_none=True)) for note in notes]
+        payloads = [(note, note.model_dump_json(exclude_none=True)) for note in notes]
         identities = []
         try:
             with self.connect() as connection, connection:
+                connection.execute("PRAGMA synchronous=FULL")
                 connection.execute("BEGIN IMMEDIATE")
                 now = int(datetime.now(timezone.utc).timestamp())
-                for uid, content in payloads:
+                for note, content in payloads:
+                    uid = note.uid
                     row = connection.execute(
                         "SELECT guid, mod, content FROM published_notes WHERE uid = ?",
                         (uid,),
                     ).fetchone()
+                    changed = row is None or row["content"] != content
                     if row is None:
                         guid, mod = genanki.guid_for(uid), now
                         connection.execute(
@@ -174,12 +222,14 @@ class Database:
                         )
                     else:
                         guid, mod = row["guid"], row["mod"]
-                        if content != row["content"]:
+                        if changed:
                             mod = max(now, mod + 1)
                             connection.execute(
                                 "UPDATE published_notes SET mod = ?, content = ? WHERE uid = ?",
                                 (mod, content, uid),
                             )
+                    if changed:
+                        self._append_publication_change(connection, guid, mod, note)
                     identities.append(PublicationIdentity(uid=uid, guid=guid, mod=mod))
         except sqlite3.IntegrityError as error:
             if error.sqlite_errorcode != sqlite3.SQLITE_CONSTRAINT_UNIQUE:
@@ -196,6 +246,82 @@ class Database:
             PublishedNoteRow(row["guid"], row["mod"], PublishedNote.model_validate_json(row["content"]))
             for row in rows
         ]
+
+    @staticmethod
+    def _append_publication_change(
+        connection: sqlite3.Connection, guid: str, mod: int, note: PublishedNote
+    ) -> None:
+        event = PublicationEvent(
+            kind="publication",
+            note=PublicationNote(
+                guid=guid, modelID=MODEL_ID, mod=mod, fields=exchange_fields(note)
+            ),
+        )
+        connection.execute(
+            "INSERT INTO changes (event) VALUES (?)",
+            (event.model_dump_json(by_alias=True),),
+        )
+
+    def read_changes(self, since: int) -> ChangePage:
+        """
+        Return one page from a consistent view of the stream and its latest cursor.
+        """
+
+        with self.connect() as connection, connection:
+            connection.execute("BEGIN")
+            stream = connection.execute(
+                "SELECT stream FROM change_stream WHERE id = 1"
+            ).fetchone()["stream"]
+            latest = connection.execute(
+                "SELECT COALESCE(MAX(seq), 0) FROM changes"
+            ).fetchone()[0]
+            if since > latest:
+                raise ChangesConflict("future_cursor")
+
+            rows = connection.execute(
+                "SELECT seq, event FROM changes WHERE seq > ? ORDER BY seq LIMIT ?",
+                (since, MAX_CHANGES_PER_PAGE + 1),
+            ).fetchall()
+        more = len(rows) > MAX_CHANGES_PER_PAGE
+        if more:
+            rows.pop()
+
+        return ChangePage(
+            stream=stream,
+            changes=[Change(seq=row["seq"], event=json.loads(row["event"])) for row in rows],
+            more=more,
+        )
+
+    def append_changes(self, request: ChangeWrite) -> list[str]:
+        """
+        Append raw observations atomically, acknowledging exact retries in place.
+        """
+
+        payloads = [
+            (event.id, event.model_dump_json(by_alias=True)) for event in request.events
+        ]
+        with self.connect() as connection, connection:
+            connection.execute("PRAGMA synchronous=FULL")
+            connection.execute("BEGIN IMMEDIATE")
+            stream = connection.execute(
+                "SELECT stream FROM change_stream WHERE id = 1"
+            ).fetchone()["stream"]
+            if request.stream != stream:
+                raise ChangesConflict("stream_mismatch")
+
+            for event_id, payload in payloads:
+                row = connection.execute(
+                    "SELECT event FROM changes WHERE event_id = ?", (event_id,)
+                ).fetchone()
+                if row is None:
+                    connection.execute(
+                        "INSERT INTO changes (event_id, event) VALUES (?, ?)",
+                        (event_id, payload),
+                    )
+                elif row["event"] != payload:
+                    raise ChangesConflict("event_id_conflict")
+
+        return [event_id for event_id, _ in payloads]
 
     def create_token(self, *, token_id: str, label: str, token_hash: str, created_at: str) -> TokenRow:
         with self.connect() as connection:

@@ -51,12 +51,32 @@ actor ServerClient {
         return try await request(path: "v1/snapshot", method: "PUT", body: body)
     }
 
+    func fetchDelta(since: Int64) async throws -> DeltaPage {
+        do {
+            return try await request(
+                path: "v1/changes", method: "GET", query: [URLQueryItem(name: "since", value: String(since))]
+            )
+        } catch ServerError.conflict {
+            throw DeltaError.serverConflict
+        }
+    }
+
+    func pushDelta(_ batch: DeltaWrite) async throws -> DeltaAcknowledgement {
+        do {
+            return try await request(path: "v1/changes", method: "POST", body: encoder.encode(batch))
+        } catch ServerError.conflict {
+            throw DeltaError.serverConflict
+        }
+    }
+
     private func request<T: Decodable>(
         path: String,
         method: String,
-        body: Data? = nil
+        body: Data? = nil,
+        query: [URLQueryItem] = []
     ) async throws -> T {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        let url = baseURL.appending(path: path)
+        var request = URLRequest(url: query.isEmpty ? url : url.appending(queryItems: query))
         request.httpMethod = method
         request.timeoutInterval = 15
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

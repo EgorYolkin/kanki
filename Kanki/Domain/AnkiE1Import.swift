@@ -2,6 +2,9 @@ import Foundation
 
 /// Узкий вход Э1, не публичный формат обмена и не модель планировщика Kanki.
 struct AnkiE1Import: Equatable {
+    static let modelID: Int64 = 1_936_480_171
+    static let fields = ["UID", "Title", "Body", "Question", "Answer", "Relations", "Sources", "SchemaVersion"]
+
     struct Note: Codable, Equatable {
         let uid: String
         let guid: String
@@ -166,12 +169,51 @@ struct AnkiE1Import: Equatable {
         return false
     }
 
+    /// Keep the adopted Anki due/interval/queue tuple intact. The units and
+    /// ordering of conflicting observations are not comparable across collections.
+    static func mergeProgress(_ incoming: Progress, into current: Progress?) -> (Progress, conflict: Bool) {
+        guard let current else { return (incoming, false) }
+
+        var conflict = current.due != incoming.due || current.ivl != incoming.ivl || current.queue != incoming.queue
+        var byID = Dictionary(current.reviews.map { ($0.id, $0) }) { first, _ in first }
+        for review in incoming.reviews {
+            if let previous = byID[review.id] {
+                conflict = conflict || previous != review
+            } else {
+                byID[review.id] = review
+            }
+        }
+        guard byID.count != current.reviews.count else { return (current, conflict) }
+
+        return (.init(
+            due: current.due,
+            ivl: current.ivl,
+            queue: current.queue,
+            reviews: byID.values.sorted { $0.id < $1.id }
+        ), conflict)
+    }
+
+    static func preparePublication(_ note: SourceNote) throws -> Self {
+        try prepare(content: .init(
+            notes: [note],
+            models: [String(modelID): fields],
+            cards: [.init(guid: note.guid, ord: 0, progress: nil)]
+        ), reviewed: nil)
+    }
+
+    static func prepareImportedPackage(_ package: Package) throws -> Self {
+        let notes = try unpack(package)
+        let byGUID = try index(notes)
+        _ = try index(package.cards, notes: byGUID, hasProgress: nil)
+        return Self(notes: notes, cards: package.cards)
+    }
+
     private static func unpack(_ package: Package) throws -> [Note] {
-        let fields = ["UID", "Title", "Body", "Question", "Answer", "Relations", "Sources", "SchemaVersion"]
+        let expectedFields = fields
         let decoder = JSONDecoder()
         return try package.notes.map { source in
-            guard source.modelID == 1_936_480_171 else { throw ImportError.unsupportedNoteType(source.modelID) }
-            guard package.models[String(source.modelID)] == fields, source.fields.count == fields.count,
+            guard source.modelID == modelID else { throw ImportError.unsupportedNoteType(source.modelID) }
+            guard package.models[String(source.modelID)] == expectedFields, source.fields.count == expectedFields.count,
                   let schemaVersion = Int(source.fields[7]) else {
                 throw ImportError.unsupportedFieldLayout
             }
@@ -209,11 +251,12 @@ struct AnkiE1Import: Equatable {
         return byGUID
     }
 
-    private static func index(_ cards: [Card], notes: [String: Note], hasProgress: Bool) throws -> [CardKey: Card] {
+    private static func index(_ cards: [Card], notes: [String: Note], hasProgress: Bool?) throws -> [CardKey: Card] {
         var byKey = [CardKey: Card](minimumCapacity: cards.count)
         var reviewIDs = Set<Int64>()
         for card in cards {
-            guard card.ord == 0, notes[card.guid] != nil, (card.progress != nil) == hasProgress,
+            guard card.ord == 0, notes[card.guid] != nil,
+                  hasProgress.map({ (card.progress != nil) == $0 }) != false,
                   byKey.updateValue(card, forKey: card.key) == nil else {
                 throw ImportError.invalidCardIdentity(card.key)
             }

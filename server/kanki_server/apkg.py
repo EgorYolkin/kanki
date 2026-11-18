@@ -2,50 +2,14 @@
 
 import io
 import itertools
-import json
 import sqlite3
 import zipfile
 from contextlib import closing
-from html import escape
-from urllib.parse import urlsplit
 
 import genanki
-from markdown_it import MarkdownIt
 
 from .db import PublishedNoteRow
-
-_FIELDS = ("UID", "Title", "Body", "Question", "Answer", "Relations", "Sources", "SchemaVersion")
-
-# Anki preprocesses bracket-based media, TTS and LaTeX markers before HTML display.
-_ANKI_ESCAPES = str.maketrans({"[": "&#91;", "]": "&#93;", "\\": "&#92;"})
-_JSON_ESCAPES = str.maketrans({char: rf"\u{ord(char):04x}" for char in "<>&[]\u2028\u2029"})
-
-
-class _CardMarkdown(MarkdownIt):
-    def validateLink(self, url: str) -> bool:
-        try:
-            parts = urlsplit(url)
-            return parts.scheme in {"http", "https"} and bool(parts.hostname)
-        except ValueError:
-            return False
-
-
-_MARKDOWN = _CardMarkdown("commonmark", {"html": False}).disable(
-    ["image", "heading", "lheading", "blockquote", "hr"],
-)
-
-
-def _render_markdown(text: str) -> str:
-    return _MARKDOWN.render(text).translate(_ANKI_ESCAPES)
-
-
-def _metadata_object(fields: dict[str, str]) -> str:
-    # Escape only JSON strings, not structural syntax. Fields stay parseable as
-    # raw JSON by exchange consumers and are inert if inserted into card HTML.
-    return "{" + ",".join(
-        f"{json.dumps(key)}:{json.dumps(value, ensure_ascii=False).translate(_JSON_ESCAPES)}"
-        for key, value in fields.items()
-    ) + "}"
+from .exchange import FIELD_NAMES, MODEL_ID, exchange_fields
 
 
 class _PublishedNote(genanki.Note):
@@ -60,11 +24,14 @@ class _PublishedNote(genanki.Note):
 
 
 def build_apkg(rows: list[PublishedNoteRow]) -> bytes:
-    """Write the frozen one-card note type and preserve each note's stored mod."""
+    """
+    Write the frozen one-card note type and preserve each note's stored mod.
+    """
+
     model = genanki.Model(
-        1936480171,
+        MODEL_ID,
         "ObsidianTyped-E1-experiment",
-        fields=[{"name": field} for field in _FIELDS],
+        fields=[{"name": field} for field in FIELD_NAMES],
         templates=[{
             "name": "Question and answer",
             "qfmt": '{{#UID}}<div class="mathjax_ignore">'
@@ -76,25 +43,12 @@ def build_apkg(rows: list[PublishedNoteRow]) -> bytes:
     )
     deck = genanki.Deck(1936480172, "Kanki")
     for row in rows:
-        note = row.content
-        relations = "\n".join(
-            _metadata_object(relation.model_dump(exclude_none=True))
-            for relation in note.relations
-        )
-        sources = "[" + ",".join(
-            _metadata_object(source.model_dump(exclude_none=True))
-            for source in note.sources
-        ) + "]"
-        deck.add_note(_PublishedNote(mod=row.mod, model=model, guid=row.guid, fields=[
-            note.uid,
-            escape(note.title).translate(_ANKI_ESCAPES),
-            _render_markdown(note.body),
-            _render_markdown(note.question),
-            _render_markdown(note.answer),
-            relations,
-            sources,
-            str(note.schema_version),
-        ]))
+        deck.add_note(_PublishedNote(
+            mod=row.mod,
+            model=model,
+            guid=row.guid,
+            fields=exchange_fields(row.content),
+        ))
 
     # Use the pinned writer's SQLite schema without its temporary-file ZIP path.
     timestamp = max(row.mod for row in rows)

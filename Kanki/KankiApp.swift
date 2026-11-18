@@ -18,6 +18,7 @@ struct KankiApp: App {
             UserDefaults.standard.removeObject(forKey: "serverURL")
             UserDefaults.standard.removeObject(forKey: "serverRevision")
             UserDefaults.standard.removeObject(forKey: "serverHasUnsyncedChanges")
+            UserDefaults.standard.removeObject(forKey: "deltaSPKIPin")
         }
         if arguments.contains("--reset-sections") {
             UserDefaults.standard.removeObject(forKey: "showNotesSection")

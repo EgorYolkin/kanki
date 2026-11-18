@@ -32,14 +32,17 @@ struct SettingsScreen: View {
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverRevision") private var serverRevision = 0
+    @AppStorage("deltaSPKIPin") private var deltaPin = ""
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
     @AppStorage("serverHasUnsyncedChanges") private var hasUnsyncedChanges = false
 
+    @FocusState private var isEnteringServerToken: Bool
     @State private var serverToken = ""
     @State private var serverStatus = "Не подключён"
     @State private var isServerBusy = false
     @State private var isConfirmingPull = false
+    @State private var deltaStatus: String?
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
@@ -54,6 +57,7 @@ struct SettingsScreen: View {
             appearanceSection
             sectionsSection
             serverSection
+            deltaSection
             dataSection
             aboutSection
         }
@@ -122,6 +126,9 @@ struct SettingsScreen: View {
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .accessibilityIdentifier("serverToken")
+                .focused($isEnteringServerToken)
+                .submitLabel(.done)
+                .onSubmit { isEnteringServerToken = false }
             Button("Проверить соединение") {
                 Task { await checkServer() }
             }
@@ -144,6 +151,48 @@ struct SettingsScreen: View {
             Text("Снимок отправляется вручную. Автоматического мержа нет: при конфликте ревизий загрузите данные с сервера.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var deltaSection: some View {
+        Section {
+            TextField("SHA-256 SPKI сервера (необязательно)", text: $deltaPin)
+                .autocorrectionDisabled()
+                .noAutocapitalization()
+                .disabled(isServerBusy)
+                .accessibilityIdentifier("deltaPin")
+            Button("Обменяться изменениями") {
+                Task { await syncImportedCards() }
+            }
+            .disabled(isServerBusy)
+            .accessibilityIdentifier("deltaSync")
+            if let deltaStatus {
+                Text(deltaStatus).accessibilityIdentifier("deltaStatus")
+            }
+        } header: {
+            Text("Импортированные карточки")
+        } footer: {
+            Text("HTTPS. Загружает публикации и передаёт журнал импортированных карточек. Снимок ручных карточек не меняется.")
+        }
+    }
+
+    @MainActor
+    private func syncImportedCards() async {
+        guard !isServerBusy else { return }
+        isServerBusy = true
+        defer { isServerBusy = false }
+        defer { NotificationCenter.default.post(name: .kankiImportedCardsChanged, object: nil) }
+        deltaStatus = "Обмен изменениями…"
+        do {
+            guard let configuration = ServerConfiguration(rawValue: serverURL) else { throw ServerInputError.invalidURL }
+            let token = serverToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else { throw ServerInputError.missingToken }
+            try ServerTokenStore.save(token)
+            let result = try await ImportedDeltaSync.run(configuration: configuration, token: token, pin: deltaPin)
+            deltaStatus = "Прочитано: \(result.pulled). Доставлено: \(result.pushed). "
+                + "Расхождения Anki: \(result.progressConflicts), публикаций: \(result.publicationConflicts)."
+        } catch {
+            deltaStatus = message(for: error)
         }
     }
 

@@ -9,13 +9,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from . import __version__
 from .apkg import build_apkg
-from .db import Database, PublicationIdentityConflict, RevisionConflict, SnapshotRow, TokenRow
+from .changes import MAX_CHANGES_BYTES, MAX_INT64, ChangePage, ChangeReceipt, ChangeWrite
+from .db import (
+    ChangesConflict,
+    Database,
+    PublicationIdentityConflict,
+    RevisionConflict,
+    SnapshotRow,
+    TokenRow,
+)
 from .models import (
     Health,
     Identity,
@@ -60,6 +68,7 @@ bearer = HTTPBearer(auto_error=False)
 # Content-Length не должен отвергать тело, которое пройдёт проверку данных.
 CONTENT_LENGTH_SLACK_BYTES = 64 * 1024
 PUBLISH_PATH = "/v1/publish"
+CHANGES_PATH = "/v1/changes"
 APKG_MEDIA_TYPE = "application/zip"
 
 
@@ -72,6 +81,21 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     if len(fields) != len(pairs):
         raise ValueError("JSON keys must be unique")
     return fields
+
+
+async def _read_bounded_json_body(
+    request: Request, *, limit: int, too_large_code: str
+) -> bytearray:
+    media_type = request.headers.get("content-type", "").split(";", 1)[0]
+    if media_type.strip().lower() != "application/json":
+        raise HTTPException(status_code=415, detail={"code": "expected_json"})
+
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > limit:
+            raise HTTPException(status_code=413, detail={"code": too_large_code})
+        body.extend(chunk)
+    return body
 
 
 def create_app(
@@ -108,7 +132,7 @@ def create_app(
     @app.middleware("http")
     async def reject_oversized_body(request: Request, call_next):
         """Отклоняет заведомо большое тело до чтения, а не после буферизации."""
-        if request.url.path == PUBLISH_PATH:
+        if request.url.path in (PUBLISH_PATH, CHANGES_PATH):
             return await call_next(request)
         content_length = request.headers.get("content-length")
         if content_length is not None:
@@ -270,17 +294,56 @@ def create_app(
             ) from conflict
         return snapshot_response(row)
 
+    @app.get(CHANGES_PATH, response_model=ChangePage)
+    def get_changes(
+        principal: PrincipalDep,
+        database: DatabaseDep,
+        since: Annotated[int, Query(ge=0, le=MAX_INT64)],
+    ) -> ChangePage:
+        del principal
+        try:
+            return database.read_changes(since)
+        except ChangesConflict as error:
+            raise HTTPException(status_code=409, detail={"code": error.code}) from error
+
+    async def read_changes_body(request: Request, principal: PrincipalDep) -> bytearray:
+        del principal
+        return await _read_bounded_json_body(
+            request, limit=MAX_CHANGES_BYTES, too_large_code="changes_too_large"
+        )
+
+    # The request and GET response use the same review and progress schemas.
+    change_write_schema = ChangeWrite.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    change_write_schema.pop("$defs")
+
+    @app.post(
+        CHANGES_PATH,
+        response_model=ChangeReceipt,
+        openapi_extra={"requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": change_write_schema}},
+        }},
+    )
+    def post_changes(
+        raw: Annotated[bytearray, Depends(read_changes_body)], database: DatabaseDep
+    ) -> ChangeReceipt:
+        try:
+            data = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_object)
+            request = ChangeWrite.model_validate(data)
+        except (ValueError, RecursionError) as error:
+            raise HTTPException(status_code=422, detail={"code": "invalid_changes"}) from error
+        try:
+            return ChangeReceipt(accepted=database.append_changes(request))
+        except ChangesConflict as error:
+            raise HTTPException(status_code=409, detail={"code": error.code}) from error
+
     async def read_publish_body(request: Request, principal: PrincipalDep) -> bytearray:
         del principal
-        media_type = request.headers.get("content-type", "").split(";", 1)[0]
-        if media_type.strip().lower() != "application/json":
-            raise HTTPException(status_code=415, detail={"code": "expected_json"})
-        body = bytearray()
-        async for chunk in request.stream():
-            if len(body) + len(chunk) > MAX_PUBLISH_BYTES:
-                raise HTTPException(status_code=413, detail={"code": "publication_too_large"})
-            body.extend(chunk)
-        return body
+        return await _read_bounded_json_body(
+            request, limit=MAX_PUBLISH_BYTES, too_large_code="publication_too_large"
+        )
 
     @app.post(
         PUBLISH_PATH,

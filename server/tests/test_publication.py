@@ -18,10 +18,12 @@ from fastapi.testclient import TestClient
 
 from kanki_server import db
 from kanki_server.app import create_app
+from kanki_server.publication import parse_documents
 
 ADMIN = {"Authorization": "Bearer synthetic-administrator"}
 PUBLISH = "/v1/publish"
 EXPORT = "/v1/export.apkg"
+CHANGES = "/v1/changes"
 UID_A = "n-018f3a2b-7c41-7000-8000-000000000001"
 UID_B = "n-018f3a2b-7c41-7000-8000-000000000002"
 MEDIA_MARKER = "[sound:synthetic.mp3]"
@@ -71,7 +73,7 @@ def exported_rows(package: bytes) -> list[tuple]:
             database.deserialize(archive.read("collection.anki2"))
             assert database.execute("SELECT COUNT(*) FROM revlog").fetchone() == (0,)
             assert database.execute("SELECT DISTINCT ord, type, queue FROM cards").fetchall() == [(0, 0, 0)]
-            return database.execute("SELECT guid, mid, mod FROM notes ORDER BY guid").fetchall()
+            return database.execute("SELECT guid, mid, mod, flds FROM notes ORDER BY guid").fetchall()
 
 
 class _CardMarkup(HTMLParser):
@@ -172,7 +174,7 @@ def test_publication_survives_restart_and_updates_real_anki(tmp_path: Path, monk
         ]})
         assert invalid.status_code == 422
         unchanged = client.get(EXPORT, headers=headers).content
-        assert exported_rows(unchanged) == sorted(
+        assert [row[:3] for row in exported_rows(unchanged)] == sorted(
             (row["guid"], 1936480171, row["mod"]) for row in initial
         )
         repeated = import_package(collection, package, unchanged)
@@ -184,7 +186,7 @@ def test_publication_survives_restart_and_updates_real_anki(tmp_path: Path, monk
         assert publish(client, headers, updated_a, first_b) == [updated, initial[1]]
         response = client.get(EXPORT, headers=headers)
         assert response.status_code == 200
-        assert exported_rows(response.content) == sorted(
+        assert [row[:3] for row in exported_rows(response.content)] == sorted(
             (row["guid"], 1936480171, row["mod"]) for row in (updated, initial[1])
         )
         changed = import_package(collection, package, response.content)
@@ -210,6 +212,112 @@ def test_publication_survives_restart_and_updates_real_anki(tmp_path: Path, monk
         assert collection.db.all("SELECT * FROM revlog") == reviews
         duplicate = import_package(collection, package, response.content)
         assert not duplicate.new and not duplicate.updated and len(duplicate.duplicate) == 2
+
+
+def test_publication_backfill_pages_match_package_and_survive_restart(tmp_path: Path) -> None:
+    database_path = tmp_path / "legacy.sqlite3"
+    uids = [f"n-018f3a2b-7c41-7000-8000-{number:012x}" for number in range(51)]
+    documents = [
+        document(uid, extra={
+            "question": f"**Как?** {MEDIA_MARKER}",
+            "sources": [{"ref": "synthetic", "locator": LITERAL_HTML}],
+            "relations": [{"t": "related", "to": UID_A, "note": LITERAL_HTML}],
+        })
+        for uid in uids
+    ]
+    notes = parse_documents(documents)
+    with closing(sqlite3.connect(database_path)) as connection, connection:
+        connection.execute("""
+            CREATE TABLE published_notes (
+                uid TEXT NOT NULL PRIMARY KEY,
+                guid TEXT NOT NULL UNIQUE,
+                mod INTEGER NOT NULL,
+                content TEXT NOT NULL
+            )
+        """)
+        connection.executemany(
+            "INSERT INTO published_notes (uid, guid, mod, content) VALUES (?, ?, ?, ?)",
+            [
+                (
+                    note.uid, genanki.guid_for(note.uid), 1_800_000_000 + index,
+                    note.model_dump_json(exclude_none=True),
+                )
+                for index, note in reversed(list(enumerate(notes)))
+            ],
+        )
+
+    with app_for(database_path) as client:
+        first = client.get(CHANGES, headers=ADMIN, params={"since": 0})
+        assert first.status_code == 200, first.text
+        page = first.json()
+        stream = page["stream"]
+        assert page["more"] is True
+        assert [entry["seq"] for entry in page["changes"]] == list(range(1, 51))
+
+        response = client.get(CHANGES, headers=ADMIN, params={"since": 50})
+        assert response.status_code == 200
+        tail = response.json()
+        assert tail["stream"] == stream
+        assert tail["more"] is False
+        assert [entry["seq"] for entry in tail["changes"]] == [51]
+        events = [entry["event"] for entry in page["changes"] + tail["changes"]]
+        assert {event["kind"] for event in events} == {"publication"}
+        assert [event["note"]["fields"][0] for event in events] == uids
+
+        package = client.get(EXPORT, headers=ADMIN)
+        assert package.status_code == 200
+        assert sorted(
+            (note["guid"], note["modelID"], note["mod"], "\x1f".join(note["fields"]))
+            for note in (event["note"] for event in events)
+        ) == exported_rows(package.content)
+        assert publish(client, ADMIN, documents[0]) == [
+            {"uid": uids[0], "guid": events[0]["note"]["guid"], "mod": events[0]["note"]["mod"]}
+        ]
+
+    with app_for(database_path) as client:
+        assert client.get(CHANGES, headers=ADMIN, params={"since": 0}).json() == page
+        assert client.get(CHANGES, headers=ADMIN, params={"since": 51}).json() == {
+            "stream": stream, "changes": [], "more": False,
+        }
+        updated = publish(client, ADMIN, document(uids[0], body="Версия два."))[0]
+        repeated = publish(client, ADMIN, document(uids[0], body="Версия два."))[0]
+        assert repeated == updated
+        latest = client.get(CHANGES, headers=ADMIN, params={"since": 51}).json()
+        assert latest == {
+            "stream": stream,
+            "changes": [{
+                "seq": 52,
+                "event": {
+                    "kind": "publication",
+                    "note": {
+                        "guid": events[0]["note"]["guid"],
+                        "modelID": 1936480171,
+                        "mod": updated["mod"],
+                        "fields": [
+                            uids[0], "Синтетическая заметка", "<p>Версия два.</p>\n",
+                            "<p>Вопрос?</p>\n", "<p>Ответ.</p>\n", "", "[]", "1",
+                        ],
+                    },
+                },
+            }],
+            "more": False,
+        }
+
+
+def test_failed_publication_rolls_back_notes_and_changes(tmp_path: Path, monkeypatch) -> None:
+    with app_for(tmp_path / "server.sqlite3") as client:
+        monkeypatch.setattr(genanki, "guid_for", lambda uid: "synthetic-collision")
+        response = client.post(PUBLISH, headers=ADMIN, json={
+            "documents": [document(UID_A), document(UID_B)],
+        })
+        assert response.status_code == 409
+        assert response.json()["detail"] == {"code": "guid_conflict"}
+        assert client.get(EXPORT, headers=ADMIN).status_code == 404
+        assert client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()["changes"] == []
+
+        publish(client, ADMIN, document(UID_A))
+        page = client.get(CHANGES, headers=ADMIN, params={"since": 0}).json()
+        assert [entry["seq"] for entry in page["changes"]] == [1]
 
 
 @pytest.mark.parametrize("bad_document", [

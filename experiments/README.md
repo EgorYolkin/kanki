@@ -121,3 +121,91 @@ GUI-артефакт #146; данный прогон не повторял пе�
 удалённый артефакт GUI. Тест сверяет каждое исходное значение расписания и
 revlog с повторно открытым файлом, а также неизменность байтов при повторе
 и отказе, откат при конфликте прогресса и сохранность ручного FSRS-снимка.
+
+## Э3: AnkiMobile
+
+Не проверен: нет физического устройства с установленным AnkiMobile и доступа
+к его настройкам. Не использовались личная коллекция, покупка или production.
+Поддержка custom sync URL и общий прогресс с AnkiMobile не подтверждены.
+
+## Э4: TLS и pinning
+
+`bash experiments/e4_tls.sh` запускает реальный Apple `URLSession` с кодом
+`DeltaTransport` на loopback. Временный тестовый CA передаётся только в сборку
+эксперимента, не в системные настройки и не в приложение. Anki и `.apkg`
+для этой проверки не используются.
+
+Локальный прогон: исходный сертификат и перевыпуск с тем же P-256 ключом
+приняты; другой доверенный ключ со старым пином, совпадающий недоверенный ключ
+и неверное имя хоста отклонены. Без пина системная проверка осталась включённой;
+переадресация вернула `307` без второго запроса, неверный формат пина отклонён.
+
+## Э6: сырые данные планировщика
+
+Anki 26.09.3, два временных профиля (SM-2 и FSRS). На тех же двух синтетических
+картах backend запланировал Good и Easy; карту Easy затем приостановили.
+Режим совместимости экспортирует `collection.anki21` с двумя картами и двумя
+строками revlog на пакет; `collection.anki2` в архиве — заглушка.
+
+```bash
+e6=$(mktemp -d)
+uv run --no-project --with genanki==0.13.1 python experiments/e1.py generate "$e6"
+uv run --no-project --with anki==26.09.3 --with zstandard==0.25.0 python experiments/e6_revlog.py "$e6"
+TEST_RUNNER_KANKI_E6_INPUT_DIR="$e6" xcodebuild test \
+  -project Kanki.xcodeproj -scheme Kanki \
+  -destination "platform=iOS Simulator,id=${KANKI_DELTA_SIMULATOR_ID:?}" \
+  -parallel-testing-enabled NO -only-testing:KankiTests/DeltaStoreTests \
+  CODE_SIGNING_ALLOWED=NO
+rm -rf -- "$e6"
+```
+
+Фактическая схема: `id,cid,usn,ease,ivl,lastIvl,factor,time,type`. `cid`
+используется внутри исходной коллекции для разрешения в `(guid, ord)`, `usn`
+не переносится. В обоих режимах Good в Learning дал Unix `due`, `cards.ivl=0`
+и `revlog.ivl=-600` секунд. Easy дал due в днях и положительный интервал;
+очередь приостановлена (`-1`), а строка revlog осталась. Обе оценки новых
+карт имели `type=0`; другие типы не переинтерпретируются. В этом прогоне
+`factor` различался между режимами даже при одинаковом `ease` и `type`;
+`swift-fsrs.next` не вызывается на сыром revlog. Клиентская SQLite и очередь
+передачи совпали с экспортом по всем полям; повторный импорт не добавил копий.
+
+## Delta: локальная проверка приложения
+
+Используйте только отдельный iOS Simulator (`KANKI_DELTA_SIMULATOR_ID`), не личное
+устройство. Команда добавляет одноразовый корневой сертификат только туда.
+После прогона удалите созданный симулятор или удалите тестовый сертификат.
+
+```bash
+(
+  set -euo pipefail
+  simulator=${KANKI_DELTA_SIMULATOR_ID:?}
+  work=$(mktemp -d)
+  server_pid=''
+  trap 'if [[ -n $server_pid ]]; then kill "$server_pid" 2>/dev/null || :; fi; rm -rf -- "$work"' EXIT
+  openssl ecparam -name prime256v1 -genkey -noout -out "$work/ca.key"
+  openssl req -new -x509 -sha256 -days 2 -key "$work/ca.key" -subj '/CN=Kanki delta fixture' \
+    -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign' -out "$work/ca.pem"
+  openssl ecparam -name prime256v1 -genkey -noout -out "$work/leaf.key"
+  openssl req -new -key "$work/leaf.key" -subj '/CN=127.0.0.1' -out "$work/leaf.csr"
+  printf '%s\n' 'basicConstraints=critical,CA:FALSE' 'keyUsage=critical,digitalSignature' \
+    'extendedKeyUsage=serverAuth' 'subjectAltName=IP:127.0.0.1' > "$work/leaf.ext"
+  openssl x509 -req -sha256 -days 1 -in "$work/leaf.csr" -CA "$work/ca.pem" -CAkey "$work/ca.key" \
+    -set_serial 1 -extfile "$work/leaf.ext" -out "$work/leaf.pem"
+  xcrun simctl keychain "$simulator" add-root-cert "$work/ca.pem"
+  KANKI_DELTA_FIXTURE_DB="$work/server.sqlite" uv run --project server --locked uvicorn \
+    --app-dir experiments delta_smoke:app --host 127.0.0.1 --port 41959 \
+    --ssl-keyfile "$work/leaf.key" --ssl-certfile "$work/leaf.pem" &
+  server_pid=$!
+  curl --retry 10 --retry-connrefused --cacert "$work/ca.pem" -fsS https://127.0.0.1:41959/v1/health
+  TEST_RUNNER_KANKI_DELTA_FIXTURE_URL=https://127.0.0.1:41959 xcodebuild test \
+    -project Kanki.xcodeproj -scheme Kanki -destination "platform=iOS Simulator,id=$simulator" \
+    -parallel-testing-enabled NO -only-testing:KankiUITests/DeltaSyncUITests \
+    -resultBundlePath build/DeltaSync.xcresult CODE_SIGNING_ALLOWED=NO
+)
+```
+
+Стенд дважды публикует одну синтетическую заметку. В режиме офлайн delta
+возвращает `503`; затем первое подтверждение POST заменяется `503` уже **после**
+фиксации в SQLite. UI-тест делает оценку, перезапускает приложение, проверяет
+локальную историю и повторяет обмен. Итоговая лента должна содержать ровно две
+публикации и одну оценку. Скриншот результата хранится в `.xcresult`.

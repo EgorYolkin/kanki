@@ -34,7 +34,8 @@ def package_database(package: Path) -> Iterator[sqlite3.Connection]:
             ):
                 shutil.copyfileobj(stream, destination)
         else:
-            with archive.open("collection.anki2") as stream, source.open("wb") as destination:
+            entry = "collection.anki21" if "collection.anki21" in archive.namelist() else "collection.anki2"
+            with archive.open(entry) as stream, source.open("wb") as destination:
                 shutil.copyfileobj(stream, destination)
         with contextlib.closing(sqlite3.connect(f"{source.as_uri()}?mode=ro", uri=True)) as connection:
             yield connection

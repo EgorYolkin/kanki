@@ -16,7 +16,7 @@ struct ImportedCardsScreen: View {
                     .disabled(isImporting)
                 if isImporting { ProgressView("Импорт пакета…") }
             } footer: {
-                Text("Карточки и оценки хранятся на этом устройстве. Прогресс Anki не переносится.")
+                Text("Публикации и журнал можно синхронизировать в настройках. Расписание Kanki остаётся локальным.")
             }
             if let loadError {
                 Section {
@@ -24,7 +24,7 @@ struct ImportedCardsScreen: View {
                     Button("Повторить чтение", action: reload)
                 }
             } else if cards.isEmpty {
-                SectionIntro(symbol: "tray", title: "Нет импортированных карточек", detail: "Выберите пакет .apkg профиля Kanki v1.")
+                SectionIntro(symbol: "tray", title: "Нет импортированных карточек", detail: "Выберите .apkg или загрузите изменения в настройках.")
             } else {
                 ForEach(cards) { card in
                     NavigationLink {
@@ -39,6 +39,7 @@ struct ImportedCardsScreen: View {
         .navigationTitle("Импортированные карточки")
         .toolbarTitleDisplayMode(.inline)
         .task { reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiImportedCardsChanged)) { _ in reload() }
         .fileImporter(isPresented: $showsPicker, allowedContentTypes: [.ankiPackage]) { result in
             Task { await importPackage(result) }
         }
@@ -100,6 +101,14 @@ private struct ImportedCardScreen: View {
                         Text(schedule.due, format: .dateTime.day().month().year().hour().minute().second())
                             .accessibilityIdentifier("importedCardDue")
                     }
+                }
+                if let progress = detail.ankiProgress {
+                    LabeledContent("Anki · due / интервал", value: "\(progress.due) / \(progress.ivl)")
+                    if detail.isSuspendedInAnki {
+                        Text("Повторение приостановлено в Anki.")
+                    }
+                }
+                if !detail.reviews.isEmpty {
                     NavigationLink("История повторений") { history(detail.reviews) }
                         .accessibilityIdentifier("importedCardHistory")
                 }
@@ -127,6 +136,7 @@ private struct ImportedCardScreen: View {
         .navigationTitle(html?.title ?? "Карточка")
         .toolbarTitleDisplayMode(.inline)
         .task { reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .kankiImportedCardsChanged)) { _ in reload() }
     }
 
     private func history(_ reviews: [ImportedCardReview]) -> some View {

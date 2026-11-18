@@ -2,7 +2,7 @@ import Foundation
 import GRDB
 import ZIPFoundation
 
-/// Reads content from the genanki container used by the v1 exchange. Anki scheduling is not imported here.
+/// Reads the legacy SQLite container used by v1, including raw Anki progress when present.
 enum AnkiPackageImport {
     enum PackageError: LocalizedError {
         case unsupportedContainer
@@ -11,7 +11,7 @@ enum AnkiPackageImport {
 
         var errorDescription: String? {
             switch self {
-            case .unsupportedContainer: "Выберите пакет .apkg профиля Kanki v1 (collection.anki2)."
+            case .unsupportedContainer: "Выберите пакет .apkg профиля Kanki v1 в режиме совместимости."
             case .invalidCollection: "Пакет повреждён или не соответствует профилю Kanki v1."
             case .tooLarge: "База внутри пакета превышает 32 МиБ."
             }
@@ -41,8 +41,27 @@ enum AnkiPackageImport {
     }
 
     private struct SourceCard: FetchableRecord, Decodable {
+        let id: Int64
         let nid: Int64
         let ord: Int
+        let due: Int64
+        let ivl: Int
+        let queue: Int
+    }
+
+    private struct SourceReview: FetchableRecord, Decodable {
+        let cid: Int64
+        let id: Int64
+        let ease: Int
+        let ivl: Int
+        let lastIvl: Int
+        let factor: Int
+        let time: Int
+        let type: Int
+
+        var value: AnkiE1Import.Review {
+            .init(id: id, ease: ease, ivl: ivl, lastIvl: lastIvl, factor: factor, time: time, type: type)
+        }
     }
 
     private static let maximumCollectionSize = 32 * 1_024 * 1_024
@@ -57,27 +76,31 @@ enum AnkiPackageImport {
         let databaseURL = directory.appending(path: "collection.sqlite")
         try extract(entry, from: archive, to: databaseURL)
         do {
-            return try AnkiE1Import.prepare(content: readCollection(at: databaseURL), reviewed: nil)
+            return try AnkiE1Import.prepareImportedPackage(readCollection(at: databaseURL))
         } catch {
             throw PackageError.invalidCollection
         }
     }
 
     private static func collection(in archive: Archive) throws -> Entry {
-        var collection: Entry?
+        var legacy: Entry?
+        var compatible: Entry?
         for entry in archive {
             switch entry.path {
             case "collection.anki2":
-                guard collection == nil, entry.type == .file else { throw PackageError.invalidCollection }
-                collection = entry
-            case "collection.anki21", "collection.anki21b":
-                // Anki can include a legacy placeholder alongside the real modern collection.
+                guard legacy == nil, entry.type == .file else { throw PackageError.invalidCollection }
+                legacy = entry
+            case "collection.anki21":
+                guard compatible == nil, entry.type == .file else { throw PackageError.invalidCollection }
+                compatible = entry
+            case "collection.anki21b":
+                // Never import the legacy placeholder of a compressed modern package.
                 throw PackageError.unsupportedContainer
             default:
                 break
             }
         }
-        guard let collection else { throw PackageError.unsupportedContainer }
+        guard let collection = compatible ?? legacy else { throw PackageError.unsupportedContainer }
         guard collection.uncompressedSize <= maximumCollectionSize else { throw PackageError.tooLarge }
         return collection
     }
@@ -113,12 +136,21 @@ enum AnkiPackageImport {
                 throw PackageError.invalidCollection
             }
             let notes = try SourceNote.fetchAll(db, sql: "SELECT id, guid, mid, mod, flds FROM main.notes ORDER BY id")
-            let cards = try SourceCard.fetchAll(db, sql: "SELECT nid, ord FROM main.cards ORDER BY id")
-            return try package(models: models, notes: notes, cards: cards)
+            let cards = try SourceCard.fetchAll(db, sql: "SELECT id, nid, ord, due, ivl, queue FROM main.cards ORDER BY id")
+            guard tables.contains(where: { $0["name"] == "revlog" && $0["type"] == "table" }) else {
+                throw PackageError.invalidCollection
+            }
+            let log = try SourceReview.fetchAll(db, sql: "SELECT cid, id, ease, ivl, lastIvl, factor, time, type FROM main.revlog ORDER BY id")
+            return try package(models: models, notes: notes, cards: cards, reviews: log)
         }
     }
 
-    private static func package(models: String, notes: [SourceNote], cards: [SourceCard]) throws -> AnkiE1Import.Package {
+    private static func package(
+        models: String,
+        notes: [SourceNote],
+        cards: [SourceCard],
+        reviews: [SourceReview]
+    ) throws -> AnkiE1Import.Package {
         let models = try JSONDecoder().decode([String: Model].self, from: Data(models.utf8))
         var fields = [String: [String]]()
         var guidByID = [Int64: String](minimumCapacity: notes.count)
@@ -138,10 +170,15 @@ enum AnkiPackageImport {
                 fields: note.flds.components(separatedBy: "\u{1f}")
             )
         }
+        var byCard = Dictionary(grouping: reviews, by: \.cid)
         let sourceCards = try cards.map { card in
             guard let guid = guidByID[card.nid] else { throw PackageError.invalidCollection }
-            return AnkiE1Import.Card(guid: guid, ord: card.ord, progress: nil)
+            let log = byCard.removeValue(forKey: card.id)?.map(\.value) ?? []
+            let progress: AnkiE1Import.Progress? = card.queue == 0 && card.ivl == 0 && log.isEmpty
+                ? nil : .init(due: card.due, ivl: card.ivl, queue: card.queue, reviews: log)
+            return AnkiE1Import.Card(guid: guid, ord: card.ord, progress: progress)
         }
+        guard byCard.isEmpty else { throw PackageError.invalidCollection }
         return .init(notes: sourceNotes, models: fields, cards: sourceCards)
     }
 }
@@ -158,7 +195,7 @@ extension LocalCardStore {
         if let error { throw error }
         guard let result else { throw CocoaError(.fileReadUnknown) }
         do {
-            try mergeAnkiImport(result.get(), into: destination)
+            try mergeAnkiImport(result.get(), into: destination, preserveProgressConflicts: true)
         } catch is AnkiE1Import.ImportError {
             throw AnkiPackageImport.PackageError.invalidCollection
         }

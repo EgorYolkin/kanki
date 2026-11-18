@@ -34,9 +34,12 @@ struct ImportedCardDetail: Equatable {
     let content: ImportedCardContent
     let schedule: CardSchedule?
     let reviews: [ImportedCardReview]
+    let ankiProgress: AnkiE1Import.Progress?
+
+    var isSuspendedInAnki: Bool { ankiProgress?.queue == -1 }
 
     func canReview(at date: Date) -> Bool {
-        schedule.map { $0.due <= date } ?? true
+        !isSuspendedInAnki && (schedule.map { $0.due <= date } ?? true)
     }
 }
 
@@ -88,6 +91,7 @@ extension LocalCardStore {
         try open(at: url).write { db in
             guard try importedContent(key, in: db) == detail.content,
                   try importedSchedule(key, in: db) == detail.schedule,
+                  try rawAnkiProgress(key, in: db) == detail.ankiProgress,
                   detail.canReview(at: date) else { throw CardReviewError.staleCard }
             let next = try CardScheduling.nextReview(for: detail.schedule, rating: rating, at: date)
             try db.execute(sql: """
@@ -95,8 +99,8 @@ extension LocalCardStore {
                 ON CONFLICT (guid, ord) DO UPDATE SET state = excluded.state
                 """, arguments: [key.guid, key.ord, try JSONEncoder().encode(next)])
             try db.execute(sql: """
-                INSERT INTO review_log (guid, ord, reviewedAt, rating) VALUES (?, ?, ?, ?)
-                """, arguments: [key.guid, key.ord, date.timeIntervalSince1970, rating.rawValue])
+                INSERT INTO review_log (eventID, guid, ord, reviewedAt, rating, pending) VALUES (?, ?, ?, ?, ?, 1)
+                """, arguments: [deltaID(), key.guid, key.ord, date.timeIntervalSince1970, rating.rawValue])
             return try importedDetail(key, content: detail.content, in: db, schedule: next)
         }
     }
@@ -117,6 +121,10 @@ extension LocalCardStore {
         return try state.map { try JSONDecoder().decode(CardSchedule.self, from: $0) }
     }
 
+    private static func rawAnkiProgress(_ key: AnkiE1Import.CardKey, in db: Database) throws -> AnkiE1Import.Progress? {
+        try AnkiE1Import.Card.fetchOne(db, key: ["guid": key.guid, "ord": key.ord])?.progress
+    }
+
     private static func importedDetail(
         _ key: AnkiE1Import.CardKey,
         content: ImportedCardContent,
@@ -124,12 +132,13 @@ extension LocalCardStore {
         schedule: CardSchedule? = nil
     ) throws -> ImportedCardDetail {
         let sql = """
-            SELECT id, reviewedAt, rating FROM review_log WHERE guid = ? AND ord = ? ORDER BY id DESC
+            SELECT id, reviewedAt, rating FROM review_log WHERE guid = ? AND ord = ? ORDER BY reviewedAt DESC, id DESC
             """
         return try ImportedCardDetail(
             content: content,
             schedule: schedule ?? importedSchedule(key, in: db),
-            reviews: ImportedCardReview.fetchAll(db, sql: sql, arguments: [key.guid, key.ord])
+            reviews: ImportedCardReview.fetchAll(db, sql: sql, arguments: [key.guid, key.ord]),
+            ankiProgress: rawAnkiProgress(key, in: db)
         )
     }
 }
