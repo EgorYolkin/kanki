@@ -5,13 +5,13 @@ import XCTest
 final class StatisticsUITests: UITestCase {
     func testStatisticsAlwaysAvailableWithoutConnection() {
         let app = launchClean()
-        let tab = app.tabBars.buttons["Статистика"]
+        let tab = app.buttons["Статистика"]
         tab.tap()
         XCTAssertTrue(app.navigationBars["Статистика"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Сервер не настроен"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Активности пока нет"].exists)
 
-        app.tabBars.buttons["Настройки"].tap()
+        app.buttons["Настройки"].tap()
         enableSectionToggles(in: app)
         tab.tap()
         XCTAssertTrue(app.staticTexts["Сервер не настроен"].waitForExistence(timeout: 5))
@@ -21,7 +21,7 @@ final class StatisticsUITests: UITestCase {
     func testStatisticsReportsUnreachableServer() {
         let app = launchClean()
         configure(app, url: "http://127.0.0.1:9", token: "offline-test", expected: "Не удалось связаться")
-        app.tabBars.buttons["Статистика"].tap()
+        app.buttons["Статистика"].tap()
         XCTAssertTrue(app.staticTexts["Не удалось загрузить статистику"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Активности пока нет"].exists)
         XCTAssertTrue(app.buttons["refreshStatistics"].isEnabled)
@@ -39,7 +39,7 @@ final class StatisticsUITests: UITestCase {
 
         let app = launchClean()
         configure(app, url: url, token: token, expected: "Подключено:")
-        app.tabBars.buttons["Статистика"].tap()
+        app.buttons["Статистика"].tap()
         let total = element("statisticsTotalReviews", in: app)
         XCTAssertTrue(total.waitForExistence(timeout: 10))
         let before = try XCTUnwrap(Int(total.value as? String ?? ""))
@@ -113,7 +113,7 @@ final class StatisticsUITests: UITestCase {
     }
 
     private func configure(_ app: XCUIApplication, url: String, token: String, expected: String) {
-        app.tabBars.buttons["Настройки"].tap()
+        app.buttons["Настройки"].tap()
         let urlField = app.textFields["serverURL"]
         scrollTo(urlField, in: app)
         urlField.tap()
