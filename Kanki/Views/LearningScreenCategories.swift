@@ -110,11 +110,6 @@ extension LearningScreen {
                 Text("Последняя оценка: \(lastRating.title)")
                     .foregroundStyle(.secondary)
             }
-            if let syncStatusText {
-                Text(syncStatusText)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("syncStatus")
-            }
         }
     }
 
@@ -180,8 +175,9 @@ extension LearningScreen {
     }
 
     var deckReviewCards: [SessionCard] {
-        ReviewQueue.cards(
-            CardCategory.cards(cards, inDeck: selectedDeck),
+        ReviewQueue.categoryCards(
+            cards,
+            inDeck: selectedDeck,
             schedules: schedules,
             at: clock
         )
@@ -287,7 +283,7 @@ extension LearningScreen {
         do {
             try apply(updated)
         } catch {
-            syncError = "Не удалось удалить категорию: \(error.localizedDescription)"
+            operationAlert = "Не удалось удалить категорию: \(error.localizedDescription)"
         }
     }
 
@@ -303,7 +299,7 @@ extension LearningScreen {
         do {
             try apply(updated)
         } catch {
-            syncError = "Не удалось переместить карточки: \(error.localizedDescription)"
+            operationAlert = "Не удалось переместить карточки: \(error.localizedDescription)"
         }
     }
 }

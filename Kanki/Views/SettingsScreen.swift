@@ -28,6 +28,7 @@ private enum ServerInputError: LocalizedError {
 
 struct SettingsScreen: View {
     @Binding var pushGate: PushGate
+    @Binding var syncProblem: SyncStatus.Problem?
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverRevision") private var serverRevision = 0
@@ -60,6 +61,7 @@ struct SettingsScreen: View {
         .onAppear(perform: loadToken)
         .onChange(of: serverURL) { _, _ in
             serverRevision = 0
+            syncProblem = nil
         }
         .confirmationDialog(
             "Заменить локальные данные данными сервера?",
@@ -218,8 +220,12 @@ struct SettingsScreen: View {
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
             }
+            syncProblem = nil
             serverStatus = "Отправлено, ревизия \(result.revision)"
         } catch {
+            if case .conflict(let revision) = error as? ServerError {
+                syncProblem = .conflict(currentRevision: revision)
+            }
             serverStatus = message(for: error)
         }
     }
@@ -251,6 +257,7 @@ struct SettingsScreen: View {
             serverRevision = result.revision
             hasUnsyncedChanges = false
             NotificationCenter.default.post(name: .kankiSnapshotReloaded, object: nil)
+            syncProblem = nil
             serverStatus = "Загружено, ревизия \(result.revision)"
         } catch {
             serverStatus = message(for: error)
