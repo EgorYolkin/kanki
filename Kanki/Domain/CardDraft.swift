@@ -1,6 +1,6 @@
 import Foundation
 
-/// Ввод карточки: обрезает пробелы и не даёт сохранить пустые поля.
+/// Проверяет заполненность полей, сохраняя исходный Markdown без изменений.
 /// Используется и при создании, и при редактировании.
 struct CardDraft: Equatable {
     var question = ""
@@ -20,23 +20,27 @@ struct CardDraft: Equatable {
         deck = card.deck
     }
 
-    var trimmedQuestion: String {
-        question.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var hasQuestion: Bool {
+        question.rangeOfCharacter(from: .whitespacesAndNewlines.inverted) != nil
     }
 
-    var trimmedAnswer: String {
-        answer.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var hasAnswer: Bool {
+        answer.rangeOfCharacter(from: .whitespacesAndNewlines.inverted) != nil
+    }
+
+    var isBlank: Bool {
+        !hasQuestion && !hasAnswer
     }
 
     /// Кнопка сохранения активна только когда заполнены оба поля.
     var canSubmit: Bool {
-        !trimmedQuestion.isEmpty && !trimmedAnswer.isEmpty
+        hasQuestion && hasAnswer
     }
 
     /// Готовая карточка или `nil`, если ввод не прошёл проверку.
     func makeCard() -> SessionCard? {
         guard canSubmit else { return nil }
-        return SessionCard(question: trimmedQuestion, answer: trimmedAnswer, deck: deck)
+        return SessionCard(question: question, answer: answer, deck: deck)
     }
 
     /// Карточка с обновлёнными текстом и категорией; `nil` — ввод пустой.
@@ -45,8 +49,8 @@ struct CardDraft: Equatable {
         guard canSubmit else { return nil }
         return SessionCard(
             id: card.id,
-            question: trimmedQuestion,
-            answer: trimmedAnswer,
+            question: question,
+            answer: answer,
             createdAt: card.createdAt,
             deck: deck,
             isArchived: card.isArchived
