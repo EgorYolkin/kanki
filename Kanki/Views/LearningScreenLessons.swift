@@ -64,7 +64,10 @@ extension LearningScreen {
             availableDecks: availableDecks,
             onSave: { draft in
                 var updated = snapshot
-                try updated.updateLesson(id: id, title: draft.normalizedTitle, course: draft.normalizedCourse, sourceURL: draft.sourceURL)
+                try updated.updateLesson(
+                    id: id, title: draft.normalizedTitle, course: draft.normalizedCourse,
+                    sourceURL: draft.sourceURL, expectedMetadata: draft.originalMetadata
+                )
                 try apply(updated)
             },
             onAdd: { question, answer, deck in

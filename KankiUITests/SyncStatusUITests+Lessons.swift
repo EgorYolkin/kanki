@@ -123,7 +123,42 @@ extension SyncStatusUITests {
         XCTAssertEqual(manual.revision, synced.revision + 1)
         XCTAssertEqual(NSDictionary(dictionary: manual.data), NSDictionary(dictionary: synced.data))
         app.tabBars.buttons["Обучение"].tap()
-        try await replaceMembershipDuringReview(batch, in: app, snapshot: manual, request: request)
+        let afterEditConflict = try await rejectStaleLessonEditor(batch, in: app, snapshot: manual, request: request)
+        try await replaceMembershipDuringReview(batch, in: app, snapshot: afterEditConflict, request: request)
+    }
+
+    private func rejectStaleLessonEditor(
+        _ batch: LessonBatch,
+        in app: XCUIApplication,
+        snapshot: WireSnapshot,
+        request: URLRequest
+    ) async throws -> WireSnapshot {
+        openLesson(batch, in: app)
+        app.buttons["lessonEdit"].tap()
+        let title = app.textFields["lessonTitle"]
+        title.tap()
+        title.typeText(" локальный черновик")
+        let draftTitle = title.value as? String
+        XCUIDevice.shared.press(.home)
+        var remoteData = snapshot.data
+        var lessons = try XCTUnwrap(remoteData["lessons"] as? [WireObject])
+        let index = try XCTUnwrap(lessons.firstIndex { $0["id"] as? String == batch.id })
+        lessons[index]["source_url"] = "https://example.org/remote-edit"
+        remoteData["lessons"] = lessons
+        let status = try await putSnapshot(remoteData, baseRevision: snapshot.revision, request: request)
+        XCTAssertEqual(status, 200)
+        app.activate()
+        XCTAssertTrue(app.staticTexts["lessonMetadataConflict"].waitForExistence(timeout: 15))
+        XCTAssertEqual(title.value as? String, draftTitle)
+        app.buttons["lessonSave"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Не удалось сохранить урок:")).firstMatch.exists)
+        XCTAssertEqual(title.value as? String, draftTitle, "Не терять ввод после отклонённого сохранения")
+        app.buttons["Отмена"].tap()
+        app.navigationBars[batch.title].buttons.element(boundBy: 0).tap()
+        let remote = try await readWireSnapshot(request)
+        XCTAssertEqual(remote.revision, snapshot.revision + 1)
+        XCTAssertEqual(NSDictionary(dictionary: remote.data), NSDictionary(dictionary: remoteData))
+        return remote
     }
 
     private func assertReviewedBatch(_ batch: LessonBatch, in data: WireObject, initial: WireObject) throws {

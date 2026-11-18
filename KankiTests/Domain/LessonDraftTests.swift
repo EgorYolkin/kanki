@@ -22,6 +22,22 @@ final class LessonDraftTests: XCTestCase {
         XCTAssertNotNil(draft.validationError)
     }
 
+    func testMetadataConflictDoesNotReplaceLocalDraft() throws {
+        var snapshot = LearningSnapshot()
+        let id = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
+        try snapshot.createLesson(id: id, title: "Исходный", course: nil, sourceURL: nil, createdAt: Date(timeIntervalSince1970: 100))
+        let baseline = try XCTUnwrap(snapshot.latestLesson).metadata
+        let draft = LessonDraft(title: "Черновик", course: nil, source: "https://example.org/local", originalMetadata: baseline)
+        XCTAssertFalse(draft.hasMetadataConflict(in: snapshot))
+        XCTAssertFalse(LessonDraft(title: "Новый", course: nil, source: "").hasMetadataConflict(in: snapshot))
+        try snapshot.updateLesson(id: id, title: "Удалённый", course: nil, sourceURL: nil)
+        XCTAssertTrue(draft.hasMetadataConflict(in: snapshot))
+        XCTAssertEqual(draft.title, "Черновик")
+        XCTAssertEqual(draft.source, "https://example.org/local")
+        try snapshot.removeLesson(id: id)
+        XCTAssertTrue(draft.hasMetadataConflict(in: snapshot))
+    }
+
     func testSourceRequiresAbsoluteHTTPOrHTTPSAndHost() {
         var draft = LessonDraft(title: "Урок", course: nil, source: "")
         for source in ["video", "//example.org/video", "ftp://example.org", "https:///path", "https://bad host", "https://bad%20host"] {

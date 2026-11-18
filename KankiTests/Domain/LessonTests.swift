@@ -106,6 +106,47 @@ final class LessonTests: XCTestCase {
         try snapshot.validate()
     }
 
+    func testStaleMetadataDraftCannotOverwriteRemoteChanges() throws {
+        var snapshot = LearningSnapshot()
+        try snapshot.createLesson(id: id(1), title: "Исходный", course: "Курс", sourceURL: nil, createdAt: now)
+        let baseline = try XCTUnwrap(snapshot.latestLesson).metadata
+        let localURL = try XCTUnwrap(URL(string: "https://example.org/local"))
+        let remoteURL = try XCTUnwrap(URL(string: "https://example.org/remote"))
+        let original = snapshot
+        let changes: [(String, String, URL?)] = [("Удалённый", "Курс", nil), ("Исходный", "Другой", nil), ("Исходный", "Курс", remoteURL)]
+        for (title, course, url) in changes {
+            snapshot = original
+            try snapshot.updateLesson(id: id(1), title: title, course: course, sourceURL: url)
+            let remote = snapshot
+            XCTAssertThrowsError(try snapshot.updateLesson(
+                id: id(1), title: baseline.title, course: baseline.course,
+                sourceURL: localURL, expectedMetadata: baseline
+            )) { error in
+                XCTAssertEqual(error as? LessonError, .staleMetadata)
+            }
+            XCTAssertEqual(snapshot, remote, "Конфликт не должен менять снимок")
+        }
+    }
+
+    func testMetadataEditPreservesConcurrentMembershipAndReview() throws {
+        var snapshot = LearningSnapshot()
+        try snapshot.createLesson(id: id(1), title: "Исходный", course: nil, sourceURL: nil, createdAt: now)
+        let baseline = try XCTUnwrap(snapshot.latestLesson).metadata
+        let member = card(2)
+        try snapshot.addCard(member, toLessonID: id(1))
+        try CardScheduling.record(member, rating: .good, in: &snapshot, at: now)
+        let remote = snapshot
+        try snapshot.updateLesson(id: id(1), title: "Правка", course: nil, sourceURL: nil, expectedMetadata: baseline)
+        XCTAssertEqual(snapshot.latestLesson?.title, "Правка")
+        XCTAssertEqual(snapshot.latestLesson?.cardIDs, [member.id])
+        XCTAssertEqual(snapshot.cards, remote.cards)
+        XCTAssertEqual(snapshot.reviews, remote.reviews)
+        XCTAssertEqual(snapshot.schedules, remote.schedules)
+        try snapshot.removeLesson(id: id(1))
+        XCTAssertThrowsError(try snapshot.updateLesson(id: id(1), title: "Правка", course: nil, sourceURL: nil, expectedMetadata: baseline))
+        XCTAssertTrue(snapshot.lessons.isEmpty, "Удалённый урок не должен восстановиться")
+    }
+
     func testCategoryOperationsAreIndependentOfCourses() throws {
         var member = card(1)
         member.deck = "Swift"

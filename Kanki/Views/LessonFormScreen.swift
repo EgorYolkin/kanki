@@ -12,6 +12,7 @@ struct LessonFormScreen: View {
     private let lessonID: UUID?
     private let onSave: (LessonDraft) throws -> Void
     private let onOpen: (UUID) -> Void
+    @State private var originalMetadata: Lesson.Metadata?
     @State private var title: String
     @State private var course: CourseSelection
     @State private var newCourse = ""
@@ -28,6 +29,7 @@ struct LessonFormScreen: View {
         lessonID = lesson?.id
         self.onSave = onSave
         self.onOpen = onOpen
+        _originalMetadata = State(initialValue: lesson?.metadata)
         _title = State(initialValue: lesson?.title ?? "")
         _course = State(initialValue: lesson?.course.map(CourseSelection.existing) ?? .none)
         _source = State(initialValue: lesson?.sourceURL?.absoluteString ?? "")
@@ -40,7 +42,7 @@ struct LessonFormScreen: View {
         case .new: name = newCourse
         case .existing(let selected): name = selected
         }
-        return LessonDraft(title: title, course: name, source: source)
+        return LessonDraft(title: title, course: name, source: source, originalMetadata: originalMetadata)
     }
 
     var body: some View {
@@ -65,6 +67,11 @@ struct LessonFormScreen: View {
                         onOpen(duplicate.id)
                     }
                     .accessibilityIdentifier("lessonOpenExisting")
+                }
+                if input.hasMetadataConflict(in: snapshot) {
+                    Text(LessonError.staleMetadata.localizedDescription)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("lessonMetadataConflict")
                 }
                 if let saveError {
                     Text(saveError).foregroundStyle(.red)

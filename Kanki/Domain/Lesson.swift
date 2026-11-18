@@ -11,6 +11,16 @@ struct Lesson: Identifiable, Equatable, Codable {
     let createdAt: Date
     var cardIDs: [UUID]
 
+    /// Baseline редактора: членство и история не конфликтуют с правкой метаданных.
+    struct Metadata: Equatable {
+        let id: UUID
+        let title: String
+        let course: String?
+        let sourceURL: URL?
+    }
+
+    var metadata: Metadata { Metadata(id: id, title: title, course: course, sourceURL: sourceURL) }
+
     enum CodingKeys: String, CodingKey {
         case id, title, course, createdAt
         case sourceURL = "source_url"
@@ -48,6 +58,7 @@ enum LessonError: String, LocalizedError {
     case invalidSourceURL = "Введите полную ссылку на видео (http или https)."
     case duplicateName = "Урок с таким названием уже есть в этом курсе."
     case duplicateID = "Идентификатор урока уже используется."
+    case staleMetadata = "Урок изменён на другом устройстве. Ваш черновик сохранён в форме. Скопируйте черновик и откройте урок заново для сверки."
     case missingLesson = "Урок больше недоступен."
     case duplicateCard = "Идентификатор карточки уже используется."
     case invalidMembership = "Урок содержит отсутствующую или повторяющуюся карточку."

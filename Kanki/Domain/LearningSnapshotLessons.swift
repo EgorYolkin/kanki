@@ -57,9 +57,16 @@ extension LearningSnapshot {
         snapshotVersion = max(snapshotVersion, Self.lessonSnapshotVersion)
     }
 
-    mutating func updateLesson(id: UUID, title: String, course: String?, sourceURL: URL?) throws {
+    mutating func updateLesson(
+        id: UUID,
+        title: String,
+        course: String?,
+        sourceURL: URL?,
+        expectedMetadata: Lesson.Metadata? = nil
+    ) throws {
         let index = try lessonIndex(id)
         var edited = lessons[index]
+        if let expectedMetadata, edited.metadata != expectedMetadata { throw LessonError.staleMetadata }
         edited.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         edited.course = Lesson.normalizedCourse(course)
         edited.sourceURL = sourceURL
