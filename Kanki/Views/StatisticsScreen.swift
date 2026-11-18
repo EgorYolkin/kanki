@@ -10,7 +10,6 @@ struct StatisticsScreen: View {
     }
 
     @AppStorage("serverURL") private var serverURL = ""
-    @Environment(\.scenePhase) private var scenePhase
     @State private var phase = Phase.loading
     @State private var refreshID = 0
     @State private var calendarSelection = StatisticsHeatmap.Selection()
@@ -51,10 +50,12 @@ struct StatisticsScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in refreshID += 1 }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in refreshID += 1 }
-        .task(id: scenePhase == .active ? refreshID : nil) {
-            guard scenePhase == .active else { return }
-            await load()
-        }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in refreshID += 1 }
+        #elseif os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refreshID += 1 }
+        #endif
+        .task(id: refreshID) { await load() }
         .onDisappear { phase = .loading }
     }
 
