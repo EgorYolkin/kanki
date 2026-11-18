@@ -3,6 +3,7 @@ import SwiftUI
 struct AppShell: View {
     @Binding var section: AppSection
     @State private var pushGate = PushGate()
+    @State private var syncProblem: SyncStatus.Problem?
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     /// Разделы-заготовки скрыты по умолчанию; тумблеры живут в настройках.
     @AppStorage("showNotesSection") private var showNotesSection = false
@@ -42,7 +43,7 @@ struct AppShell: View {
         switch section {
         case .learning:
             NavigationStack {
-                LearningScreen(pushGate: $pushGate)
+                LearningScreen(pushGate: $pushGate, syncProblem: $syncProblem)
                     .navigationDestination(for: Destination.self) { destination in
                         PlaceholderScreen(destination: destination)
                     }
@@ -60,7 +61,7 @@ struct AppShell: View {
             }
         case .settings:
             NavigationStack {
-                SettingsScreen(pushGate: $pushGate)
+                SettingsScreen(pushGate: $pushGate, syncProblem: $syncProblem)
                     .navigationDestination(for: Destination.self) { destination in
                         PlaceholderScreen(destination: destination)
                     }
