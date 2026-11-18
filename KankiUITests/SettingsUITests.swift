@@ -63,6 +63,35 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["appearance-system"].isSelected)
     }
 
+    func testChangingServerAddressRequiresANewTokenAndExplicitCommit() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-server", "--reset-store"]
+        app.launch()
+        app.tabBars.buttons["Настройки"].tap()
+        let address = app.textFields["serverURL"]
+        scrollTo(address, in: app)
+        address.tap()
+        let committed = "http://127.0.0.1:9"
+        address.typeText(committed)
+        let token = app.secureTextFields["serverToken"]
+        token.tap()
+        token.typeText("offline-test")
+        app.buttons["serverCheck"].tap()
+        let offline = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Не удалось связаться'")).firstMatch
+        XCTAssertTrue(offline.waitForExistence(timeout: 10))
+
+        address.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        address.typeText("0")
+        app.buttons["serverCheck"].tap()
+        XCTAssertTrue(app.staticTexts["Укажите токен сервера"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        app.tabBars.buttons["Настройки"].tap()
+        scrollTo(address, in: app)
+        XCTAssertEqual(address.value as? String, committed)
+    }
+
     /// Прокручивает список вниз, пока элемент не отрисуется; List ленивый,
     /// поэтому `exists` до прокрутки может быть ложным.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {

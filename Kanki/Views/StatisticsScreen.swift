@@ -62,7 +62,7 @@ struct StatisticsScreen: View {
         if case .failed = phase { phase = .loading }
         do {
             guard let configuration = ServerConfiguration(rawValue: serverURL),
-                  let token = try ServerTokenStore.load(), !token.isEmpty else {
+                  let token = try ServerTokenStore.load(for: configuration), !token.isEmpty else {
                 phase = .unconfigured
                 return
             }

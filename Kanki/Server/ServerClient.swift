@@ -2,7 +2,7 @@ import Foundation
 
 /// HTTP-клиент сервера Kanki. Токен передаётся только в заголовке и не логируется.
 actor ServerClient {
-    private let baseURL: URL
+    private let configuration: ServerConfiguration
     private let token: String
     private let session: URLSession
     private let encoder = JSONEncoder()
@@ -13,7 +13,7 @@ actor ServerClient {
         token: String,
         session: URLSession = .shared
     ) {
-        self.baseURL = configuration.baseURL
+        self.configuration = configuration
         self.token = token
         self.session = session
         encoder.dateEncodingStrategy = .iso8601
@@ -55,12 +55,32 @@ actor ServerClient {
     /// открытие статистики повторяет отправку и показывает ошибку при отказе.
     static func scheduleActivityUpload() {
         Task {
-            let raw = UserDefaults.standard.string(forKey: "serverURL") ?? ""
-            guard let configuration = ServerConfiguration(rawValue: raw),
-                  let token = try ServerTokenStore.load(), !token.isEmpty else { return }
-
-            try await ServerClient(configuration: configuration, token: token).flushActivity()
+            do {
+                guard let configuration = ServerTokenStore.configuration,
+                      let token = try ServerTokenStore.load(for: configuration), !token.isEmpty else { return }
+                try await ServerClient(configuration: configuration, token: token).flushActivity()
+            } catch {
+                // Background delivery is best effort. Keep the batch for the dashboard's visible retry.
+                return
+            }
         }
+    }
+
+    nonisolated var usesCurrentCredentials: Bool {
+        (try? ServerTokenStore.load(for: configuration)) == token
+    }
+
+    /// The comparison and claim cannot be interleaved with a settings commit.
+    @MainActor
+    private func confirmCurrentDestination(in store: URL) throws {
+        guard usesCurrentCredentials else { throw CancellationError() }
+        try LocalCardStore.confirmActivityDestination(configuration, in: store)
+    }
+
+    func verifyDestination(in store: URL = LocalCardStore.fileURL) async throws -> ServerIdentity {
+        let result = try await identity()
+        try await confirmCurrentDestination(in: store)
+        return result
     }
 
     func statistics(timeZone: TimeZone) async throws -> StudyStatistics {
@@ -72,13 +92,17 @@ actor ServerClient {
         )
     }
 
-    func flushActivity() async throws {
+    func flushActivity(in store: URL = LocalCardStore.fileURL) async throws {
+        if try LocalCardStore.hasUnboundActivity(in: store) {
+            _ = try await verifyDestination(in: store)
+        }
         while true {
-            let events = try LocalCardStore.pendingActivity(for: baseURL.absoluteString)
+            guard usesCurrentCredentials else { throw CancellationError() }
+            let events = try LocalCardStore.pendingActivity(for: configuration, in: store)
             guard !events.isEmpty else { return }
 
             try await uploadActivity(events)
-            try LocalCardStore.acknowledgeActivity(events)
+            try LocalCardStore.acknowledgeActivity(events, in: store)
         }
     }
 
@@ -108,7 +132,7 @@ actor ServerClient {
         query: [URLQueryItem] = [],
         expectedStatus: Int? = nil
     ) async throws -> Data {
-        var url = baseURL.appending(path: path)
+        var url = configuration.baseURL.appending(path: path)
         if !query.isEmpty { url.append(queryItems: query) }
         var request = URLRequest(url: url)
         request.httpMethod = method

@@ -1,3 +1,4 @@
+import GRDB
 import XCTest
 
 @testable import Kanki
@@ -52,8 +53,8 @@ final class ImportedCardStoreTests: XCTestCase {
 
     func testPendingVisitAndReviewRetryWithoutChangingIDsOrCrossingServers() throws {
         try withStore { url in
-            let raw = UserDefaults.standard.string(forKey: "serverURL") ?? ""
-            let destination = ServerConfiguration(rawValue: raw)?.displayValue ?? "https://study.example"
+            let destination = try XCTUnwrap(ServerConfiguration(rawValue: "HTTPS://Study.Example:443"))
+            let other = try XCTUnwrap(ServerConfiguration(rawValue: "https://other.invalid"))
             let date = Date(timeIntervalSince1970: 1_800_001_000)
             try LocalCardStore.recordVisit(at: date, in: url)
             try LocalCardStore.importAnkiPackage(at: fixture("test1"), into: url)
@@ -61,15 +62,37 @@ final class ImportedCardStoreTests: XCTestCase {
             let card = try LocalCardStore.importedCard(key, from: url)
             _ = try LocalCardStore.recordImportedReview(key, shown: card, rating: .hard, at: date, in: url)
 
+            XCTAssertTrue(try LocalCardStore.pendingActivity(for: other, in: url).isEmpty)
+            XCTAssertTrue(try LocalCardStore.pendingActivity(for: destination, in: url).isEmpty)
+            XCTAssertTrue(try LocalCardStore.hasUnboundActivity(in: url))
+            try LocalCardStore.confirmActivityDestination(destination, in: url)
             let batch = try LocalCardStore.pendingActivity(for: destination, in: url)
             XCTAssertEqual(batch.map(\.kind), ["visit", "imported_review"])
             XCTAssertEqual(batch.map(\.rating), [nil, 2])
             XCTAssertEqual(batch.map(\.timestamp), [date, date])
-            XCTAssertTrue(try LocalCardStore.pendingActivity(for: "https://other.invalid", in: url).isEmpty)
+            XCTAssertFalse(try LocalCardStore.hasUnboundActivity(in: url))
+            XCTAssertTrue(try LocalCardStore.pendingActivity(for: other, in: url).isEmpty)
             let retry = try LocalCardStore.pendingActivity(for: destination, in: url)
             XCTAssertEqual(retry.map(\.id), batch.map(\.id))
             try LocalCardStore.acknowledgeActivity(retry, in: url)
             XCTAssertTrue(try LocalCardStore.pendingActivity(for: destination, in: url).isEmpty)
+        }
+    }
+
+    func testMigrationKeepsQueuedIDsAcrossEquivalentOriginSpellings() throws {
+        try withStore { url in
+            let origin = try XCTUnwrap(ServerConfiguration(rawValue: "https://study.example"))
+            let id = UUID()
+            try LocalCardStore.open(at: url).write { db in
+                try db.execute(sql: "DROP TABLE statistics_verified_origin")
+                try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'verifiedStatisticsOrigin'")
+                try db.execute(
+                    sql: "INSERT INTO statistics_queue (id, timestamp, destination) VALUES (?, 0, ?)",
+                    arguments: [id.uuidString, "HTTPS://STUDY.EXAMPLE:443"]
+                )
+            }
+            XCTAssertEqual(try LocalCardStore.pendingActivity(for: origin, in: url).map(\.id), [id])
+            XCTAssertFalse(try LocalCardStore.hasUnboundActivity(in: url))
         }
     }
 

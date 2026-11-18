@@ -117,6 +117,65 @@ final class ServerClientTests: XCTestCase {
         try await client.uploadActivity([event])
     }
 
+    @MainActor
+    func testOnlyCurrentAuthenticatedServerClaimsOfflineActivity() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let store = folder.appending(path: "kanki.sqlite")
+        defer {
+            try? FileManager.default.removeItem(at: folder)
+            try? ServerTokenStore.delete()
+        }
+        let typo = try XCTUnwrap(ServerConfiguration(rawValue: "https://typo.example"))
+        let correct = try XCTUnwrap(ServerConfiguration(rawValue: "https://study.example"))
+        let staleClient = try makeClient(for: typo.displayValue)
+        try ServerTokenStore.commit("secret", for: typo)
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        try LocalCardStore.recordVisit(at: date, in: store)
+
+        StubURLProtocol.install { request in
+            XCTAssertEqual(request.url?.path, "/v1/me")
+            return (try makeResponse(401, request), Data())
+        }
+        do {
+            try await staleClient.flushActivity(in: store)
+            XCTFail("Rejected credentials must not claim offline activity")
+        } catch {
+            XCTAssertEqual(error as? ServerError, .unauthorized)
+        }
+        XCTAssertTrue(try LocalCardStore.hasUnboundActivity(in: store))
+        XCTAssertTrue(try LocalCardStore.pendingActivity(for: typo, in: store).isEmpty)
+
+        try ServerTokenStore.commit("correct-token", for: correct)
+        StubURLProtocol.install { request in
+            (try makeResponse(200, request), Data(#"{"label":"iphone","role":"device"}"#.utf8))
+        }
+        do {
+            _ = try await staleClient.verifyDestination(in: store)
+            XCTFail("A response for a replaced credential must be ignored")
+        } catch is CancellationError {}
+        XCTAssertTrue(try LocalCardStore.hasUnboundActivity(in: store))
+
+        let currentClient = try makeClient(for: correct.displayValue, token: "correct-token")
+        StubURLProtocol.install { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer correct-token")
+            if request.url?.path == "/v1/me" {
+                return (try makeResponse(200, request), Data(#"{"label":"iphone","role":"device"}"#.utf8))
+            }
+            XCTAssertEqual(request.url?.path, "/v1/statistics/events")
+            return (try makeResponse(503, request), Data())
+        }
+        do {
+            try await currentClient.flushActivity(in: store)
+            XCTFail("Failed delivery must leave the batch bound to the authenticated origin")
+        } catch {
+            XCTAssertEqual(error as? ServerError, .http(status: 503))
+        }
+        XCTAssertFalse(try LocalCardStore.hasUnboundActivity(in: store))
+        try LocalCardStore.recordVisit(at: date.addingTimeInterval(1), in: store)
+        XCTAssertEqual(try LocalCardStore.pendingActivity(for: correct, in: store).map(\.timestamp), [date, date.addingTimeInterval(1)])
+        XCTAssertTrue(try LocalCardStore.pendingActivity(for: typo, in: store).isEmpty)
+    }
+
     func testFetchesEmptySnapshot() async throws {
         StubURLProtocol.install { request in
             (
@@ -244,15 +303,13 @@ final class ServerClientTests: XCTestCase {
         }
     }
 
-    private func makeClient() throws -> ServerClient {
-        let configuration = try XCTUnwrap(
-            ServerConfiguration(rawValue: "http://127.0.0.1:8000")
-        )
+    private func makeClient(for address: String = "http://127.0.0.1:8000", token: String = "secret") throws -> ServerClient {
+        let configuration = try XCTUnwrap(ServerConfiguration(rawValue: address))
         let sessionConfiguration = URLSessionConfiguration.ephemeral
         sessionConfiguration.protocolClasses = [StubURLProtocol.self]
         return ServerClient(
             configuration: configuration,
-            token: "secret",
+            token: token,
             session: URLSession(configuration: sessionConfiguration)
         )
     }

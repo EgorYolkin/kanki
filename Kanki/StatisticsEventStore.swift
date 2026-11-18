@@ -20,26 +20,54 @@ extension LocalCardStore {
         while let row = try history.next() {
             let timestamp: Double = row["reviewedAt"]
             let rating: Int = row["rating"]
-            try enqueueActivity(at: Date(timeIntervalSince1970: timestamp), rating: rating, in: db)
+            try db.execute(
+                sql: "INSERT INTO statistics_queue (id, timestamp, rating) VALUES (?, ?, ?)",
+                arguments: [UUID().uuidString, timestamp, rating]
+            )
+        }
+    }
+
+    static func migrateStatisticsOrigins(in db: Database) throws {
+        try db.execute(sql: "CREATE TABLE statistics_verified_origin (origin TEXT NOT NULL)")
+        let origins = try String.fetchAll(db, sql: "SELECT DISTINCT destination FROM statistics_queue WHERE destination IS NOT NULL")
+        for origin in origins {
+            guard let canonical = ServerConfiguration(rawValue: origin)?.displayValue, canonical != origin else { continue }
+            try db.execute(sql: "UPDATE statistics_queue SET destination = ? WHERE destination = ?", arguments: [canonical, origin])
         }
     }
 
     static func enqueueActivity(at date: Date, rating: Int?, in db: Database) throws {
-        let raw = UserDefaults.standard.string(forKey: "serverURL") ?? ""
-        let destination = ServerConfiguration(rawValue: raw)?.displayValue
-        let sql = "INSERT INTO statistics_queue (id, timestamp, rating, destination) VALUES (?, ?, ?, ?)"
-        try db.execute(sql: sql, arguments: [UUID().uuidString, date.timeIntervalSince1970, rating, destination])
+        let sql = """
+            INSERT INTO statistics_queue (id, timestamp, rating, destination)
+            VALUES (?, ?, ?, (SELECT origin FROM statistics_verified_origin WHERE origin = ?))
+            """
+        try db.execute(sql: sql, arguments: [UUID().uuidString, date.timeIntervalSince1970, rating, ServerTokenStore.configuration?.displayValue])
     }
 
     static func recordVisit(at date: Date, in url: URL = fileURL) throws {
         try open(at: url).write { db in try enqueueActivity(at: date, rating: nil, in: db) }
     }
 
-    static func pendingActivity(for destination: String, in url: URL = fileURL) throws -> [StatisticsEvent] {
+    static func hasUnboundActivity(in url: URL = fileURL) throws -> Bool {
+        try open(at: url).read { db in
+            try Bool.fetchOne(db, sql: "SELECT EXISTS (SELECT 1 FROM statistics_queue WHERE destination IS NULL)") == true
+        }
+    }
+
+    /// Call only after authenticating the currently committed credentials. A failed
+    /// attempt never claims offline history; later retries keep the original IDs.
+    static func confirmActivityDestination(_ destination: ServerConfiguration, in url: URL = fileURL) throws {
         try open(at: url).write { db in
-            try db.execute(sql: "UPDATE statistics_queue SET destination = ? WHERE destination IS NULL", arguments: [destination])
+            try db.execute(sql: "DELETE FROM statistics_verified_origin")
+            try db.execute(sql: "INSERT INTO statistics_verified_origin VALUES (?)", arguments: [destination.displayValue])
+            try db.execute(sql: "UPDATE statistics_queue SET destination = ? WHERE destination IS NULL", arguments: [destination.displayValue])
+        }
+    }
+
+    static func pendingActivity(for destination: ServerConfiguration, in url: URL = fileURL) throws -> [StatisticsEvent] {
+        try open(at: url).read { db in
             let sql = "SELECT id, timestamp, rating FROM statistics_queue WHERE destination = ? ORDER BY rowid LIMIT 100"
-            return try Row.fetchAll(db, sql: sql, arguments: [destination]).map { row in
+            return try Row.fetchAll(db, sql: sql, arguments: [destination.displayValue]).map { row in
                 let timestamp: Double = row["timestamp"]
                 let rating: Int? = row["rating"]
                 guard let id = UUID(uuidString: row["id"]) else { throw ServerError.decoding }
