@@ -26,5 +26,5 @@ Presentation only. Behaviour lives in `Kanki/Domain/`; these rules keep the boun
 
 ```bash
 ./scripts/lint.sh swift
-./scripts/ui-test.sh
+./scripts/ui-test.sh "$simulator_id"
 ```

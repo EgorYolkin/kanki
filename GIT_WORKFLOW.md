@@ -68,8 +68,8 @@ Issue-first, имена веток и направления PR ниже — д�
 `./scripts/lint.sh markdown` проверяет Markdown, `./scripts/lint.sh` — оба линтера,
 `./scripts/server-test.sh` — сервер, `./scripts/test.sh` — XCTest и порог 95 %
 строк `Kanki/Domain`. Пользовательские пути проверяйте через
-`./scripts/ui-test.sh`, macOS — `./scripts/macos-ui-test.sh`;
-`./scripts/ci.sh` запускает полный локальный контур. iOS UI-тесты не входят
+`./scripts/ui-test.sh "$simulator_id"`, macOS — `./scripts/macos-ui-test.sh"`;
+`./scripts/ci.sh "$simulator_id"` запускает полный локальный контур. iOS UI-тесты не входят
 в per-PR CI; запускайте их локально для затронутых пользовательских путей
 и перед релизом. Зелёный CI обязателен перед merge.
 

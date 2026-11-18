@@ -70,10 +70,12 @@ xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
 ./scripts/lint.sh          # SwiftLint --strict и markdownlint-cli2
 ./scripts/test.sh          # unit-тесты KankiTests и порог покрытия 95 % по Kanki/Domain
 ./scripts/server-test.sh   # FastAPI, SQLite WAL, токены, ревизии, MCP
-./scripts/ui-test.sh       # iOS UI-тесты на симуляторе
+./scripts/ui-test.sh "$simulator_id" # iOS UI-тесты на отдельном iPhone 17e
 ./scripts/macos-ui-test.sh # macOS UI-тест: окно и ⌘1–⌘4
-./scripts/ci.sh            # весь контур целиком
+./scripts/ci.sh "$simulator_id"      # весь контур целиком
 ```
+
+Выбор `simulator_id` описан в [контуре качества](docs/quality-gates.md#команды).
 
 `KankiTests` покрывают доменный слой; `KankiUITests` — вкладки, добавление и оценку карточки, поиск, сохранение после перезапуска, очередь повторения, экспорт и настройки. `ServerClientIntegrationTests` выполняет реальный HTTP push/pull только при заданных `KANKI_TEST_SERVER_URL` и `KANKI_TEST_TOKEN`. Для стабильного прогона используйте отдельный симулятор и чистый `-derivedDataPath`. Порог, команды и версии инструментов — в [docs/quality-gates.md](docs/quality-gates.md).
 

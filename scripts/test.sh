@@ -3,10 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+destination="$(./scripts/simulator_destination.sh "$@")"
+
 xcodegen generate
 rm -rf build/Test.xcresult
 mkdir -p build
-destination="$(./scripts/simulator_destination.sh)"
 
 xcodebuild test \
   -project Kanki.xcodeproj \

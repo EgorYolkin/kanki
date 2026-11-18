@@ -56,5 +56,5 @@ macOS 14+. The same sources ship on both; a screen must work on both.
 ```bash
 ./scripts/lint.sh swift
 ./scripts/test.sh
-./scripts/ui-test.sh
+./scripts/ui-test.sh "$simulator_id"
 ```
