@@ -4,6 +4,7 @@ struct ReviewSessionScreen: View {
     let onReview: (SessionCard, RecallRating) throws -> Void
     /// Режим фиксируется при открытии, как и очередь: оценки не меняют его.
     @State private var isAheadReview: Bool
+    private let title: String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var session: ReviewSessionState
@@ -13,9 +14,11 @@ struct ReviewSessionScreen: View {
     init(
         cards: [SessionCard],
         isAheadReview: Bool = false,
+        title: String? = nil,
         onReview: @escaping (SessionCard, RecallRating) throws -> Void
     ) {
         self.onReview = onReview
+        self.title = title
         _isAheadReview = State(initialValue: isAheadReview)
         _session = State(initialValue: ReviewSessionState(cards: cards))
     }
@@ -29,7 +32,7 @@ struct ReviewSessionScreen: View {
                     summaryView
                 }
             }
-            .navigationTitle(isAheadReview ? "Досрочное повторение" : "Повторение")
+            .navigationTitle(title ?? (isAheadReview ? "Досрочное повторение" : "Повторение"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -63,11 +66,11 @@ struct ReviewSessionScreen: View {
                     .accessibilityIdentifier("reviewDeck")
             }
             Section("Вопрос") {
-                Text(card.question)
+                CardMarkdownView(source: card.question)
             }
             if session.isAnswerVisible {
                 Section("Ответ") {
-                    Text(card.answer)
+                    CardMarkdownView(source: card.answer)
                 }
                 Section("Насколько легко вспомнили?") {
                     HStack(spacing: 8) {
