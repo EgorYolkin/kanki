@@ -79,8 +79,8 @@ xcodegen generate        # required after adding/removing/renaming a source or r
 ./scripts/lint.sh        # swiftlint --strict + markdownlint-cli2
 ./scripts/test.sh        # unit tests (KankiTests) + 95 % coverage gate
 ./scripts/server-test.sh # FastAPI and MCP pytest suite (uses server/uv.lock)
-./scripts/ui-test.sh "$simulator_id" # KankiUITests on a dedicated iPhone 17e simulator
-./scripts/ci.sh "$simulator_id"      # full local contour, including iOS UI tests
+./scripts/ui-test.sh     # KankiUITests on an iOS simulator
+./scripts/ci.sh          # full local contour, including iOS UI tests
 xcodebuild -project Kanki.xcodeproj -scheme Kanki -configuration Debug \
   -destination 'platform=macOS' build   # native macOS app, ad-hoc signed
 ./scripts/macos-ui-test.sh             # macOS UI test: window and ⌘1–⌘4

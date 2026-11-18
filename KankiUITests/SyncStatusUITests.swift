@@ -8,7 +8,7 @@ final class SyncStatusUITests: XCTestCase {
         app.launchArguments = ["--reset-store", "--reset-server"]
         app.launch()
 
-        app.tabBars.buttons["Обучение"].tap()
+        app.sectionButton("Обучение").tap()
         let status = app.staticTexts["syncStatus"]
         XCTAssertFalse(status.waitForExistence(timeout: 2), "Без настроенного сервера строки синхронизации быть не должно")
 
@@ -71,13 +71,13 @@ final class SyncStatusUITests: XCTestCase {
         alert.buttons["OK"].tap()
         assertLabel("Конфликт ревизий — разрешите в настройках", on: status)
 
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         let pull = app.buttons["serverPull"]
         if !pull.isHittable { app.swipeUp() }
         pull.tap()
         app.buttons["Заменить"].tap()
         assertLabel("Загружено, ревизия \(remoteRevision)", on: app.staticTexts["serverStatus"])
-        app.tabBars.buttons["Обучение"].tap()
+        app.sectionButton("Обучение").tap()
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
         assertLabel("Синхронизировано, ревизия \(remoteRevision)", on: status)
 
@@ -97,23 +97,23 @@ final class SyncStatusUITests: XCTestCase {
         let status = app.staticTexts["syncStatus"]
         assertLabel("Синхронизировано, ревизия \(revision)", on: status)
 
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         let remoteRevision = try await advanceServerRevision(url: url, token: token)
         let push = app.buttons["serverPush"]
         if !push.isHittable { app.swipeUp() }
         push.tap()
         assertLabel("Конфликт ревизий: на сервере \(remoteRevision).", on: app.staticTexts["serverStatus"], predicate: "label BEGINSWITH %@")
 
-        app.tabBars.buttons["Обучение"].tap()
+        app.sectionButton("Обучение").tap()
         assertLabel("Конфликт ревизий — разрешите в настройках", on: status)
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         let pull = app.buttons["serverPull"]
         if !pull.isHittable { app.swipeUp() }
         pull.tap()
         app.buttons["Заменить"].tap()
         assertLabel("Загружено, ревизия \(remoteRevision)", on: app.staticTexts["serverStatus"])
 
-        app.tabBars.buttons["Обучение"].tap()
+        app.sectionButton("Обучение").tap()
         assertLabel("Синхронизировано, ревизия \(remoteRevision)", on: status)
     }
 
@@ -223,7 +223,7 @@ final class SyncStatusUITests: XCTestCase {
     }
 
     private func configureServer(in app: XCUIApplication, url: String, token: String, expected: String) {
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         let serverURL = app.textFields["serverURL"]
         XCTAssertTrue(serverURL.waitForExistence(timeout: 10))
         serverURL.tap()

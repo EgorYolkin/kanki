@@ -8,11 +8,11 @@ per-PR CI намеренно не запускает iOS UI-тесты, чтоб
 
 | Проверка | Команда | Что означает |
 | --- | --- | --- |
-| Всё сразу | `./scripts/ci.sh "$simulator_id"` | Полный контур: линтеры, серверные тесты, unit-тесты с порогом, iOS UI-тесты, macOS UI-тест |
+| Всё сразу | `./scripts/ci.sh` | Полный контур: линтеры, серверные тесты, unit-тесты с порогом, iOS UI-тесты, macOS UI-тест |
 | Swift | `./scripts/lint.sh swift` | `swiftlint lint --strict` по `.swiftlint.yml` |
 | Markdown | `./scripts/lint.sh markdown` | `markdownlint-cli2` по `.markdownlint-cli2.jsonc` |
 | Unit + покрытие | `./scripts/test.sh` | `xcodegen generate`, тесты `KankiTests`, порог покрытия |
-| UI | `./scripts/ui-test.sh "$simulator_id"` | UI-тесты `KankiUITests` на iPhone 17e; локально и перед релизом, не в per-PR CI |
+| UI | `./scripts/ui-test.sh` | UI-тесты `KankiUITests`; локально и перед релизом, не в per-PR CI |
 | Сервер | `./scripts/server-test.sh` | FastAPI, SQLite WAL, токены, ревизии и MCP |
 | macOS | `./scripts/macos-ui-test.sh` | Сборка native macOS-приложения и `KankiMacUITests`: окно и ⌘1–⌘4 |
 | Покрытие отдельно | `python3 scripts/coverage_gate.py` | Разбор `build/Test.xcresult` через `xcrun xccov` |
@@ -21,15 +21,17 @@ per-PR CI намеренно не запускает iOS UI-тесты, чтоб
 SwiftLint 0.65.1 или новее (`brew install swiftlint`), Node 22 для `npx` (Markdown),
 Python 3 (скрипты без сторонних пакетов).
 
-Для iOS UI-тестов возьмите `simulator_id` из `xcrun simctl list devices available`:
-нужен отдельный iPhone 17e Simulator в портретной ориентации. Набор проверяет
-компактную панель вкладок, в том числе положение кнопок относительно неё.
-iPhone Duo может показывать боковую панель вместо `TabBar` и не подходит для
-этого набора ([#142](https://github.com/EgorYolkin/kanki/issues/142)).
-Без ID или с неподходящим устройством `ui-test.sh` завершается до сборки;
-Xcode запускает весь набор на указанном симуляторе, без параллельных клонов.
-Полный локальный контур передаёт тот же ID unit-тестам. При отдельном запуске
-`test.sh` без ID, как в CI, выбор симулятора остаётся автоматическим.
+Без аргумента `ui-test.sh` автоматически выбирает компактный iPhone (не Duo),
+предпочитая уже загруженный симулятор. Для изолированного прогона передайте
+`./scripts/ui-test.sh "$simulator_id"` с ID из `xcrun simctl list devices available`.
+Подходит и iPhone Duo: тесты навигации используют боковую панель вместо нижней
+панели вкладок. UI-набор запускается на одном симуляторе без параллельных клонов.
+`ci.sh` с явным ID передаёт его и unit-, и iOS UI-тестам; `test.sh` без ID
+сохраняет автоматический выбор, как в per-PR CI.
+
+Для проверки обеих раскладок Duo выберите положения Closed и Open
+в [Device Hub](https://developer.apple.com/documentation/xcode/interacting-with-your-app-in-device-hub)
+и повторите прогон на том же явном destination.
 
 ## Покрытие: порог 95 %
 
@@ -117,7 +119,7 @@ Xcode запускает весь набор на указанном симул�
 1. Заведите issue с причиной (новая проверка, порог, правило линтера).
 2. Измените конфиг или скрипт; держите версии инструментов закреплёнными.
 3. Обновите этот файл и `AGENTS.md` затронутого каталога.
-4. Прогоните `./scripts/ci.sh "$simulator_id"` и приложите фактический вывод в issue/PR.
+4. Прогоните `./scripts/ci.sh` и приложите фактический вывод в issue/PR.
 
 ## Диагностика
 

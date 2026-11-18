@@ -27,11 +27,9 @@
 ```bash
 ./scripts/lint.sh      # SwiftLint --strict и markdownlint-cli2
 ./scripts/test.sh      # KankiTests + порог покрытия 95 % по Kanki/Domain
-./scripts/ui-test.sh "$simulator_id" # iOS UI-тесты на отдельном iPhone 17e
-./scripts/ci.sh "$simulator_id"      # всё перечисленное по порядку
+./scripts/ui-test.sh   # iOS UI-тесты на симуляторе
+./scripts/ci.sh        # всё перечисленное по порядку
 ```
-
-Выбор `simulator_id` описан в [контуре качества](docs/quality-gates.md#команды).
 
 Порог покрытия и состав проверок описаны в `docs/quality-gates.md`. Снижать порог, отключать правило линтера или шаги CI можно только отдельным issue; `continue-on-error` и `|| true` в проверках запрещены. При наличии simulator runtime запустите приложение и проверьте затронутые переходы/экраны. Если runtime или платформа отсутствуют, укажите точную причину и не называйте сборку, запуск или тесты успешными. Проверяйте изменённый пользовательский сценарий, а не только компиляцию.
 

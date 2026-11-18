@@ -3,11 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ "$#" -ne 1 ]; then
-  echo "Использование: $0 <iPhone-17e-simulator-id>" >&2
-  exit 2
+if [ "$#" -eq 0 ]; then
+  destination="$(./scripts/simulator_destination.sh --compact)"
+else
+  destination="$(./scripts/simulator_destination.sh "$@")"
 fi
-destination="$(./scripts/simulator_destination.sh "$1")"
 
 xcodegen generate
 rm -rf build/UITest.xcresult

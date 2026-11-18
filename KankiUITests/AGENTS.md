@@ -17,11 +17,11 @@ XCUITest target for user-visible paths. Gates are described in `docs/quality-gat
 - Tests must pass on a clean simulator; a stale simulator failing with
   `signal kill` is an environment issue — reboot it instead of re-running blindly.
 - Do not weaken or delete a check to make CI pass; report a real defect instead.
-- The suite asserts compact tab-bar behaviour on a dedicated iPhone 17e simulator.
+- Verify navigation through the compact tab bar or the adaptive sidebar exposed by the simulator.
   See [destination setup](../docs/quality-gates.md#команды).
 
 ## Verify
 
 ```bash
-./scripts/ui-test.sh "$simulator_id"
+./scripts/ui-test.sh
 ```

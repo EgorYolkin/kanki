@@ -110,8 +110,7 @@ final class SessionCardUITests: UITestCase {
         XCTAssertTrue(startReview.isEnabled)
         XCTAssertTrue(startReview.isHittable)
         XCTAssertEqual(startReview.label, "Начать повторение")
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertLessThanOrEqual(startReview.frame.maxY, tabBar.frame.minY, "Кнопка перекрывает таб-бар")
+        assertDoesNotOverlapSectionNavigation(startReview, in: app)
         XCTAssertGreaterThan(startReview.frame.minX, app.frame.midX, "Кнопка повторения стоит справа")
         XCTAssertGreaterThan(startReview.frame.width, 48, "Плавающая кнопка остаётся нажимаемой")
         XCTAssertEqual(app.staticTexts["newCount"].label, "Новых: 2")
@@ -222,41 +221,35 @@ final class SessionCardUITests: UITestCase {
         app.launch()
 
         let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
-        XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
+        let emptyLearning = app.staticTexts["Карточек пока нет"]
+        XCTAssertTrue(emptyLearning.waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
         XCTAssertEqual(app.searchFields.count, 0)
         XCTAssertFalse(app.buttons["Все карточки"].exists)
         assertAddButton(in: app)
 
-        // Разделы-заготовки скрыты по умолчанию: видны только рабочие вкладки.
-        XCTAssertFalse(app.tabBars.buttons["Заметки"].exists)
-        XCTAssertFalse(app.tabBars.buttons["Граф"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Обучение"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Настройки"].exists)
+        // Разделы-заготовки скрыты по умолчанию: доступны только рабочие разделы.
+        let notes = app.sectionButton("Заметки")
+        let graph = app.sectionButton("Граф")
+        XCTAssertFalse(notes.exists)
+        XCTAssertFalse(graph.exists)
+        XCTAssertTrue(app.sectionButton("Обучение").isHittable)
+        XCTAssertTrue(app.sectionButton("Настройки").isHittable)
 
-        addCard(in: app, question: "Проверка оболочки", answer: "Ответ")
-        XCTAssertFalse(app.searchFields.firstMatch.exists, "Поиска на главном экране больше нет")
-        XCTAssertFalse(app.buttons["Проверка оболочки"].exists, "Список карточек переехал в «Все карточки»")
-        let allCards = app.buttons["Все карточки"]
-        XCTAssertTrue(allCards.waitForExistence(timeout: 5))
-        allCards.tap()
-        XCTAssertTrue(app.navigationBars["Все карточки"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.searchFields.firstMatch.exists)
-        XCTAssertTrue(app.buttons["Проверка оболочки"].exists)
-        backToLearning(in: app)
-
-        // Скрытые разделы возвращаются тумблерами в настройках.
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         XCTAssertTrue(app.navigationBars["Настройки"].waitForExistence(timeout: 5))
         enableSectionToggles(in: app)
-        XCTAssertTrue(app.tabBars.buttons["Заметки"].waitForExistence(timeout: 10))
+        XCTAssertTrue(notes.waitForExistence(timeout: 10))
+        XCTAssertTrue(graph.waitForExistence(timeout: 10))
+        XCTAssertTrue(notes.isHittable)
+        XCTAssertTrue(graph.isHittable)
         app.swipeUp()
         app.swipeUp()
         XCTAssertFalse(app.buttons["Очередь мержей"].exists, "Служебные экраны убраны из настроек")
         XCTAssertFalse(app.buttons["Конфликты"].exists, "Служебные экраны убраны из настроек")
 
-        app.tabBars.buttons["Заметки"].tap()
+        notes.tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
         XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5))
         for label in ["Поиск", "Экран заметки", "Редактор", "Библиотека"] {
@@ -264,16 +257,31 @@ final class SessionCardUITests: UITestCase {
             XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
             destination.tap()
             XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
-            let back = app.navigationBars.buttons["Заметки"]
+            let back = app.tabBars.firstMatch.exists ? app.navigationBars.buttons["Заметки"] : app.toolbars.buttons["BackButton"]
             XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Заметки»")
             back.tap()
             XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5), "Не вернулись на вкладку «Заметки» после «\(label)»")
         }
 
-        app.tabBars.buttons["Граф"].tap()
+        graph.tap()
         XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Обучение"].tap()
+        app.sectionButton("Обучение").tap()
         XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
+        XCTAssertTrue(emptyLearning.isHittable)
+    }
+
+    func testLearningShowsCardsOnlyInAllCards() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store"]
+        app.launch()
+
+        addCard(in: app, question: "Проверка оболочки", answer: "Ответ")
+        XCTAssertFalse(app.searchFields.firstMatch.exists, "Поиска на главном экране больше нет")
+        XCTAssertFalse(app.buttons["Проверка оболочки"].exists, "Список карточек переехал в «Все карточки»")
+        openAllCards(in: app)
+        XCTAssertTrue(app.searchFields.firstMatch.exists)
+        XCTAssertTrue(app.buttons["Проверка оболочки"].exists)
+        backToLearning(in: app)
     }
 
     func testExportMenuSavesSelectedAndAllCards() throws {

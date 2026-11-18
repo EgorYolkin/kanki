@@ -7,7 +7,7 @@ final class SettingsUITests: XCTestCase {
         app.launchArguments = ["--reset-server"]
         app.launch()
 
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         XCTAssertTrue(app.buttons["appearance-dark"].exists)
 
         app.buttons["appearance-dark"].tap()
@@ -55,7 +55,7 @@ final class SettingsUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        app.tabBars.buttons["Настройки"].tap()
+        app.sectionButton("Настройки").tap()
         XCTAssertTrue(app.buttons["appearance-light"].isSelected)
         XCTAssertGreaterThan(averageBrightness(app), 0.6, "Светлая тема должна сохраняться после перезапуска")
 

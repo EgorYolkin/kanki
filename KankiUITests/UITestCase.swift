@@ -1,5 +1,14 @@
 import XCTest
 
+@MainActor
+extension XCUIApplication {
+    func sectionButton(_ title: String) -> XCUIElement {
+        let tabBar = tabBars.firstMatch
+        // На адаптивной раскладке UIKit отдаёт кнопки боковой панели внутри Toolbar.
+        return tabBar.exists ? tabBar.buttons[title] : toolbars.buttons[title]
+    }
+}
+
 /// Общие шаги UI-тестов: навигация «Обучение» ↔ «Все карточки»,
 /// создание карточек с категорией и управление категориями.
 @MainActor
@@ -17,17 +26,26 @@ class UITestCase: XCTestCase {
         }
     }
 
-    /// Кнопка «плюс» стоит в правом нижнем углу над таб-баром;
-    /// отдельной FAB повторения больше нет — обучение запускает кнопка в списке.
+    /// Кнопка «плюс» справа и не перекрывает системную навигацию.
     func assertAddButton(in app: XCUIApplication) {
         let add = app.buttons["addSessionCard"]
-        let tabBar = app.tabBars.firstMatch
 
         XCTAssertTrue(add.exists, "Кнопка «плюс» должна быть видна")
         XCTAssertEqual(add.frame.width, 44, accuracy: 1)
         XCTAssertEqual(add.frame.height, 44, accuracy: 1)
         XCTAssertGreaterThan(add.frame.midX, app.frame.midX, "Кнопка должна быть в правой половине экрана")
-        XCTAssertLessThanOrEqual(add.frame.maxY, tabBar.frame.minY, "Кнопка не должна перекрывать таб-бар")
+        assertDoesNotOverlapSectionNavigation(add, in: app)
+    }
+
+    func assertDoesNotOverlapSectionNavigation(_ button: XCUIElement, in app: XCUIApplication) {
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.exists {
+            XCTAssertLessThanOrEqual(button.frame.maxY, tabBar.frame.minY, "Кнопка перекрывает таб-бар")
+        } else {
+            let sidebarButton = app.sectionButton("Обучение")
+            XCTAssertTrue(sidebarButton.isHittable, "Нет доступной кнопки боковой панели")
+            XCTAssertLessThanOrEqual(button.frame.maxX, sidebarButton.frame.minX, "Кнопка перекрывает боковую панель")
+        }
     }
 
     func addCard(
@@ -82,7 +100,10 @@ class UITestCase: XCTestCase {
     }
 
     func backToLearning(in app: XCUIApplication) {
-        app.navigationBars["Все карточки"].buttons.element(boundBy: 0).tap()
+        let back = app.tabBars.firstMatch.exists
+            ? app.navigationBars["Все карточки"].buttons.element(boundBy: 0)
+            : app.toolbars.buttons["BackButton"]
+        back.tap()
         XCTAssertTrue(app.navigationBars["Обучение"].waitForExistence(timeout: 5))
     }
 
@@ -124,13 +145,22 @@ class UITestCase: XCTestCase {
 
     private func turnOnSectionToggle(_ identifier: String, in app: XCUIApplication) {
         let control = app.switches[identifier]
-        for _ in 0..<10 where !(control.exists && control.isHittable) {
+        for _ in 0..<10 {
+            if control.isHittable { break }
             dragListUpSlightly(in: app)
         }
         XCTAssertTrue(control.isHittable, "Тумблер \(identifier) вне экрана")
-        // Элемент накрывает и подпись, и кноб: тап в центр попадает в текст.
-        control.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertEqual(control.value as? String, "1", "Тумблер \(identifier) не включился")
+        if app.tabBars.firstMatch.exists {
+            // Элемент накрывает и подпись, и кноб: тап в центр попадает в текст.
+            control.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        } else {
+            // В широкой строке 90% ширины не попадают в дочерний Switch.
+            let knob = control.switches.firstMatch
+            XCTAssertTrue(knob.isHittable, "Кноб \(identifier) вне экрана")
+            knob.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "1"), object: control)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 5), .completed, "Тумблер \(identifier) не включился")
     }
 
     private func dragListUpSlightly(in app: XCUIApplication) {
