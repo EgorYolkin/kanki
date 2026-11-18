@@ -5,7 +5,6 @@ struct AppShell: View {
     @State private var pushGate = PushGate()
     @State private var syncProblem: SyncStatus.Problem?
     @AppStorage("appearance") private var appearance: AppAppearance = .system
-    /// Разделы-заготовки скрыты по умолчанию; тумблеры живут в настройках.
     @AppStorage("showNotesSection") private var showNotesSection = false
     @AppStorage("showGraphSection") private var showGraphSection = false
 
@@ -36,35 +35,27 @@ struct AppShell: View {
         }
     }
 
-    /// Стек раздела. У «Графа» нет регистрации направлений — ссылок туда не ведёт
-    /// ни один экран; добавить регистрацию до появления ссылок.
     @ViewBuilder
     private func sectionStack(for section: AppSection) -> some View {
         switch section {
         case .learning:
             NavigationStack {
                 LearningScreen(pushGate: $pushGate, syncProblem: $syncProblem)
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .notes:
             NavigationStack {
                 NotesScreen()
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .graph:
             NavigationStack {
-                GraphScreen()
+                NotesScreen(mode: .graph)
+                    .navigationDestination(for: ImportedNoteRoute.self) { $0.screen }
             }
         case .settings:
             NavigationStack {
                 SettingsScreen(pushGate: $pushGate, syncProblem: $syncProblem)
-                    .navigationDestination(for: Destination.self) { destination in
-                        PlaceholderScreen(destination: destination)
-                    }
             }
         }
     }

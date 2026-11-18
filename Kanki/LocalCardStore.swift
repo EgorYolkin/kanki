@@ -77,6 +77,7 @@ enum LocalCardStore {
             }
         }
         migrator.registerMigration("importedCardReview", migrate: createImportedReviewTables)
+        migrator.registerMigration("importedNoteNavigation", migrate: createNoteNavigationIndex)
         let alreadyInitialized = try replacement != nil && queue.read {
             try migrator.appliedIdentifiers($0).contains(initialMigration)
         }

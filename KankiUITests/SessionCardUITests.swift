@@ -216,12 +216,11 @@ final class SessionCardUITests: UITestCase {
         XCTAssertFalse(app.staticTexts["Ничего не найдено"].exists)
     }
 
-    func testShellTabsAndPlaceholderNavigation() {
+    func testShellTabsAndEmptyKnowledgeSections() {
         let app = XCUIApplication()
         app.launchArguments = ["--reset-store", "--reset-sections"]
         app.launch()
 
-        let placeholder = app.staticTexts["Это заготовка экрана. Данные и действия появятся на следующих этапах."]
         XCTAssertTrue(app.staticTexts["Карточек пока нет"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "startReviewSession").count, 1)
         XCTAssertFalse(app.buttons["startReviewSession"].isEnabled)
@@ -229,7 +228,7 @@ final class SessionCardUITests: UITestCase {
         XCTAssertFalse(app.buttons["Все карточки"].exists)
         assertAddButton(in: app)
 
-        // Разделы-заготовки скрыты по умолчанию: видны только рабочие вкладки.
+        // Дополнительные вкладки скрыты по умолчанию.
         XCTAssertFalse(app.tabBars.buttons["Заметки"].exists)
         XCTAssertFalse(app.tabBars.buttons["Граф"].exists)
         XCTAssertTrue(app.tabBars.buttons["Обучение"].exists)
@@ -259,16 +258,6 @@ final class SessionCardUITests: UITestCase {
         app.tabBars.buttons["Заметки"].tap()
         let emptyNotes = app.staticTexts["Заметок пока нет"]
         XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5))
-        for label in ["Поиск", "Экран заметки", "Редактор", "Библиотека"] {
-            let destination = app.buttons[label]
-            XCTAssertTrue(destination.waitForExistence(timeout: 5), "Кнопка «\(label)» не появилась")
-            destination.tap()
-            XCTAssertTrue(placeholder.waitForExistence(timeout: 5), "Не открылся экран «\(label)»")
-            let back = app.navigationBars.buttons["Заметки"]
-            XCTAssertTrue(back.waitForExistence(timeout: 5), "Нет кнопки возврата на вкладку «Заметки»")
-            back.tap()
-            XCTAssertTrue(emptyNotes.waitForExistence(timeout: 5), "Не вернулись на вкладку «Заметки» после «\(label)»")
-        }
 
         app.tabBars.buttons["Граф"].tap()
         XCTAssertTrue(app.staticTexts["Граф пуст"].waitForExistence(timeout: 5))

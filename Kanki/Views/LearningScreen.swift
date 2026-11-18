@@ -60,9 +60,7 @@ struct LearningScreen: View {
                         .accessibilityIdentifier("syncStatus")
                 }
             }
-            NavigationLink {
-                ImportedCardsScreen()
-            } label: {
+            NavigationLink(value: ImportedNoteRoute.cards) {
                 Label("Импортированные карточки", systemImage: "tray.and.arrow.down")
             }
             .accessibilityIdentifier("importedCards")
