@@ -5,24 +5,25 @@ import SwiftUI
 /// ради лимита длины файла. Члены internal: расширение в другом файле не видит
 /// `private`-члены структуры.
 extension LearningScreen {
-    var isSyncErrorPresented: Binding<Bool> {
+    var isOperationAlertPresented: Binding<Bool> {
         Binding(
-            get: { syncError != nil },
-            set: { if !$0 { syncError = nil } }
+            get: { operationAlert != nil },
+            set: { if !$0 { operationAlert = nil } }
         )
     }
 
     func serverClient() -> ServerClient? {
-        guard let rawURL = UserDefaults.standard.string(forKey: "serverURL"),
-              let configuration = ServerConfiguration(rawValue: rawURL)
-        else {
-            return nil
-        }
+        guard let (configuration, token) = serverCredentials() else { return nil }
+        return ServerClient(configuration: configuration, token: token)
+    }
+
+    private func serverCredentials() -> (ServerConfiguration, String)? {
+        guard let configuration = ServerConfiguration(rawValue: serverURL) else { return nil }
         do {
             guard let stored = try ServerTokenStore.load() else { return nil }
             let token = stored.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !token.isEmpty else { return nil }
-            return ServerClient(configuration: configuration, token: token)
+            return (configuration, token)
         } catch {
             return nil
         }
@@ -32,6 +33,7 @@ extension LearningScreen {
     /// Дебаунс-задача не выполняет сам PUT: отмена таймера не должна
     /// абортировать уже отправленный запрос.
     func schedulePush() {
+        guard loadError == nil else { return }
         hasUnsyncedChanges = true
         pushGate.markChanged()
         guard let client = serverClient() else { return }
@@ -58,10 +60,13 @@ extension LearningScreen {
 
     /// Честный текст статуса синхронизации; `nil` — сервер не настроен, строки нет.
     var syncStatusText: String? {
-        SyncStatus.text(
-            isConfigured: serverClient() != nil,
-            hasConflict: syncError != nil,
-            lastSyncFailed: lastSyncFailed,
+        let isConfigured = serverCredentials() != nil
+        if isConfigured, loadError != nil {
+            return "Синхронизация приостановлена: не удалось прочитать карточки"
+        }
+        return SyncStatus.text(
+            isConfigured: isConfigured,
+            problem: syncProblem,
             hasUnsyncedChanges: hasUnsyncedChanges,
             knownRevision: serverRevision
         )
@@ -70,7 +75,7 @@ extension LearningScreen {
     /// Один пуш в полёте: правка во время отправки ждёт завершения
     /// и повторяется, а не отменяет PUT (отмена дала бы ложный 409).
     func requestPush(client: ServerClient) async {
-        guard pushGate.begin() else { return }
+        guard loadError == nil, pushGate.begin() else { return }
         repeat {
             await pushNow(client: client)
         } while pushGate.finishAndNeedsAnother()
@@ -78,6 +83,7 @@ extension LearningScreen {
 
     /// Успех фиксирует ревизию; чистота подтверждается только для отправленного поколения.
     func pushNow(client: ServerClient) async {
+        guard loadError == nil else { return }
         pushDebounceTask?.cancel()
         pushDebounceTask = nil
         let localSnapshot = snapshot
@@ -92,30 +98,27 @@ extension LearningScreen {
             if pushGate.isCurrent(generation) {
                 hasUnsyncedChanges = false
             }
-            lastSyncFailed = false
-        } catch let error as ServerError {
-            switch error {
-            case .conflict(let current):
-                syncError = "Конфликт ревизий: на сервере \(current). Разрешите в настройках."
-            case .unauthorized:
-                syncError = "Токен отклонён — проверьте настройки сервера"
-            case .invalidResponse, .http, .decoding:
-                lastSyncFailed = true
-            }
-        } catch is CancellationError {
-            // Отмена задачи синка не означает, что сервер недоступен.
-        } catch let error as URLError where error.code == .cancelled {
-            // То же для отменённого URLSession-запроса.
+            syncProblem = nil
         } catch {
-            lastSyncFailed = true
-            // Сеть недоступна; правки останутся помеченными до следующей попытки.
+            guard let problem = SyncStatus.Problem(error: error) else { return }
+            recordSyncProblem(problem)
+            if problem == .unauthorized {
+                operationAlert = problem.text
+            }
+        }
+    }
+
+    private func recordSyncProblem(_ problem: SyncStatus.Problem) {
+        syncProblem = SyncStatus.retainingConflict(syncProblem, onFailure: problem)
+        if case .conflict(let revision) = problem {
+            operationAlert = "Конфликт ревизий: на сервере \(revision). Разрешите в настройках."
         }
     }
 
     /// Сверяет локальное состояние с сервером и приводит их к согласованности
     /// без тихого мержа: решение принимает `SnapshotSyncPlan`.
     func reconcile() async {
-        guard let client = serverClient() else { return }
+        guard loadError == nil, let client = serverClient() else { return }
         guard !isReconciling, !pushGate.isRunning, !pushGate.isManualSyncRunning else { return }
         isReconciling = true
         defer { isReconciling = false }
@@ -126,21 +129,15 @@ extension LearningScreen {
         let revision = serverRevision
         do {
             let remote = try await client.fetchSnapshot()
-            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
-            lastSyncFailed = false
+            guard loadError == nil, pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
             await apply(remote, client: client)
-        } catch is CancellationError {
-            // Уход экрана не означает, что сервер недоступен.
-        } catch let error as URLError where error.code == .cancelled {
-            // То же для отменённого URLSession-запроса.
         } catch {
-            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision else { return }
-            lastSyncFailed = true
-            // Сервер недоступен: тихо, повтор при следующей активации.
+            guard pushGate.canApplyFetch(startedAt: generation), serverRevision == revision,
+                  let problem = SyncStatus.Problem(error: error) else { return }
+            recordSyncProblem(problem)
         }
     }
 
-    /// Применяет решение `SnapshotSyncPlan` к уже полученному серверному снимку.
     private func apply(_ remote: ServerSnapshot, client: ServerClient) async {
         switch SnapshotSyncPlan.action(
             localDirty: hasUnsyncedChanges,
@@ -154,6 +151,7 @@ extension LearningScreen {
             break
         case .pushLocal:
             await requestPush(client: client)
+            return
         case .adoptRevision:
             serverRevision = remote.revision
             hasUnsyncedChanges = false
@@ -162,15 +160,17 @@ extension LearningScreen {
             do {
                 try LocalCardStore.save(remoteSnapshot)
             } catch {
-                loadError = "Не удалось сохранить загруженный снимок: \(error.localizedDescription)"
+                recordSyncProblem(.localSaveFailed)
                 return
             }
             serverRevision = remote.revision
             hasUnsyncedChanges = false
             reload()
         case .conflict:
-            syncError = "Конфликт ревизий: на сервере \(remote.revision). Разрешите в настройках."
+            recordSyncProblem(.conflict(currentRevision: remote.revision))
+            return
         }
+        syncProblem = nil
     }
 }
 

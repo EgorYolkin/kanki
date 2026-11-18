@@ -34,6 +34,40 @@ final class CategoryUITests: UITestCase {
         XCTAssertEqual(chip.label, "Математика")
     }
 
+    func testCompletedCategoryCanBeReviewedRepeatedly() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reset-store", "--reset-server", "--reset-sections"]
+        app.launch()
+
+        addCard(in: app, question: "Что такое предел?", answer: "Значение", deck: .new("Математика"))
+        addCard(in: app, question: "Чужая карточка", answer: "Не в категории")
+
+        for reviewCount in 1...3 {
+            let category = categoryRow(in: app, named: "Математика")
+            XCTAssertTrue(category.waitForExistence(timeout: 5))
+            category.tap()
+            XCTAssertTrue(app.staticTexts["Что такое предел?"].waitForExistence(timeout: 5))
+            let title = reviewCount == 1 ? "Повторение" : "Досрочное повторение"
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            XCTAssertEqual(app.staticTexts["aheadReviewExplanation"].exists, reviewCount > 1)
+            XCTAssertEqual(app.staticTexts["reviewProgress"].label, "Карточка 1 из 1")
+            XCTAssertFalse(app.staticTexts["Чужая карточка"].exists)
+            app.buttons["Показать ответ"].tap()
+            app.buttons["Легко"].tap()
+            XCTAssertTrue(app.staticTexts["Сеанс завершён"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.navigationBars[title].exists, "Режим изменился после оценки")
+            app.buttons["reviewFinish"].tap()
+            XCTAssertTrue(app.staticTexts["Оценок: \(reviewCount)"].waitForExistence(timeout: 5))
+            XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 1")
+        }
+
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Оценок: 3"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["dueCount"].label, "К повторению: 1")
+    }
+
     /// Переименование категории из контекстного меню строки обновляет строку,
     /// чип-фильтр и чип открытой карточки.
     func testRenamingCategoryUpdatesRowChipAndFilter() {

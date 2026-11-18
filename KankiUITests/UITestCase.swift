@@ -54,9 +54,10 @@ class UITestCase: XCTestCase {
 
         let questionField = app.descendants(matching: .any)["cardQuestion"]
         let answerField = app.descendants(matching: .any)["cardAnswer"]
-        questionField.tap()
+        // У многострочного поля первая строка выше центра области.
+        questionField.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25)).tap()
         questionField.typeText(question)
-        answerField.tap()
+        answerField.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25)).tap()
         answerField.typeText(answer)
         let add = app.buttons["Добавить"]
         XCTAssertTrue(add.isEnabled, "Кнопка «Добавить» заблокирована")

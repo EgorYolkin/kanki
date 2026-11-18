@@ -110,6 +110,89 @@ final class ReviewQueueTests: XCTestCase {
         XCTAssertTrue(ReviewQueue.aheadCards([newCard], schedules: [:], at: now).isEmpty)
     }
 
+    func testCategorySessionKeepsDuePriorityWithinSelectedDeck() {
+        let fresh = categoryCard(1, deck: "Математика")
+        let due = categoryCard(2, deck: "Математика::Алгебра")
+        let future = categoryCard(3, deck: "Математика")
+        let other = categoryCard(4, deck: "Физика")
+        let schedules = [due.id: schedule(due: 500), future.id: schedule(due: 20_000)]
+
+        let queue = ReviewQueue.categoryCards(
+            [future, other, due, fresh], inDeck: "Математика", schedules: schedules, at: now
+        )
+
+        XCTAssertEqual(queue, [fresh, due])
+    }
+
+    func testCompletedCategoryReplaysFutureCardsDespiteOtherDeckBeingDue() {
+        let later = categoryCard(1, deck: "Математика")
+        let sooner = categoryCard(2, deck: "Математика::Алгебра")
+        let other = categoryCard(3, deck: "Математика другая")
+        var archived = categoryCard(4, deck: "Математика")
+        archived.isArchived = true
+        let schedules = [
+            later.id: schedule(due: 30_000),
+            sooner.id: schedule(due: 20_000),
+            archived.id: schedule(due: 15_000)
+        ]
+
+        let queue = ReviewQueue.categoryCards(
+            [other, later, archived, sooner], inDeck: "Математика", schedules: schedules, at: now
+        )
+
+        XCTAssertEqual(queue, [sooner, later])
+    }
+
+    func testCompletedUncategorizedCardsReplayWithoutNamedDecks() {
+        let uncategorized = categoryCard(1, deck: nil)
+        let named = categoryCard(2, deck: "Математика")
+
+        let queue = ReviewQueue.categoryCards(
+            [named, uncategorized],
+            inDeck: nil,
+            schedules: [uncategorized.id: schedule(due: 20_000)],
+            at: now
+        )
+
+        XCTAssertEqual(queue, [uncategorized])
+    }
+
+    func testCategoryWithoutActiveCardsHasNoSession() {
+        var archived = categoryCard(1, deck: "Математика")
+        archived.isArchived = true
+        let other = categoryCard(2, deck: "Физика")
+
+        XCTAssertTrue(ReviewQueue.categoryCards(
+            [archived, other],
+            inDeck: "Математика",
+            schedules: [archived.id: schedule(due: 20_000)],
+            at: now
+        ).isEmpty)
+    }
+
+    func testAheadModeRequiresNonemptyEntirelyFutureQueue() {
+        let future = categoryCard(1, deck: "Математика")
+        let due = categoryCard(2, deck: nil)
+        let fresh = categoryCard(3, deck: "Физика")
+        let schedules = [future.id: schedule(due: 20_000), due.id: schedule(due: 10_000)]
+
+        XCTAssertTrue(ReviewQueue.isAheadReview([future], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([due], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([fresh], schedules: schedules, at: now))
+        XCTAssertFalse(ReviewQueue.isAheadReview([future, due], schedules: schedules, at: now))
+    }
+
+    private func categoryCard(_ index: Int, deck: String?) -> SessionCard {
+        SessionCard(
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, UInt8(index))),
+            question: "Карточка \(index)",
+            answer: "Ответ",
+            createdAt: Date(timeIntervalSince1970: 100),
+            deck: deck
+        )
+    }
+
     private func card(_ question: String, createdAt: TimeInterval) -> SessionCard {
         SessionCard(
             question: question,

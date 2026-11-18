@@ -12,12 +12,15 @@
 - `GET /v1/snapshot` — текущий снимок и `revision`; `data: null`, если данных нет.
 - `PUT /v1/snapshot` — запись снимка с `base_revision`; устаревшая ревизия даёт
   `409 current_revision`, без автоматического мержа.
+- `POST /v1/publish` и `GET /v1/export.apkg` — [публикация Markdown и выгрузка
+  контента Anki v1](../docs/server-protocol.md#публикация-markdown-и-экспорт-anki).
 - `POST/GET/DELETE /v1/tokens` — персональные токены устройства и агентов
   (только admin-токен).
 - MCP (stdio): `health`, `me`, `get_snapshot`, `put_snapshot`.
 
-Снимок — непрозрачный JSON-объект до 10 МиБ. `schema_version: 1` предварительная:
-контракт Anki и Э1 ещё не заморожены.
+Снимок — непрозрачный JSON-объект до 10 МиБ. Его `schema_version: 1`
+предварительная и не связана с [контрактом Anki v1](../docs/anki-exchange-v1.md).
+Импортированные записи Э1 не входят в снимок.
 
 ## Локальный запуск
 
@@ -43,6 +46,22 @@ curl -s -X POST http://127.0.0.1:8000/v1/tokens \
 
 В приложении: «Настройки» → «Сервер» → `http://127.0.0.1:8000`, токен из ответа,
 «Проверить соединение». В симуляторе localhost указывает на Mac.
+
+## Публикация и экспорт на localhost
+
+Для двух синтетических Markdown-файлов формата из протокола:
+
+```bash
+jq -n --rawfile a note-a.md --rawfile b note-b.md '{documents:[$a, $b]}' |
+  curl --fail-with-body http://127.0.0.1:8000/v1/publish \
+    -H "Authorization: Bearer $KANKI_ADMIN_TOKEN" \
+    -H 'Content-Type: application/json' --data-binary @-
+curl --fail http://127.0.0.1:8000/v1/export.apkg \
+  -H "Authorization: Bearer $KANKI_ADMIN_TOKEN" --output kanki.apkg
+```
+
+Пакет можно импортировать в чистую тестовую коллекцию Anki. Он не включает
+историю обучения и не меняет серверный снимок ручных карточек.
 
 ## Публичный HTTPS (канонический)
 
@@ -151,3 +170,7 @@ uv run --project server pytest
 
 Проверяются авторизация, ревизии, `409`, лимит размера, отзыв токена, WAL,
 персистентность и MCP-инструменты через in-memory MCP client.
+Сценарий публикации использует HTTP-интерфейс FastAPI и временную SQLite,
+а пакет загружает реальный Anki backend 26.09.3 в чистую синтетическую
+коллекцию. Проверяются повтор, обновление без дублей, отказ целого пакета,
+неисполняемый пользовательский HTML и сохранность локального повторения в Anki.

@@ -31,6 +31,30 @@ enum ReviewQueue {
             .sorted { isOrderedBefore($0, $1, schedules: schedules) }
     }
 
+    /// Сеанс категории: новые и due-карточки, а после их завершения — досрочные.
+    /// Фильтр категории сохраняет подкатегории и исключает архив.
+    static func categoryCards(
+        _ allCards: [SessionCard],
+        inDeck deck: String?,
+        schedules: [UUID: CardSchedule],
+        at date: Date
+    ) -> [SessionCard] {
+        let selected = CardCategory.cards(allCards, inDeck: deck)
+        let due = cards(selected, schedules: schedules, at: date)
+        return due.isEmpty ? aheadCards(selected, schedules: schedules, at: date) : due
+    }
+
+    /// Режим уже выбранной очереди; пустая очередь не считается досрочной.
+    static func isAheadReview(
+        _ selectedCards: [SessionCard],
+        schedules: [UUID: CardSchedule],
+        at date: Date
+    ) -> Bool {
+        !selectedCards.isEmpty && selectedCards.allSatisfy { card in
+            schedules[card.id].map { $0.due > date } ?? false
+        }
+    }
+
     private static func isOrderedBefore(
         _ lhs: SessionCard,
         _ rhs: SessionCard,
