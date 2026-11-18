@@ -35,17 +35,16 @@ final class ServerClientIntegrationTests: XCTestCase {
         XCTAssertEqual(fetched.revision, written.revision)
         XCTAssertEqual(fetched.data?.cards.first?.question, marker)
         XCTAssertEqual(fetched.data?.snapshotVersion, 3)
-        try await exerciseLesson(
-            client: client, configuration: configuration, token: token,
-            legacy: local, revision: fetched.revision
-        )
+        try await exerciseLesson(client: client, configuration: configuration, token: token, legacy: local, revision: fetched.revision)
     }
 
     private func exerciseLesson(
-        client: ServerClient, configuration: ServerConfiguration, token: String,
-        legacy: LearningSnapshot, revision: Int
+        client: ServerClient,
+        configuration: ServerConfiguration,
+        token: String,
+        legacy: LearningSnapshot,
+        revision: Int
     ) async throws {
-
         let ids = (0..<12).map { _ in UUID() }
         let lessonID = UUID()
         try await addAgentBatch(configuration: configuration, token: token, ids: ids, lessonID: lessonID)
@@ -89,7 +88,9 @@ final class ServerClientIntegrationTests: XCTestCase {
         func action(_ snapshot: LearningSnapshot) throws -> SnapshotSyncAction {
             let normalized = try XCTUnwrap(ServerClient.wireNormalized(snapshot))
             return SnapshotSyncPlan.action(
-                localDirty: true, knownRevision: knownRevision, remoteRevision: remote.revision,
+                localDirty: true,
+                knownRevision: knownRevision,
+                remoteRevision: remote.revision,
                 remoteDataEqualsLocal: normalized == remote.data
             )
         }
@@ -97,11 +98,7 @@ final class ServerClientIntegrationTests: XCTestCase {
         XCTAssertNotEqual(local, remote.data)
         XCTAssertEqual(try action(local), .adoptRevision)
         var changed = local
-        let lesson = try XCTUnwrap(local.lessons.first)
-        changed.lessons = [Lesson(
-            id: lesson.id, title: lesson.title, course: lesson.course, sourceURL: lesson.sourceURL,
-            createdAt: lesson.createdAt, cardIDs: Array(lesson.cardIDs.dropLast())
-        )]
+        changed.lessons[0].cardIDs.removeLast()
         XCTAssertEqual(try action(changed), .conflict)
     }
 
@@ -127,11 +124,12 @@ final class ServerClientIntegrationTests: XCTestCase {
         }
         data["cards"] = cards
         data["snapshot_version"] = 4
-        data["lessons"] = [[
+        let lesson: [String: Any] = [
             "id": lessonID.uuidString, "title": "Введение", "course": "Демо",
             "source_url": "https://example.org/video", "createdAt": createdAt,
             "card_ids": ids.map(\.uuidString)
-        ] as [String: Any]]
+        ]
+        data["lessons"] = [lesson]
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [

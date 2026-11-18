@@ -2,21 +2,18 @@ import Foundation
 import SwiftUI
 
 struct LearningScreen: View {
-    @State var cards: [SessionCard]
-    @State var log: SessionLog
-    @State var schedules: [UUID: CardSchedule]
-    @State var deckRenames: [DeckRename]
+    @State var snapshot: LearningSnapshot
+    @State var localRead: SnapshotReadState
     @State var clock = Date()
-    @State var loadError: String?
     @State var isAddingCard = false
-    @State var isReviewing = false
+    @State var isCreatingLesson = false
+    @State var selectedLessonID: UUID?
+    @State var reviewAttempt: ReviewAttempt?
     @AppStorage("serverURL") var serverURL = ""
     @AppStorage("serverRevision") var serverRevision = 0
     @AppStorage("serverHasUnsyncedChanges") var hasUnsyncedChanges = false
     @Environment(\.scenePhase) private var scenePhase
     @State var selectedCard: SessionCard?
-    @State var isReviewingDeck = false
-    @State var selectedDeck: String?
     @State var renamingDeck: String?
     @State var renameText = ""
     @State var renameError: String?
@@ -42,16 +39,11 @@ struct LearningScreen: View {
         } catch {
             loadMessage = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
         }
-        _cards = State(initialValue: snapshot.cards)
-        _log = State(initialValue: SessionLog(reviews: snapshot.reviews))
-        _schedules = State(initialValue: snapshot.schedules)
-        _deckRenames = State(initialValue: snapshot.deckRenames)
-        _loadError = State(initialValue: loadMessage)
+        _snapshot = State(initialValue: snapshot)
+        _localRead = State(initialValue: SnapshotReadState(failure: loadMessage))
     }
 
     var body: some View {
-        // Читаем выбор в body: sheet не должен захватить предыдущую категорию.
-        let categoryCards = isReviewingDeck ? deckReviewCards : []
         List {
             if let syncStatusText {
                 Section {
@@ -64,19 +56,22 @@ struct LearningScreen: View {
                 Label("Импортированные карточки", systemImage: "tray.and.arrow.down")
             }
             .accessibilityIdentifier("importedCards")
-            if let loadError {
+            if let loadError = localRead.failure {
                 Section("Не удалось открыть карточки") {
                     Text(loadError)
                     Text("Чтобы заменить локальные карточки снимком сервера, подтвердите загрузку в настройках.")
                     Button("Повторить чтение") { reload() }
                 }
-            } else if cards.isEmpty {
-                emptyCardsSection
             } else {
-                categoriesSection
-                uncategorizedSection
-                allCardsSection
-                statsSection
+                lessonHomeSection
+                if snapshot.cards.isEmpty {
+                    emptyCardsSection
+                } else {
+                    categoriesSection
+                    uncategorizedSection
+                    allCardsSection
+                    statsSection
+                }
             }
         }
         .contentMargins(.bottom, 90, for: .scrollContent)
@@ -92,7 +87,7 @@ struct LearningScreen: View {
                 } label: {
                     Label("Экспорт", systemImage: "square.and.arrow.up")
                 }
-                .disabled(loadError != nil || cards.isEmpty)
+                .disabled(!localRead.isReadable || snapshot.cards.isEmpty)
                 .accessibilityIdentifier("cardExportMenu")
             }
         }
@@ -110,6 +105,9 @@ struct LearningScreen: View {
             .padding(.trailing, 20)
             .padding(.bottom, 20)
         }
+        .navigationDestination(item: $selectedLessonID) { lessonDestination($0) }
+        .navigationDestination(for: LessonCatalogRoute.self) { lessonCatalogDestination($0) }
+        .sheet(isPresented: $isCreatingLesson) { lessonCreationSheet }
         .sheet(isPresented: $isAddingCard) {
             SessionCardFormScreen(availableDecks: availableDecks) { question, answer, deck in
                 try addCard(question: question, answer: answer, deck: deck)
@@ -120,7 +118,10 @@ struct LearningScreen: View {
                 card: card,
                 history: log.history(for: card.id),
                 availableDecks: availableDecks,
-                onReview: { rating in try record(card, rating: rating) },
+                onReview: { displayedCard, rating in
+                    guard selectedCard?.id == displayedCard.id else { throw CardReviewError.staleCard }
+                    try record(displayedCard, rating: rating)
+                },
                 onChangeDeck: { newDeck in try changeDeck(of: card, to: newDeck) },
                 onUpdate: { question, answer, deck in
                     try updateCard(card, question: question, answer: answer, deck: deck)
@@ -128,21 +129,9 @@ struct LearningScreen: View {
                 onDelete: { try deleteCard(card) }
             )
         }
-        .sheet(isPresented: $isReviewing) {
-            ReviewSessionScreen(
-                cards: dueCards.isEmpty ? aheadCards : dueCards,
-                isAheadReview: dueCards.isEmpty
-            ) { card, rating in
-                guard isReviewing else { throw CardReviewError.staleCard }
-                try record(card, rating: rating)
-            }
-        }
-        .sheet(isPresented: $isReviewingDeck) {
-            ReviewSessionScreen(
-                cards: categoryCards,
-                isAheadReview: ReviewQueue.isAheadReview(categoryCards, schedules: schedules, at: clock)
-            ) { card, rating in
-                guard isReviewingDeck else { throw CardReviewError.staleCard }
+        .sheet(item: $reviewAttempt) { attempt in
+            ReviewSessionScreen(cards: attempt.cards, isAheadReview: attempt.isAhead, title: attempt.title) { card, rating in
+                guard reviewAttempt?.id == attempt.id else { throw CardReviewError.staleCard }
                 try record(card, rating: rating)
             }
         }
@@ -176,7 +165,7 @@ struct LearningScreen: View {
                 }
             },
             content: {
-                CardExportScreen(cards: cards) { selection in
+                CardExportScreen(cards: snapshot.cards) { selection in
                     exportDocument = CardExportDocument(
                         archive: CardExportArchive(snapshot: snapshot, selectedIDs: selection)
                     )

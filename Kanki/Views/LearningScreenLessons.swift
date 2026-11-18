@@ -40,7 +40,7 @@ extension LearningScreen {
     }
 
     var lessonCreationSheet: some View {
-        LessonFormScreen(snapshot: $snapshot, onSave: createLesson, onOpen: { selectedLessonID = $0 })
+        LessonFormScreen(snapshot: $snapshot, onSave: createLesson) { selectedLessonID = $0 }
     }
 
     private func createLesson(_ draft: LessonDraft) throws {

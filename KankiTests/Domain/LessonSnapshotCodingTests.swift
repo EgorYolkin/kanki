@@ -14,10 +14,12 @@ final class LessonSnapshotCodingTests: XCTestCase {
         [
             "cards": [["id": cardID, "question": "Вопрос", "answer": "Ответ", "deck": "Тема", "createdAt": 100, "isArchived": true]],
             "reviews": [["cardID": cardID, "rating": 3, "reviewedAt": 120]],
-            "schedules": [cardID: [
-                "due": 200, "stability": 3, "difficulty": 2, "elapsedDays": 1, "scheduledDays": 2,
-                "learningSteps": 1, "reps": 1, "lapses": 0, "state": "review", "lastReview": 120
-            ]],
+            "schedules": [
+                cardID: [
+                    "due": 200, "stability": 3, "difficulty": 2, "elapsedDays": 1, "scheduledDays": 2,
+                    "learningSteps": 1, "reps": 1, "lapses": 0, "state": "review", "lastReview": 120
+                ]
+            ],
             "deck_renames": [["from": "Топик", "to": "Тема"]]
         ]
     }

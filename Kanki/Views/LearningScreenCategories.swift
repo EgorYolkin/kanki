@@ -9,11 +9,12 @@ extension LearningScreen {
     /// досрочный сеанс по карточкам с будущим сроком.
     var reviewButton: some View {
         Button {
-            isReviewing = true
+            let due = dueCards
+            reviewAttempt = ReviewAttempt(cards: due.isEmpty ? aheadCards : due, isAhead: due.isEmpty)
         } label: {
             Image(systemName: "play.fill")
                 .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(loadError != nil || !hasReviewableCards ? Color.secondary : Color.primary)
+                .foregroundStyle(!localRead.isReadable || !hasReviewableCards ? Color.secondary : Color.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
@@ -21,7 +22,7 @@ extension LearningScreen {
         .background { FloatingCircleBackground(size: 56) }
         .accessibilityLabel(isAheadReview ? "Досрочное повторение" : "Начать повторение")
         .accessibilityIdentifier("startReviewSession")
-        .disabled(loadError != nil || !hasReviewableCards)
+        .disabled(!localRead.isReadable || !hasReviewableCards)
         .animation(.easeInOut(duration: 0.2), value: hasReviewableCards)
     }
 
@@ -34,10 +35,7 @@ extension LearningScreen {
                     CategorySummaryRow(
                         summary: summary,
                         availableDecks: availableDecks,
-                        onStudy: {
-                            selectedDeck = summary.deck
-                            isReviewingDeck = true
-                        },
+                        onStudy: { startCategoryReview(summary.deck) },
                         onRename: {
                             renameText = summary.title
                             renamingDeck = summary.deck
@@ -59,10 +57,7 @@ extension LearningScreen {
                     CategorySummaryRow(
                         summary: summary,
                         availableDecks: availableDecks,
-                        onStudy: {
-                            selectedDeck = nil
-                            isReviewingDeck = true
-                        },
+                        onStudy: { startCategoryReview(nil) },
                         onRename: {},
                         onDelete: {},
                         onMove: { moveDeck(from: nil, to: $0) }
@@ -76,8 +71,8 @@ extension LearningScreen {
         Section {
             NavigationLink {
                 AllCardsScreen(
-                    cards: cards,
-                    schedules: schedules,
+                    cards: snapshot.cards,
+                    schedules: snapshot.schedules,
                     clock: clock,
                     onOpen: { card in selectedCard = card },
                     onSetArchived: { card, archived in try setArchived(card, archived) },
@@ -116,8 +111,9 @@ extension LearningScreen {
     // MARK: - Значения
 
     var addCardButton: some View {
-        Button {
-            isAddingCard = true
+        Menu {
+            Button("Новая карточка") { isAddingCard = true }
+            Button("Новый урок") { isCreatingLesson = true }
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .semibold))
@@ -125,29 +121,25 @@ extension LearningScreen {
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
+        .menuIndicator(.hidden)
         .buttonStyle(.plain)
         .background { FloatingCircleBackground(size: 44) }
-        .accessibilityLabel("Добавить карточку")
+        .accessibilityLabel("Добавить")
         .accessibilityIdentifier("addSessionCard")
-        .disabled(loadError != nil)
+        .disabled(!localRead.isReadable)
     }
 
-    var snapshot: LearningSnapshot {
-        LearningSnapshot(
-            cards: cards,
-            reviews: log.reviews,
-            schedules: schedules,
-            deckRenames: deckRenames
-        )
+    var log: SessionLog {
+        SessionLog(reviews: snapshot.reviews)
     }
 
     var dueCards: [SessionCard] {
-        ReviewQueue.cards(cards, schedules: schedules, at: clock)
+        ReviewQueue.cards(snapshot.cards, schedules: snapshot.schedules, at: clock)
     }
 
     /// Карточки с будущим сроком — очередь досрочного повторения.
     var aheadCards: [SessionCard] {
-        ReviewQueue.aheadCards(cards, schedules: schedules, at: clock)
+        ReviewQueue.aheadCards(snapshot.cards, schedules: snapshot.schedules, at: clock)
     }
 
     /// Есть ли что повторять: основная очередь либо досрочные карточки.
@@ -161,7 +153,7 @@ extension LearningScreen {
     }
 
     var newCardsCount: Int {
-        CardCategory.cards(cards, archived: false)
+        CardCategory.cards(snapshot.cards, archived: false)
             .filter { log.history(for: $0.id).isEmpty }
             .count
     }
@@ -171,16 +163,20 @@ extension LearningScreen {
     }
 
     var availableDecks: [String] {
-        Array(Set(cards.compactMap(\.deck))).sorted()
+        Array(Set(snapshot.cards.compactMap(\.deck))).sorted()
     }
 
-    var deckReviewCards: [SessionCard] {
-        ReviewQueue.categoryCards(
-            cards,
-            inDeck: selectedDeck,
-            schedules: schedules,
-            at: clock
-        )
+    private func startCategoryReview(_ deck: String?) {
+        let queue = ReviewQueue.categoryCards(snapshot.cards, inDeck: deck, schedules: snapshot.schedules, at: clock)
+        guard !queue.isEmpty else { return }
+        reviewAttempt = ReviewAttempt(cards: queue, isAhead: ReviewQueue.isAheadReview(queue, schedules: snapshot.schedules, at: clock))
+    }
+
+    func startLessonReview(_ lessonID: UUID) {
+        guard let lesson = snapshot.lessons.first(where: { $0.id == lessonID }) else { return }
+        let cards = snapshot.reviewCards(forLessonID: lessonID)
+        guard !cards.isEmpty else { return }
+        reviewAttempt = ReviewAttempt(cards: cards, isAhead: false, title: lesson.title)
     }
 
     // MARK: - Действия
@@ -197,26 +193,33 @@ extension LearningScreen {
             if snapshot != self.snapshot {
                 pushGate.markChanged()
             }
-            isReviewing = false
-            isReviewingDeck = false
-            cards = snapshot.cards
-            log = SessionLog(reviews: snapshot.reviews)
+            self.snapshot = snapshot
+            localRead.didLoad()
+            reviewAttempt = nil
             selectedCard = nil
-            schedules = snapshot.schedules
-            deckRenames = snapshot.deckRenames
-            loadError = nil
+            if let selectedLessonID, !snapshot.lessons.contains(where: { $0.id == selectedLessonID }) {
+                self.selectedLessonID = nil
+            }
         } catch {
-            loadError = "Не удалось прочитать сохранённые карточки: \(error.localizedDescription)"
+            localRead.didFail("Не удалось прочитать сохранённые карточки: \(error.localizedDescription)")
+            pushGate.markChanged()
+            pushDebounceTask?.cancel()
+            pushDebounceTask = nil
+            reviewAttempt = nil
+            selectedLessonID = nil
+            selectedCard = nil
+            isCreatingLesson = false
+            isAddingCard = false
         }
     }
 
     /// Применяет изменённый снимок: сохраняет на диск и обновляет состояние экрана.
     func apply(_ updated: LearningSnapshot) throws {
-        try LocalCardStore.save(updated)
-        cards = updated.cards
-        log = SessionLog(reviews: updated.reviews)
-        schedules = updated.schedules
-        deckRenames = updated.deckRenames
+        guard localRead.isReadable else { throw CocoaError(.fileReadCorruptFile) }
+        var candidate = updated
+        candidate.prepareForLocalMutation()
+        try LocalCardStore.save(candidate)
+        snapshot = candidate
         schedulePush()
     }
 

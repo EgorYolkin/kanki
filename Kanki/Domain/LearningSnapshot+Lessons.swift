@@ -11,9 +11,11 @@ extension LearningSnapshot {
 
     func matchingLessons(_ query: String) -> [Lesson] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return lessons.filter {
-            term.isEmpty || $0.title.localizedCaseInsensitiveContains(term) || $0.course?.localizedCaseInsensitiveContains(term) == true
-        }.sorted(by: Lesson.newestFirst)
+        return lessons
+            .filter {
+                term.isEmpty || $0.title.localizedCaseInsensitiveContains(term) || $0.course?.localizedCaseInsensitiveContains(term) == true
+            }
+            .sorted(by: Lesson.newestFirst)
     }
 
     func lesson(titled title: String, course: String?) -> Lesson? {
