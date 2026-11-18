@@ -81,9 +81,13 @@ final class StatisticsUITests: UITestCase {
         XCTAssertTrue(before.hasPrefix(date))
         XCTAssertTrue(element("statisticsCalendarDate", in: app).exists)
 
-        XCUIDevice.shared.press(.home)
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        settings.activate()
+        XCTAssertTrue(settings.wait(for: .runningForeground, timeout: 10))
+        XCTAssertNotEqual(app.state, .runningForeground)
         try await post(events: [Event(kind: "visit", timestamp: yesterday)], url: url, token: token)
         app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
 
         waitForUpdatedDay(date, previousLabel: before, detail: detail)
         XCTAssertTrue(app.segmentedControls["statisticsCalendarMetric"].buttons["Посещения"].isSelected)
