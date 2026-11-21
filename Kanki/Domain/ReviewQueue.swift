@@ -4,6 +4,16 @@ import Foundation
 /// досрочная — карточки с будущим сроком, когда основная пуста.
 /// Архивные карточки в очереди не попадают.
 enum ReviewQueue {
+    enum Scope {
+        case all
+        case category(String?)
+    }
+
+    struct Selection {
+        let cards: [SessionCard]
+        let isAhead: Bool
+    }
+
     /// Сортировка основной очереди: сначала меньший due (у новых — `createdAt`),
     /// затем более старые карточки, затем стабильный порядок по UUID.
     static func cards(
@@ -11,7 +21,7 @@ enum ReviewQueue {
         schedules: [UUID: CardSchedule],
         at date: Date
     ) -> [SessionCard] {
-        cards
+        cards.lazy
             .filter { !$0.isArchived }
             .filter { schedules[$0.id].map { $0.due <= date } ?? true }
             .sorted { isOrderedBefore($0, $1, schedules: schedules) }
@@ -25,34 +35,34 @@ enum ReviewQueue {
         schedules: [UUID: CardSchedule],
         at date: Date
     ) -> [SessionCard] {
-        cards
+        cards.lazy
             .filter { !$0.isArchived }
             .filter { schedules[$0.id].map { $0.due > date } ?? false }
             .sorted { isOrderedBefore($0, $1, schedules: schedules) }
     }
 
-    /// Сеанс категории: новые и due-карточки, а после их завершения — досрочные.
-    /// Фильтр категории сохраняет подкатегории и исключает архив.
-    static func categoryCards(
+    /// В выбранной области досрочная очередь доступна только при пустой основной.
+    static func select(
         _ allCards: [SessionCard],
-        inDeck deck: String?,
+        in scope: Scope,
         schedules: [UUID: CardSchedule],
         at date: Date
-    ) -> [SessionCard] {
-        let selected = CardCategory.cards(allCards, inDeck: deck)
-        let due = cards(selected, schedules: schedules, at: date)
-        return due.isEmpty ? aheadCards(selected, schedules: schedules, at: date) : due
-    }
-
-    /// Режим уже выбранной очереди; пустая очередь не считается досрочной.
-    static func isAheadReview(
-        _ selectedCards: [SessionCard],
-        schedules: [UUID: CardSchedule],
-        at date: Date
-    ) -> Bool {
-        !selectedCards.isEmpty && selectedCards.allSatisfy { card in
-            schedules[card.id].map { $0.due > date } ?? false
+    ) -> Selection {
+        let candidates: [SessionCard]
+        switch scope {
+        case .all:
+            candidates = allCards
+        case .category(let deck):
+            candidates = CardCategory.cards(allCards, inDeck: deck, includingArchived: true)
         }
+
+        let due = cards(candidates, schedules: schedules, at: date)
+        if !due.isEmpty {
+            return Selection(cards: due, isAhead: false)
+        }
+
+        let ahead = aheadCards(candidates, schedules: schedules, at: date)
+        return Selection(cards: ahead, isAhead: !ahead.isEmpty)
     }
 
     private static func isOrderedBefore(

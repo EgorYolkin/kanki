@@ -8,9 +8,10 @@ extension LearningScreen {
     /// Плавающая кнопка запуска повторения: due-очередь, а при пустой —
     /// досрочный сеанс по карточкам с будущим сроком.
     var reviewButton: some View {
-        Button {
-            let due = dueCards
-            reviewAttempt = ReviewAttempt(cards: due.isEmpty ? aheadCards : due, isAhead: due.isEmpty)
+        let selection = displayedReviewSelection
+        let hasReviewableCards = !selection.cards.isEmpty
+        return Button {
+            startReview(in: .all)
         } label: {
             Image(systemName: "play.fill")
                 .font(.system(size: 21, weight: .semibold))
@@ -20,7 +21,7 @@ extension LearningScreen {
         }
         .buttonStyle(.plain)
         .background { FloatingCircleBackground(size: 56) }
-        .accessibilityLabel(isAheadReview ? "Досрочное повторение" : "Начать повторение")
+        .accessibilityLabel(selection.isAhead ? "Досрочное повторение" : "Начать повторение")
         .accessibilityIdentifier("startReviewSession")
         .disabled(!localRead.isReadable || !hasReviewableCards)
         .animation(.easeInOut(duration: 0.2), value: hasReviewableCards)
@@ -35,7 +36,7 @@ extension LearningScreen {
                     CategorySummaryRow(
                         summary: summary,
                         availableDecks: availableDecks,
-                        onStudy: { startCategoryReview(summary.deck) },
+                        onStudy: { startReview(in: .category(summary.deck)) },
                         onRename: {
                             renameText = summary.title
                             renamingDeck = summary.deck
@@ -57,7 +58,7 @@ extension LearningScreen {
                     CategorySummaryRow(
                         summary: summary,
                         availableDecks: availableDecks,
-                        onStudy: { startCategoryReview(nil) },
+                        onStudy: { startReview(in: .category(nil)) },
                         onRename: {},
                         onDelete: {},
                         onMove: { moveDeck(from: nil, to: $0) }
@@ -85,12 +86,13 @@ extension LearningScreen {
     }
 
     var statsSection: some View {
-        Section {
-            Text("К повторению: \(dueCards.count)")
+        let selection = displayedReviewSelection
+        return Section {
+            Text("К повторению: \(selection.isAhead ? 0 : selection.cards.count)")
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("dueCount")
-            if isAheadReview {
-                Text("Доступно досрочно: \(aheadCards.count)")
+            if selection.isAhead {
+                Text("Доступно досрочно: \(selection.cards.count)")
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("aheadCount")
             }
@@ -133,23 +135,8 @@ extension LearningScreen {
         SessionLog(reviews: snapshot.reviews)
     }
 
-    var dueCards: [SessionCard] {
-        ReviewQueue.cards(snapshot.cards, schedules: snapshot.schedules, at: clock)
-    }
-
-    /// Карточки с будущим сроком — очередь досрочного повторения.
-    var aheadCards: [SessionCard] {
-        ReviewQueue.aheadCards(snapshot.cards, schedules: snapshot.schedules, at: clock)
-    }
-
-    /// Есть ли что повторять: основная очередь либо досрочные карточки.
-    var hasReviewableCards: Bool {
-        !dueCards.isEmpty || !aheadCards.isEmpty
-    }
-
-    /// Режим кнопки повторения: due-очередь пуста, доступны только досрочные.
-    var isAheadReview: Bool {
-        dueCards.isEmpty && !aheadCards.isEmpty
+    private var displayedReviewSelection: ReviewQueue.Selection {
+        ReviewQueue.select(snapshot.cards, in: .all, schedules: snapshot.schedules, at: clock)
     }
 
     var newCardsCount: Int {
@@ -166,10 +153,11 @@ extension LearningScreen {
         Array(Set(snapshot.cards.compactMap(\.deck))).sorted()
     }
 
-    private func startCategoryReview(_ deck: String?) {
-        let queue = ReviewQueue.categoryCards(snapshot.cards, inDeck: deck, schedules: snapshot.schedules, at: clock)
-        guard !queue.isEmpty else { return }
-        reviewAttempt = ReviewAttempt(cards: queue, isAhead: ReviewQueue.isAheadReview(queue, schedules: snapshot.schedules, at: clock))
+    private func startReview(in scope: ReviewQueue.Scope) {
+        let selection = ReviewQueue.select(snapshot.cards, in: scope, schedules: snapshot.schedules, at: Date())
+        guard !selection.cards.isEmpty else { return }
+
+        reviewAttempt = ReviewAttempt(cards: selection.cards, isAhead: selection.isAhead)
     }
 
     func startLessonReview(_ lessonID: UUID) {

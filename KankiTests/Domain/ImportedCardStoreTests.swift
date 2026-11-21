@@ -110,6 +110,55 @@ final class ImportedCardStoreTests: XCTestCase {
         }
     }
 
+    func testOnlyTheCurrentFinishedAnswerCanBeRated() {
+        var page = ImportedCardPage(.question)
+        let questionID = page.id
+        page.update(id: questionID, status: .ready)
+        XCTAssertFalse(page.canRate)
+
+        page = ImportedCardPage(.answer)
+        let firstAttempt = page.id
+        page.update(id: questionID, status: .ready)
+        XCTAssertFalse(page.canRate)
+        page.update(id: firstAttempt, status: .failed)
+        XCTAssertFalse(page.canRate)
+        page.update(id: firstAttempt, status: .ready)
+        XCTAssertFalse(page.canRate)
+
+        page = ImportedCardPage(.answer)
+        page.update(id: firstAttempt, status: .ready)
+        XCTAssertFalse(page.canRate)
+        page.update(id: page.id, status: .ready)
+        XCTAssertTrue(page.canRate)
+        page.update(id: firstAttempt, status: .failed)
+        XCTAssertTrue(page.canRate)
+        page.update(id: page.id, status: .failed)
+        XCTAssertFalse(page.canRate)
+    }
+
+    func testRefreshPreservesRevealOnlyForUnchangedContentAndSchedule() throws {
+        let content = ImportedCardContent(title: "T", question: "Q", answer: "A", relations: [], mod: 1)
+        let original = ImportedCardDetail(content: content, schedule: nil, reviews: [])
+        var shown = try ImportedCardPresentation(original)
+        shown.page = ImportedCardPage(.answer)
+        shown.page.update(id: shown.page.id, status: .ready)
+        XCTAssertTrue(try ImportedCardPresentation(original, replacing: shown).page.canRate)
+
+        let edited = ImportedCardContent(title: "T", question: "Q", answer: "B", relations: [], mod: 2)
+        let date = Date(timeIntervalSince1970: 1_800_001_000)
+        let schedule = try CardScheduling.nextReview(for: nil, rating: .good, at: date)
+        for changed in [
+            ImportedCardDetail(content: edited, schedule: nil, reviews: []),
+            ImportedCardDetail(content: content, schedule: schedule, reviews: [])
+        ] {
+            var refreshed = try ImportedCardPresentation(changed, replacing: shown)
+            refreshed.page.update(id: shown.page.id, status: .ready)
+            XCTAssertEqual(refreshed.page.side, .question)
+            XCTAssertEqual(refreshed.page.status, .loading)
+            XCTAssertFalse(refreshed.page.canRate)
+        }
+    }
+
     func testCardHTMLHidesAnswerAndRetainsOnlyPassiveFormatting() throws {
         let content = ImportedCardContent(
             title: "Карточка",
@@ -126,6 +175,19 @@ final class ImportedCardStoreTests: XCTestCase {
         XCTAssertTrue(html.revealed.contains("Ответ<pre> a   b</pre>"))
         XCTAssertFalse(html.revealed.contains("invalid.example"))
         XCTAssertFalse(html.revealed.contains("file:///"))
+    }
+
+    func testOnlyIntegerStartsOnOrderedListsSurviveCleaning() throws {
+        let content = ImportedCardContent(
+            title: "Список",
+            question: #"<ol start="3" reversed><li start="8">Шаг</li></ol>"#,
+            answer: #"<ol start="-2" style="color:red"><li>А</li></ol><ol start="2.5"><li>Б</li></ol><ul start="9"><li>В</li></ul>"#,
+            relations: [],
+            mod: 1
+        )
+        let html = try ImportedCardHTML(content: content)
+        XCTAssertTrue(html.question.contains(#"<ol start="3"><li>Шаг</li></ol>"#))
+        XCTAssertTrue(html.revealed.contains(#"<ol start="-2"><li>А</li></ol><ol><li>Б</li></ol><ul><li>В</li></ul>"#))
     }
 
     func testCardWithEmptyQuestionUsesEscapedTitleBeforeAndAfterReveal() throws {
