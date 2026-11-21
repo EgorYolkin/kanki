@@ -117,11 +117,12 @@ final class ReviewQueueTests: XCTestCase {
         let other = categoryCard(4, deck: "Физика")
         let schedules = [due.id: schedule(due: 500), future.id: schedule(due: 20_000)]
 
-        let queue = ReviewQueue.categoryCards(
-            [future, other, due, fresh], inDeck: "Математика", schedules: schedules, at: now
+        let selection = ReviewQueue.select(
+            [future, other, due, fresh], in: .category("Математика"), schedules: schedules, at: now
         )
 
-        XCTAssertEqual(queue, [fresh, due])
+        XCTAssertEqual(selection.cards, [fresh, due])
+        XCTAssertFalse(selection.isAhead)
     }
 
     func testCompletedCategoryReplaysFutureCardsDespiteOtherDeckBeingDue() {
@@ -136,25 +137,27 @@ final class ReviewQueueTests: XCTestCase {
             archived.id: schedule(due: 15_000)
         ]
 
-        let queue = ReviewQueue.categoryCards(
-            [other, later, archived, sooner], inDeck: "Математика", schedules: schedules, at: now
+        let selection = ReviewQueue.select(
+            [other, later, archived, sooner], in: .category("Математика"), schedules: schedules, at: now
         )
 
-        XCTAssertEqual(queue, [sooner, later])
+        XCTAssertEqual(selection.cards, [sooner, later])
+        XCTAssertTrue(selection.isAhead)
     }
 
     func testCompletedUncategorizedCardsReplayWithoutNamedDecks() {
         let uncategorized = categoryCard(1, deck: nil)
         let named = categoryCard(2, deck: "Математика")
 
-        let queue = ReviewQueue.categoryCards(
+        let selection = ReviewQueue.select(
             [named, uncategorized],
-            inDeck: nil,
+            in: .category(nil),
             schedules: [uncategorized.id: schedule(due: 20_000)],
             at: now
         )
 
-        XCTAssertEqual(queue, [uncategorized])
+        XCTAssertEqual(selection.cards, [uncategorized])
+        XCTAssertTrue(selection.isAhead)
     }
 
     func testCategoryWithoutActiveCardsHasNoSession() {
@@ -162,25 +165,35 @@ final class ReviewQueueTests: XCTestCase {
         archived.isArchived = true
         let other = categoryCard(2, deck: "Физика")
 
-        XCTAssertTrue(ReviewQueue.categoryCards(
+        let selection = ReviewQueue.select(
             [archived, other],
-            inDeck: "Математика",
+            in: .category("Математика"),
             schedules: [archived.id: schedule(due: 20_000)],
             at: now
-        ).isEmpty)
+        )
+
+        XCTAssertTrue(selection.cards.isEmpty)
+        XCTAssertFalse(selection.isAhead)
     }
 
-    func testAheadModeRequiresNonemptyEntirelyFutureQueue() {
-        let future = categoryCard(1, deck: "Математика")
-        let due = categoryCard(2, deck: nil)
-        let fresh = categoryCard(3, deck: "Физика")
-        let schedules = [future.id: schedule(due: 20_000), due.id: schedule(due: 10_000)]
+    func testTapSelectsOnlyCardThatBecameDueSinceDisplayRefresh() {
+        let deck = "Математика"
+        let first = categoryCard(1, deck: deck)
+        let second = categoryCard(2, deck: deck)
+        let cards = [second, first]
+        let schedules = [first.id: schedule(due: 10_000), second.id: schedule(due: 10_001)]
+        let displayTime = Date(timeIntervalSince1970: 9_999)
+        let tapTime = Date(timeIntervalSince1970: 10_000)
 
-        XCTAssertTrue(ReviewQueue.isAheadReview([future], schedules: schedules, at: now))
-        XCTAssertFalse(ReviewQueue.isAheadReview([], schedules: schedules, at: now))
-        XCTAssertFalse(ReviewQueue.isAheadReview([due], schedules: schedules, at: now))
-        XCTAssertFalse(ReviewQueue.isAheadReview([fresh], schedules: schedules, at: now))
-        XCTAssertFalse(ReviewQueue.isAheadReview([future, due], schedules: schedules, at: now))
+        for scope in [ReviewQueue.Scope.all, .category(deck)] {
+            let displayed = ReviewQueue.select(cards, in: scope, schedules: schedules, at: displayTime)
+            XCTAssertEqual(displayed.cards, [first, second], "\(scope)")
+            XCTAssertTrue(displayed.isAhead, "\(scope)")
+
+            let started = ReviewQueue.select(cards, in: scope, schedules: schedules, at: tapTime)
+            XCTAssertEqual(started.cards, [first], "\(scope)")
+            XCTAssertFalse(started.isAhead, "\(scope)")
+        }
     }
 
     private func categoryCard(_ index: Int, deck: String?) -> SessionCard {
