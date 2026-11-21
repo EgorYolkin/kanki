@@ -72,7 +72,7 @@ struct SettingsScreen: View {
     }
 
     private var appearanceSection: some View {
-        Section("Оформление") {
+        Section {
             ForEach(AppAppearance.allCases) { option in
                 Button {
                     appearance = option
@@ -93,6 +93,8 @@ struct SettingsScreen: View {
             Text("Тема сохраняется между запусками и применяется ко всему приложению.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        } header: {
+            Label("Оформление", systemImage: "circle.lefthalf.filled")
         }
     }
 

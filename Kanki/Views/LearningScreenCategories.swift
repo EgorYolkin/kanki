@@ -31,7 +31,7 @@ extension LearningScreen {
     var categoriesSection: some View {
         let named = categorySummaries.filter { $0.deck != nil }
         if !named.isEmpty {
-            Section("Категории") {
+            Section {
                 ForEach(named, id: \.title) { summary in
                     CategorySummaryRow(
                         summary: summary,
@@ -45,6 +45,8 @@ extension LearningScreen {
                         onMove: { moveDeck(from: summary.deck, to: $0) }
                     )
                 }
+            } header: {
+                Label("Категории", systemImage: "folder")
             }
         }
     }

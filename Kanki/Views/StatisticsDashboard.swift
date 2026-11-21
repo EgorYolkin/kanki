@@ -19,8 +19,10 @@ struct StatisticsDashboard: View {
             Section("Последние 7 дней") {
                 dailyChart
             }
-            Section("Календарь за год") {
+            Section {
                 StatisticsHeatmap(overview: overview, selection: $calendarSelection)
+            } header: {
+                Label("Календарь за год", systemImage: "calendar")
             }
             if statistics.totalReviews > 0 {
                 Section("Оценки за всё время") {
