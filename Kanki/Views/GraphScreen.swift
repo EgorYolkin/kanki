@@ -59,7 +59,11 @@ struct GraphScreen: View {
         let direction = direction(for: neighbor)
         if let title = neighbor.title {
             NavigationLink(value: ImportedNoteRoute.note(neighbor.id)) {
-                neighborLabel(title, direction: direction)
+                Label {
+                    neighborLabel(title, direction: direction)
+                } icon: {
+                    Image(systemName: AppSection.notes.symbol)
+                }
             }
             .accessibilityIdentifier("graphNode-\(neighbor.id)")
         } else {

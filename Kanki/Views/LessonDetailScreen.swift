@@ -30,17 +30,23 @@ struct LessonDetailScreen: View {
                 Section {
                     LabeledContent("Курс", value: lesson.course ?? Lesson.noCourseTitle)
                     if let url = lesson.sourceURL {
-                        Link("Открыть видео", destination: url)
+                        Link(destination: url) {
+                            Label("Открыть видео", systemImage: "play.rectangle")
+                        }
                     }
                     LessonReviewControls(activeCount: snapshot.reviewCards(forLessonID: lessonID).count, onReview: onReview)
                 }
-                Section("Карточки") {
-                    Button("Добавить карточку") { editor = .card }
+                Section {
+                    Button("Добавить карточку", systemImage: "plus.rectangle") { editor = .card }
                         .accessibilityIdentifier("lessonAddCard")
                     ForEach(snapshot.cards(forLessonID: lessonID)) { card in
                         Button { onOpenCard(card) } label: {
                             HStack {
-                                CardQuestionPreview(source: card.question)
+                                Label {
+                                    CardQuestionPreview(source: card.question)
+                                } icon: {
+                                    Image(systemName: "rectangle.on.rectangle")
+                                }
                                 if card.isArchived {
                                     Spacer()
                                     Text("В архиве").font(.caption).foregroundStyle(.secondary)
@@ -50,11 +56,13 @@ struct LessonDetailScreen: View {
                         }
                         .accessibilityIdentifier("lessonCard-\(card.id.uuidString)")
                     }
+                } header: {
+                    Label("Карточки", systemImage: "rectangle.on.rectangle")
                 }
                 Section {
-                    Button("Изменить урок") { editor = .metadata }
+                    Button("Изменить урок", systemImage: "pencil") { editor = .metadata }
                         .accessibilityIdentifier("lessonEdit")
-                    Button("Удалить урок", role: .destructive) { confirmingDelete = true }
+                    Button("Удалить урок", systemImage: "trash", role: .destructive) { confirmingDelete = true }
                         .accessibilityIdentifier("lessonDelete")
                     if let deleteError { Text(deleteError).foregroundStyle(.red) }
                 }
@@ -91,7 +99,7 @@ struct LessonReviewControls: View {
         Text("Активных карточек: \(activeCount)")
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("lessonActiveCount")
-        Button("Повторить урок", action: onReview)
+        Button("Повторить урок", systemImage: "arrow.clockwise", action: onReview)
             .disabled(activeCount == 0)
             .accessibilityIdentifier("lessonReview")
         if activeCount == 0 {

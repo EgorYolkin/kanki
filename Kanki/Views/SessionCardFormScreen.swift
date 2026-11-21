@@ -69,26 +69,28 @@ struct SessionCardFormScreen: View {
         NavigationStack {
             Form {
                 if let lessonTitle {
-                    Section("Урок") {
+                    Section {
                         Text(verbatim: lessonTitle)
                         Text("Добавлено: \(savedCount)")
                             .accessibilityIdentifier("lessonAddedCount")
+                    } header: {
+                        Label("Урок", systemImage: "book")
                     }
                 }
-                CardTextEditorSection(title: "Вопрос", identifier: "cardQuestion", text: $draft.question)
-                CardTextEditorSection(title: "Ответ", identifier: "cardAnswer", text: $draft.answer)
-                Section("Категория") {
+                CardTextEditorSection(title: "Вопрос", systemImage: "questionmark.circle", identifier: "cardQuestion", text: $draft.question)
+                CardTextEditorSection(title: "Ответ", systemImage: "text.bubble", identifier: "cardAnswer", text: $draft.answer)
+                Section {
                     Picker("Категория", selection: $selectedDeck) {
-                        Text(CardCategory.noCategoryTitle).tag(String?.none)
+                        Label(CardCategory.noCategoryTitle, systemImage: "tray").tag(String?.none)
                         ForEach(availableDecks, id: \.self) { deck in
-                            Text(deck).tag(String?.some(deck))
+                            Label(deck, systemImage: "folder").tag(String?.some(deck))
                         }
                         ForEach(batchDecks, id: \.self) { deck in
                             if !availableDecks.contains(deck) {
-                                Text(deck).tag(String?.some(deck))
+                                Label(deck, systemImage: "folder").tag(String?.some(deck))
                             }
                         }
-                        Text("Новая категория…").tag(String?.some(newDeckPlaceholder))
+                        Label("Новая категория…", systemImage: "folder.badge.plus").tag(String?.some(newDeckPlaceholder))
                     }
                     .accessibilityIdentifier("cardDeckPicker")
                     .onChange(of: selectedDeck) { _, deck in
@@ -107,9 +109,11 @@ struct SessionCardFormScreen: View {
                                 .accessibilityIdentifier("newDeckNameError")
                         }
                     }
+                } header: {
+                    Label("Категория", systemImage: "folder")
                 }
                 if lessonTitle != nil {
-                    Button("Сохранить и добавить ещё") { save(addingAnother: true) }
+                    Button("Сохранить и добавить ещё", systemImage: "plus.rectangle") { save(addingAnother: true) }
                         .disabled(!canSubmit)
                         .accessibilityIdentifier("cardSaveAndAdd")
                 }

@@ -9,15 +9,19 @@ struct StatisticsDashboard: View {
 
     var body: some View {
         List {
-            Section("Итоги за всё время") {
+            Section {
                 metric("Всего повторений", count: statistics.totalReviews, identifier: "statisticsTotalReviews")
                 metric("Дней подряд", count: statistics.streakDays, identifier: "statisticsStreak")
                 Text("Серия продолжается, если последнее повторение было сегодня или вчера.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            } header: {
+                Label("Итоги за всё время", systemImage: "sum")
             }
-            Section("Последние 7 дней") {
+            Section {
                 dailyChart
+            } header: {
+                Label("Последние 7 дней", systemImage: "chart.bar")
             }
             Section {
                 StatisticsHeatmap(overview: overview, selection: $calendarSelection)
@@ -25,16 +29,22 @@ struct StatisticsDashboard: View {
                 Label("Календарь за год", systemImage: "calendar")
             }
             if statistics.totalReviews > 0 {
-                Section("Оценки за всё время") {
+                Section {
                     ratingChart
+                } header: {
+                    Label("Оценки за всё время", systemImage: "star")
                 }
-                Section("Повторения по темам") {
+                Section {
                     topicRows
+                } header: {
+                    Label("Повторения по темам", systemImage: "tag")
                 }
             } else {
-                Section("Повторения") {
+                Section {
                     Text("Повторений пока нет. После первого ответа здесь появятся оценки и темы.")
                         .foregroundStyle(.secondary)
+                } header: {
+                    Label("Повторения", systemImage: "repeat")
                 }
             }
         }
@@ -88,7 +98,11 @@ struct StatisticsDashboard: View {
         if overview.largestTopicCount > 0 {
             ForEach(statistics.topics, id: \.name) { topic in
                 VStack(alignment: .leading, spacing: 5) {
-                    LabeledContent(topic.name, value: topic.count, format: .number)
+                    LabeledContent {
+                        Text(topic.count, format: .number)
+                    } label: {
+                        Label(topic.name, systemImage: topic.name == CardCategory.noCategoryTitle ? "tray" : "folder")
+                    }
                     ProgressView(value: Double(topic.count), total: Double(overview.largestTopicCount))
                 }
                 .accessibilityElement(children: .ignore)

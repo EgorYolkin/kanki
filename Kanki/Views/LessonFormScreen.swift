@@ -62,7 +62,7 @@ struct LessonFormScreen: View {
                 }
                 if let duplicate {
                     Text("В этом курсе уже есть урок с таким названием.")
-                    Button("Открыть существующий урок") {
+                    Button("Открыть существующий урок", systemImage: "book") {
                         dismiss()
                         onOpen(duplicate.id)
                     }
@@ -95,12 +95,14 @@ struct LessonFormScreen: View {
 
     @ViewBuilder
     private var coursePicker: some View {
-        Picker("Курс", selection: $course) {
-            Text(Lesson.noCourseTitle).tag(CourseSelection.none)
+        Picker(selection: $course) {
+            Label(Lesson.noCourseTitle, systemImage: "tray").tag(CourseSelection.none)
             ForEach(snapshot.courseNames, id: \.self) { name in
-                Text(name).tag(CourseSelection.existing(name))
+                Label(name, systemImage: "folder").tag(CourseSelection.existing(name))
             }
-            Text("Новый курс…").tag(CourseSelection.new)
+            Label("Новый курс…", systemImage: "folder.badge.plus").tag(CourseSelection.new)
+        } label: {
+            Label("Курс", systemImage: "folder")
         }
         .pickerStyle(.menu)
         .accessibilityIdentifier("lessonCourse")

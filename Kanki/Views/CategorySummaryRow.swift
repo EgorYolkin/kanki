@@ -15,7 +15,7 @@ struct CategorySummaryRow: View {
     var body: some View {
         Button(action: onStudy) {
             HStack {
-                Text(summary.title)
+                Label(summary.title, systemImage: summary.deck == nil ? "tray" : "folder")
                     .foregroundStyle(.primary)
                 Spacer()
                 Text("\(summary.dueCount)/\(summary.totalCount)")
@@ -25,8 +25,8 @@ struct CategorySummaryRow: View {
         }
         .contextMenu {
             if summary.deck != nil {
-                Button("Переименовать…", action: onRename)
-                Button("Удалить", role: .destructive, action: onDelete)
+                Button("Переименовать…", systemImage: "pencil", action: onRename)
+                Button("Удалить", systemImage: "trash", role: .destructive, action: onDelete)
             }
             moveMenu
         }
@@ -35,14 +35,14 @@ struct CategorySummaryRow: View {
     /// Меню перемещения всех карточек категории в другую существующую категорию.
     /// Прямая переприсвойка `card.deck` без записи rename-операции.
     private var moveMenu: some View {
-        Menu("Переместить все карточки…") {
+        Menu("Переместить все карточки…", systemImage: "folder.badge.plus") {
             ForEach(availableDecks.filter { $0 != summary.deck }, id: \.self) { deck in
-                Button(deck) {
+                Button(deck, systemImage: "folder") {
                     onMove(deck)
                 }
             }
             if summary.deck != nil {
-                Button(CardCategory.noCategoryTitle) {
+                Button(CardCategory.noCategoryTitle, systemImage: "tray") {
                     onMove(nil)
                 }
             }

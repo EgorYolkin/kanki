@@ -12,6 +12,16 @@ private extension View {
     }
 }
 
+private extension AppAppearance {
+    var symbol: String {
+        switch self {
+        case .system: "circle.lefthalf.filled"
+        case .light: "sun.max"
+        case .dark: "moon"
+        }
+    }
+}
+
 private enum ServerInputError: LocalizedError {
     case invalidURL
     case missingToken
@@ -78,7 +88,7 @@ struct SettingsScreen: View {
                     appearance = option
                 } label: {
                     HStack {
-                        Text(option.title)
+                        Label(option.title, systemImage: option.symbol)
                             .foregroundStyle(.primary)
                         Spacer()
                         if appearance == option {
@@ -99,19 +109,25 @@ struct SettingsScreen: View {
     }
 
     private var sectionsSection: some View {
-        Section("Разделы") {
-            Toggle("Заметки", isOn: $showNotesSection)
-                .accessibilityIdentifier("showNotesSection")
-            Toggle("Граф", isOn: $showGraphSection)
-                .accessibilityIdentifier("showGraphSection")
+        Section {
+            Toggle(isOn: $showNotesSection) {
+                Label("Заметки", systemImage: AppSection.notes.symbol)
+            }
+            .accessibilityIdentifier("showNotesSection")
+            Toggle(isOn: $showGraphSection) {
+                Label("Граф", systemImage: AppSection.graph.symbol)
+            }
+            .accessibilityIdentifier("showGraphSection")
             Text("Выберите, какие разделы показывать в панели вкладок.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        } header: {
+            Label("Разделы", systemImage: "square.grid.2x2")
         }
     }
 
     private var serverSection: some View {
-        Section("Сервер") {
+        Section {
             TextField("http://100.x.y.z:8000", text: $draft.address)
                 .disabled(isServerBusy)
                 .autocorrectionDisabled()
@@ -122,7 +138,7 @@ struct SettingsScreen: View {
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .accessibilityIdentifier("serverToken")
-            Button("Проверить соединение") {
+            Button("Проверить соединение", systemImage: "network") {
                 Task { await checkServer() }
             }
             .disabled(isServerBusy)
@@ -131,18 +147,18 @@ struct SettingsScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("serverStatus")
-            Button("Отправить на сервер") {
+            Button("Отправить на сервер", systemImage: "arrow.up.circle") {
                 Task { await pushSnapshot() }
             }
             .disabled(isServerBusy)
             .accessibilityIdentifier("serverPush")
-            Button("Загрузить с сервера") {
+            Button("Загрузить с сервера", systemImage: "arrow.down.circle") {
                 isConfirmingPull = true
             }
             .disabled(isServerBusy)
             .accessibilityIdentifier("serverPull")
             if !serverURL.isEmpty {
-                Button("Отключить сервер", role: .destructive, action: disconnect)
+                Button("Отключить сервер", systemImage: "xmark.circle", role: .destructive, action: disconnect)
                     .disabled(isServerBusy)
             }
             Text("Адрес и токен сохраняются при проверке соединения или обмене снимком.")
@@ -151,24 +167,30 @@ struct SettingsScreen: View {
             Text("Снимок отправляется вручную. Автоматического мержа нет: при конфликте ревизий загрузите данные с сервера.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        } header: {
+            Label("Сервер", systemImage: "server.rack")
         }
     }
 
     private var dataSection: some View {
-        Section("Данные") {
+        Section {
             Text(
                 "Карточки и история оценок хранятся на этом устройстве; JSON-экспорт — в меню «Экспорт» раздела «Обучение». "
                     + "Копию можно вручную отправить на сервер."
             )
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        } header: {
+            Label("Данные", systemImage: "internaldrive")
         }
     }
 
     private var aboutSection: some View {
-        Section("О приложении") {
+        Section {
             LabeledContent("Версия", value: appVersion)
             LabeledContent("Сборка", value: buildNumber)
+        } header: {
+            Label("О приложении", systemImage: "info.circle")
         }
     }
 

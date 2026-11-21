@@ -33,7 +33,7 @@ struct CardExportScreen: View {
         NavigationStack {
             selectionList
             .safeAreaInset(edge: .bottom) {
-                Button("Экспортировать выбранные") {
+                Button("Экспортировать выбранные", systemImage: "square.and.arrow.up") {
                     onExport(selection)
                     dismiss()
                 }
@@ -55,7 +55,11 @@ struct CardExportScreen: View {
     private var selectionList: some View {
         let list = List(selection: $selection) {
             ForEach(cards) { card in
-                CardQuestionPreview(source: card.question)
+                Label {
+                    CardQuestionPreview(source: card.question)
+                } icon: {
+                    Image(systemName: "rectangle.on.rectangle")
+                }
             }
         }
         #if os(macOS)

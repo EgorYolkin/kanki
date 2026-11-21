@@ -25,7 +25,7 @@ struct LessonCatalogScreen: View {
                     Text("Уроки не найдены").foregroundStyle(.secondary)
                 }
                 ForEach(matches) { lesson in
-                    Button("\(lesson.title) · \(lesson.course ?? Lesson.noCourseTitle)") {
+                    Button("\(lesson.title) · \(lesson.course ?? Lesson.noCourseTitle)", systemImage: "book") {
                         onOpen(lesson.id)
                     }
                 }
@@ -38,7 +38,7 @@ struct LessonCatalogScreen: View {
 
     private func courseLink(_ name: String?) -> some View {
         NavigationLink(value: LessonCatalogRoute.course(name)) {
-            Label(name ?? Lesson.noCourseTitle, systemImage: "folder")
+            Label(name ?? Lesson.noCourseTitle, systemImage: name == nil ? "tray" : "folder")
         }
     }
 }
@@ -50,7 +50,7 @@ struct CourseLessonsScreen: View {
 
     var body: some View {
         List(snapshot.lessons(inCourse: course)) { lesson in
-            Button(lesson.title) { onOpen(lesson.id) }
+            Button(lesson.title, systemImage: "book") { onOpen(lesson.id) }
         }
         .navigationTitle(course ?? Lesson.noCourseTitle)
         .toolbarTitleDisplayMode(.inline)
