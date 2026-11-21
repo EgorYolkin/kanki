@@ -81,7 +81,9 @@ struct SessionCardScreen: View {
                         isAnswerVisible = true
                     }
                 }
-                if isAnswerVisible {
+                if displayedCard.isArchived {
+                    Text("В архиве").foregroundStyle(.secondary)
+                } else if isAnswerVisible {
                     Section("Насколько легко вспомнили?") {
                         HStack(spacing: 8) {
                             ForEach(RecallRating.allCases, id: \.self) { rating in

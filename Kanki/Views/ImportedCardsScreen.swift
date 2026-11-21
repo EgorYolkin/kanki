@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportedCardsScreen: View {
+    @Environment(\.importRevision) private var importRevision
     @State private var cards: [ImportedCardSummary] = []
     @State private var showsPicker = false
     @State private var isImporting = false
@@ -40,7 +41,7 @@ struct ImportedCardsScreen: View {
         }
         .navigationTitle("Импортированные карточки")
         .toolbarTitleDisplayMode(.inline)
-        .task { reload() }
+        .task(id: importRevision) { reload() }
         .fileImporter(isPresented: $showsPicker, allowedContentTypes: [.ankiPackage]) { result in
             Task { await importPackage(result) }
         }
@@ -69,7 +70,6 @@ struct ImportedCardsScreen: View {
         do {
             let url = try result.get()
             try await Task.detached(priority: .userInitiated) { try LocalCardStore.importAnkiPackage(at: url) }.value
-            reload()
         } catch let error as AnkiPackageImport.PackageError {
             importError = error.localizedDescription
         } catch let error as CocoaError where error.code == .userCancelled {
@@ -84,38 +84,48 @@ private extension UTType {
     static let ankiPackage = UTType(filenameExtension: "apkg") ?? UTType(importedAs: "app.kanki.anki-package", conformingTo: .data)
 }
 
+struct ImportedCardPresentation {
+    let detail: ImportedCardDetail
+    let html: ImportedCardHTML
+    var page: ImportedCardPage
+
+    init(_ detail: ImportedCardDetail, replacing previous: Self? = nil) throws {
+        self.detail = detail
+        if let previous, previous.detail.content == detail.content {
+            html = previous.html
+            page = previous.detail.schedule == detail.schedule ? previous.page : ImportedCardPage(.question)
+        } else {
+            html = try ImportedCardHTML(content: detail.content)
+            page = ImportedCardPage(.question)
+        }
+    }
+}
+
 private struct ImportedCardScreen: View {
+    @Environment(\.importRevision) private var importRevision
     let key: AnkiE1Import.CardKey
-    @State private var detail: ImportedCardDetail?
-    @State private var html: ImportedCardHTML?
-    @State private var isAnswerRevealed = false
+    @State private var card: ImportedCardPresentation?
     @State private var error: String?
 
     var body: some View {
         VStack(spacing: 12) {
-            if let detail, let html {
-                ImportedCardWebView(html: isAnswerRevealed ? html.revealed : html.question)
-                    .accessibilityIdentifier("importedCardContent")
-                    .frame(minHeight: 160)
-                if let schedule = detail.schedule {
+            if let card {
+                ImportedCardWebView(html: card.page.side == .answer ? card.html.revealed : card.html.question, pageID: card.page.id) { id, status in
+                    self.card?.page.update(id: id, status: status)
+                }
+                .opacity(card.page.status == .ready ? 1 : 0)
+                .accessibilityHidden(card.page.status != .ready)
+                .accessibilityIdentifier("importedCardContent")
+                .frame(minHeight: 160)
+                if let schedule = card.detail.schedule {
                     LabeledContent("Следующий показ") {
                         Text(schedule.due, format: .dateTime.day().month().year().hour().minute().second())
                             .accessibilityIdentifier("importedCardDue")
                     }
-                    NavigationLink("История повторений") { history(detail.reviews) }
+                    NavigationLink("История повторений") { history(card.detail.reviews) }
                         .accessibilityIdentifier("importedCardHistory")
                 }
-                if !isAnswerRevealed {
-                    Button("Показать ответ") { isAnswerRevealed = true }
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("revealImportedAnswer")
-                } else {
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        if detail.canReview(at: context.date) {
-                            ratingButtons(detail)
-                        }
-                    }
-                }
+                reviewControls(card)
             } else if error == nil {
                 ProgressView()
             } else {
@@ -126,9 +136,31 @@ private struct ImportedCardScreen: View {
             }
         }
         .padding()
-        .navigationTitle(html?.title ?? "Карточка")
+        .navigationTitle(card?.html.title ?? "Карточка")
         .toolbarTitleDisplayMode(.inline)
-        .task { reload() }
+        .task(id: importRevision) { reload() }
+        .onDisappear { card?.page = ImportedCardPage(.question) }
+    }
+
+    @ViewBuilder
+    private func reviewControls(_ card: ImportedCardPresentation) -> some View {
+        switch card.page.status {
+        case .loading:
+            ProgressView("Загрузка карточки…")
+        case .failed:
+            Text("Не удалось показать карточку.").foregroundStyle(.red)
+            Button("Повторить показ") { request(card.page.side, replacing: card.page.id) }
+        case .ready where card.page.side == .question:
+            Button("Показать ответ") { request(.answer, replacing: card.page.id) }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("revealImportedAnswer")
+        case .ready:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if card.detail.canReview(at: context.date) {
+                    ratingButtons(card)
+                }
+            }
+        }
     }
 
     private func history(_ reviews: [ImportedCardReview]) -> some View {
@@ -141,42 +173,50 @@ private struct ImportedCardScreen: View {
         .toolbarTitleDisplayMode(.inline)
     }
 
-    private func ratingButtons(_ detail: ImportedCardDetail) -> some View {
+    private func ratingButtons(_ card: ImportedCardPresentation) -> some View {
         ViewThatFits(in: .horizontal) {
-            HStack { ratings(detail) }
-            VStack { ratings(detail) }
+            HStack { ratings(card) }
+            VStack { ratings(card) }
         }
         .buttonStyle(.bordered)
     }
 
-    private func ratings(_ detail: ImportedCardDetail) -> some View {
+    private func ratings(_ card: ImportedCardPresentation) -> some View {
         ForEach(RecallRating.allCases, id: \.self) { rating in
-            Button(rating.title) { record(rating, shown: detail) }
+            Button(rating.title) { record(rating, shown: card) }
                 .tint(rating.tint)
                 .accessibilityIdentifier("importedRating-\(rating.rawValue)")
         }
     }
 
+    private func request(_ side: ImportedCardPage.Side, replacing id: UUID) {
+        guard card?.page.id == id else { return }
+        card?.page = ImportedCardPage(side)
+    }
+
     private func reload() {
         do {
-            let loaded = try LocalCardStore.importedCard(key)
-            html = try ImportedCardHTML(content: loaded.content)
-            detail = loaded
-            isAnswerRevealed = false
+            card = try ImportedCardPresentation(LocalCardStore.importedCard(key), replacing: card)
             error = nil
         } catch {
+            card = nil
             self.error = "Не удалось открыть карточку: \(error.localizedDescription)"
         }
     }
 
-    private func record(_ rating: RecallRating, shown: ImportedCardDetail) {
+    private func record(_ rating: RecallRating, shown: ImportedCardPresentation) {
+        guard card?.page.id == shown.page.id, card?.page.canRate == true else { return }
+
         do {
-            detail = try LocalCardStore.recordImportedReview(key, shown: shown, rating: rating, at: .now)
+            let updated = try LocalCardStore.recordImportedReview(key, shown: shown.detail, rating: rating, at: .now)
+            card = try ImportedCardPresentation(updated, replacing: shown)
             ServerClient.scheduleActivityUpload()
-            isAnswerRevealed = false
             error = nil
         } catch {
-            self.error = "Не удалось сохранить оценку: \(error.localizedDescription)"
+            reload()
+            if card != nil {
+                self.error = "Не удалось сохранить оценку: \(error.localizedDescription)"
+            }
         }
     }
 }
