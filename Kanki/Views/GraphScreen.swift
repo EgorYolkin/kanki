@@ -28,7 +28,7 @@ struct GraphScreen: View {
 
     private func graph(_ detail: ImportedNote) -> some View {
         let neighbors = detail.neighbors
-        return Section("Ближайшие связи") {
+        return Section {
             NavigationLink(value: ImportedNoteRoute.note(uid)) {
                 Label(detail.summary.title, systemImage: "circle.fill").font(.headline)
             }
@@ -49,6 +49,8 @@ struct GraphScreen: View {
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
             }
+        } header: {
+            Label("Ближайшие связи", systemImage: "point.3.connected.trianglepath.dotted")
         }
     }
 
@@ -57,7 +59,11 @@ struct GraphScreen: View {
         let direction = direction(for: neighbor)
         if let title = neighbor.title {
             NavigationLink(value: ImportedNoteRoute.note(neighbor.id)) {
-                neighborLabel(title, direction: direction)
+                Label {
+                    neighborLabel(title, direction: direction)
+                } icon: {
+                    Image(systemName: AppSection.notes.symbol)
+                }
             }
             .accessibilityIdentifier("graphNode-\(neighbor.id)")
         } else {

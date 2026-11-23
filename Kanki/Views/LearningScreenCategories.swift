@@ -31,7 +31,7 @@ extension LearningScreen {
     var categoriesSection: some View {
         let named = categorySummaries.filter { $0.deck != nil }
         if !named.isEmpty {
-            Section("Категории") {
+            Section {
                 ForEach(named, id: \.title) { summary in
                     CategorySummaryRow(
                         summary: summary,
@@ -45,6 +45,8 @@ extension LearningScreen {
                         onMove: { moveDeck(from: summary.deck, to: $0) }
                     )
                 }
+            } header: {
+                Label("Категории", systemImage: "folder")
             }
         }
     }
@@ -53,7 +55,7 @@ extension LearningScreen {
     var uncategorizedSection: some View {
         let uncategorized = categorySummaries.filter { $0.deck == nil }
         if !uncategorized.isEmpty {
-            Section(CardCategory.noCategoryTitle) {
+            Section {
                 ForEach(uncategorized, id: \.title) { summary in
                     CategorySummaryRow(
                         summary: summary,
@@ -64,6 +66,8 @@ extension LearningScreen {
                         onMove: { moveDeck(from: nil, to: $0) }
                     )
                 }
+            } header: {
+                Label(CardCategory.noCategoryTitle, systemImage: "tray")
             }
         }
     }
@@ -114,8 +118,8 @@ extension LearningScreen {
 
     var addCardButton: some View {
         Menu {
-            Button("Новая карточка") { isAddingCard = true }
-            Button("Новый урок") { isCreatingLesson = true }
+            Button("Новая карточка", systemImage: "plus.rectangle") { isAddingCard = true }
+            Button("Новый урок", systemImage: "book") { isCreatingLesson = true }
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 18, weight: .semibold))

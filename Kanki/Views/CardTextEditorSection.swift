@@ -2,11 +2,12 @@ import SwiftUI
 
 struct CardTextEditorSection: View {
     let title: String
+    let systemImage: String
     let identifier: String
     @Binding var text: String
 
     var body: some View {
-        Section(title) {
+        Section {
             TextEditor(text: $text)
                 .frame(minHeight: 72)
                 .accessibilityLabel(title)
@@ -15,10 +16,12 @@ struct CardTextEditorSection: View {
                 NavigationLink {
                     NewlineCorrectionScreen(title: title, source: text) { text = $0 }
                 } label: {
-                    Text("Исправить переносы…")
+                    Label("Исправить переносы…", systemImage: "return")
                 }
                 .accessibilityIdentifier(identifier + "Repair")
             }
+        } header: {
+            Label(title, systemImage: systemImage)
         }
     }
 }
@@ -37,9 +40,13 @@ private struct NewlineCorrectionScreen: View {
 
     var body: some View {
         List {
-            Section("Исходный текст") { Text(verbatim: correction.source) }
-            Section("Какие переносы исправить?") {
-                Button("Выбрать все") { correction.selected = Set(correction.matches.map(\.id)) }
+            Section {
+                Text(verbatim: correction.source)
+            } header: {
+                Label("Исходный текст", systemImage: "doc.text")
+            }
+            Section {
+                Button("Выбрать все", systemImage: "checkmark.circle") { correction.selected = Set(correction.matches.map(\.id)) }
                     .accessibilityIdentifier("newlineSelectAll")
                 ForEach(correction.matches) { match in
                     Toggle(isOn: selection(for: match.id)) {
@@ -47,10 +54,14 @@ private struct NewlineCorrectionScreen: View {
                     }
                     .accessibilityIdentifier("newlineMatch\(match.id)")
                 }
+            } header: {
+                Label("Какие переносы исправить?", systemImage: "return")
             }
-            Section("Предпросмотр") {
+            Section {
                 Text(verbatim: correction.preview)
                     .accessibilityIdentifier("newlinePreview")
+            } header: {
+                Label("Предпросмотр", systemImage: "eye")
             }
         }
         .navigationTitle("Переносы: \(title)")

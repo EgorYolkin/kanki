@@ -194,7 +194,7 @@ struct AllCardsScreen: View {
         return Button {
             selectedDeck = value == nil ? nil : .some(value)
         } label: {
-            Text(title)
+            Label(title, systemImage: value == nil ? "rectangle.stack" : "folder")
                 .font(.footnote.weight(isSelected ? .semibold : .regular))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)

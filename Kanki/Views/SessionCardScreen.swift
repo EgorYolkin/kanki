@@ -43,48 +43,39 @@ struct SessionCardScreen: View {
             List {
                 Section {
                     Menu {
-                        ForEach(availableDecks, id: \.self) { deck in
-                            Button {
-                                changeDeck(to: deck)
-                            } label: {
-                                if deck == displayedCard.deck {
-                                    Label(deck, systemImage: "checkmark")
-                                } else {
-                                    Text(deck)
-                                }
+                        Picker("", selection: Binding(get: { displayedCard.deck }, set: { changeDeck(to: $0) })) {
+                            ForEach(availableDecks, id: \.self) { deck in
+                                Label(deck, systemImage: "folder").tag(String?.some(deck))
                             }
+                            Label(CardCategory.noCategoryTitle, systemImage: "tray").tag(String?.none)
                         }
-                        Button {
-                            changeDeck(to: nil)
-                        } label: {
-                            if displayedCard.deck == nil {
-                                Label(CardCategory.noCategoryTitle, systemImage: "checkmark")
-                            } else {
-                                Text(CardCategory.noCategoryTitle)
-                            }
-                        }
+                        .pickerStyle(.inline)
                     } label: {
-                        Label(displayedCard.deck ?? CardCategory.noCategoryTitle, systemImage: "folder")
+                        Label(displayedCard.deck ?? CardCategory.noCategoryTitle, systemImage: displayedCard.deck == nil ? "tray" : "folder")
                             .font(.caption)
                     }
                     .accessibilityIdentifier("cardDeckChip")
                 }
-                Section("Вопрос") {
+                Section {
                     CardMarkdownView(source: displayedCard.question)
+                } header: {
+                    Label("Вопрос", systemImage: "questionmark.circle")
                 }
                 if isAnswerVisible {
-                    Section("Ответ") {
+                    Section {
                         CardMarkdownView(source: displayedCard.answer)
+                    } header: {
+                        Label("Ответ", systemImage: "text.bubble")
                     }
                 } else {
-                    Button("Показать ответ") {
+                    Button("Показать ответ", systemImage: "eye") {
                         isAnswerVisible = true
                     }
                 }
                 if displayedCard.isArchived {
                     Text("В архиве").foregroundStyle(.secondary)
                 } else if isAnswerVisible {
-                    Section("Насколько легко вспомнили?") {
+                    Section {
                         HStack(spacing: 8) {
                             ForEach(RecallRating.allCases, id: \.self) { rating in
                                 Button {
@@ -110,9 +101,11 @@ struct SessionCardScreen: View {
                             }
                         }
                         .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                    } header: {
+                        Label("Насколько легко вспомнили?", systemImage: "star")
                     }
                 }
-                Section("История повторений") {
+                Section {
                     if history.isEmpty {
                         Text("Оценок пока нет")
                             .foregroundStyle(.secondary)
@@ -123,9 +116,11 @@ struct SessionCardScreen: View {
                                            value: review.reviewedAt.formatted(.dateTime.locale(Locale.current)))
                         }
                     }
+                } header: {
+                    Label("История повторений", systemImage: "clock.arrow.circlepath")
                 }
                 Section {
-                    Button("Удалить карточку", role: .destructive) {
+                    Button("Удалить карточку", systemImage: "trash", role: .destructive) {
                         isConfirmingDeletion = true
                     }
                     .accessibilityIdentifier("deleteSessionCard")
@@ -139,9 +134,10 @@ struct SessionCardScreen: View {
             }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Изменить") {
+                    Button("Изменить", systemImage: "pencil") {
                         isEditing = true
                     }
+                    .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("editSessionCard")
                 }
                 ToolbarItem(placement: .confirmationAction) {

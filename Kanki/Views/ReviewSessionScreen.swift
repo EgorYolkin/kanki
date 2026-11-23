@@ -61,19 +61,27 @@ struct ReviewSessionScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("reviewProgress")
-                Text(card.deck ?? CardCategory.noCategoryTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("reviewDeck")
+                HStack {
+                    Image(systemName: card.deck == nil ? "tray" : "folder")
+                        .accessibilityHidden(true)
+                    Text(card.deck ?? CardCategory.noCategoryTitle)
+                        .accessibilityIdentifier("reviewDeck")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            Section("Вопрос") {
+            Section {
                 CardMarkdownView(source: card.question)
+            } header: {
+                Label("Вопрос", systemImage: "questionmark.circle")
             }
             if session.isAnswerVisible {
-                Section("Ответ") {
+                Section {
                     CardMarkdownView(source: card.answer)
+                } header: {
+                    Label("Ответ", systemImage: "text.bubble")
                 }
-                Section("Насколько легко вспомнили?") {
+                Section {
                     HStack(spacing: 8) {
                         ForEach(RecallRating.allCases, id: \.self) { rating in
                             Button(rating.title) {
@@ -88,10 +96,12 @@ struct ReviewSessionScreen: View {
                         }
                     }
                     .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                } header: {
+                    Label("Насколько легко вспомнили?", systemImage: "star")
                 }
             } else {
                 Section {
-                    Button("Показать ответ") {
+                    Button("Показать ответ", systemImage: "eye") {
                         session.revealAnswer()
                     }
                 }
@@ -105,13 +115,15 @@ struct ReviewSessionScreen: View {
                 SectionIntro(symbol: "checkmark.circle", title: "Сеанс завершён", detail: "Оценено карточек: \(session.reviewedCount).")
                     .frame(maxWidth: .infinity)
             }
-            Section("Оценки") {
+            Section {
                 ForEach(session.summaryRows, id: \.rating) { row in
                     LabeledContent(row.rating.title, value: "\(row.count)")
                 }
+            } header: {
+                Label("Оценки", systemImage: "chart.bar")
             }
             Section {
-                Button("Готово") { dismiss() }
+                Button("Готово", systemImage: "checkmark") { dismiss() }
                     .accessibilityIdentifier("reviewFinish")
             }
         }

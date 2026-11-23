@@ -57,10 +57,12 @@ struct LearningScreen: View {
             }
             .accessibilityIdentifier("importedCards")
             if let loadError = localRead.failure {
-                Section("Не удалось открыть карточки") {
+                Section {
                     Text(loadError)
                     Text("Чтобы заменить локальные карточки снимком сервера, подтвердите загрузку в настройках.")
-                    Button("Повторить чтение") { reload() }
+                    Button("Повторить чтение", systemImage: "arrow.clockwise") { reload() }
+                } header: {
+                    Label("Не удалось открыть карточки", systemImage: "exclamationmark.triangle")
                 }
             } else {
                 lessonHomeSection
@@ -79,8 +81,8 @@ struct LearningScreen: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Выбрать карточки") { isChoosingCards = true }
-                    Button("Экспортировать все") {
+                    Button("Выбрать карточки", systemImage: "checkmark.circle") { isChoosingCards = true }
+                    Button("Экспортировать все", systemImage: "square.and.arrow.up") {
                         exportDocument = CardExportDocument(archive: CardExportArchive(snapshot: snapshot))
                         isExporting = true
                     }

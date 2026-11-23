@@ -22,18 +22,20 @@ struct ImportedCardsScreen: View {
             if let loadError {
                 Section {
                     Text(loadError)
-                    Button("Повторить чтение", action: reload)
+                    Button("Повторить чтение", systemImage: "arrow.clockwise", action: reload)
                 }
             } else if cards.isEmpty {
                 SectionIntro(symbol: "tray", title: "Нет импортированных карточек", detail: "Выберите пакет .apkg профиля Kanki v1.")
             } else {
-                NavigationLink("Библиотека заметок", value: ImportedNoteRoute.library)
-                    .accessibilityIdentifier("importedNoteLibrary")
+                NavigationLink(value: ImportedNoteRoute.library) {
+                    Label("Библиотека заметок", systemImage: "books.vertical")
+                }
+                .accessibilityIdentifier("importedNoteLibrary")
                 ForEach(cards) { card in
                     NavigationLink {
                         ImportedCardScreen(key: card.id)
                     } label: {
-                        Text(AnkiFieldText.title(card.title))
+                        Label(AnkiFieldText.title(card.title), systemImage: "rectangle.on.rectangle")
                     }
                     .accessibilityIdentifier("importedCard-\(card.guid)")
                 }
@@ -122,14 +124,18 @@ private struct ImportedCardScreen: View {
                         Text(schedule.due, format: .dateTime.day().month().year().hour().minute().second())
                             .accessibilityIdentifier("importedCardDue")
                     }
-                    NavigationLink("История повторений") { history(card.detail.reviews) }
-                        .accessibilityIdentifier("importedCardHistory")
+                    NavigationLink {
+                        history(card.detail.reviews)
+                    } label: {
+                        Label("История повторений", systemImage: "clock.arrow.circlepath")
+                    }
+                    .accessibilityIdentifier("importedCardHistory")
                 }
                 reviewControls(card)
             } else if error == nil {
                 ProgressView()
             } else {
-                Button("Повторить чтение", action: reload)
+                Button("Повторить чтение", systemImage: "arrow.clockwise", action: reload)
             }
             if let error {
                 Text(error).foregroundStyle(.red)

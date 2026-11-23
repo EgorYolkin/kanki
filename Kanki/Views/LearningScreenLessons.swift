@@ -4,11 +4,15 @@ extension LearningScreen {
     @ViewBuilder
     var lessonHomeSection: some View {
         if let latest = snapshot.latestLesson {
-            Section("Последний урок") {
+            Section {
                 Button { selectedLessonID = latest.id } label: {
-                    VStack(alignment: .leading) {
-                        Text(latest.title).font(.headline)
-                        Text(latest.course ?? Lesson.noCourseTitle).foregroundStyle(.secondary)
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text(latest.title).font(.headline)
+                            Text(latest.course ?? Lesson.noCourseTitle).foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "book")
                     }
                 }
                 .accessibilityLabel("\(latest.title) · \(latest.course ?? Lesson.noCourseTitle)")
@@ -20,11 +24,15 @@ extension LearningScreen {
                     Label("Все уроки", systemImage: "books.vertical")
                 }
                 .accessibilityIdentifier("lessonCatalog")
+            } header: {
+                Label("Последний урок", systemImage: "clock")
             }
         } else {
-            Section("Уроки") {
-                Button("Создать урок") { isCreatingLesson = true }
+            Section {
+                Button("Создать урок", systemImage: "plus") { isCreatingLesson = true }
                     .accessibilityIdentifier("lessonCreate")
+            } header: {
+                Label("Уроки", systemImage: "books.vertical")
             }
         }
     }

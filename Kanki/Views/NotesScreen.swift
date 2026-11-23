@@ -48,7 +48,7 @@ struct NotesScreen: View {
                 }
                 ForEach(rows) { note in
                     NavigationLink(value: mode == .graph ? ImportedNoteRoute.graph(note.uid) : .note(note.uid)) {
-                        Text(note.title)
+                        Label(note.title, systemImage: AppSection.notes.symbol)
                     }
                     .accessibilityIdentifier("libraryNote-\(note.uid)")
                 }
@@ -114,10 +114,12 @@ struct ImportedNoteScreen: View {
                         .textSelection(.enabled)
                         .accessibilityIdentifier("importedNoteBody")
                 }
-                NavigationLink("Граф заметки", value: ImportedNoteRoute.graph(uid))
-                    .accessibilityIdentifier("openNoteGraph")
-                links("Исходящие связи", detail.outgoing)
-                links("Обратные ссылки", detail.backlinks)
+                NavigationLink(value: ImportedNoteRoute.graph(uid)) {
+                    Label("Граф заметки", systemImage: AppSection.graph.symbol)
+                }
+                .accessibilityIdentifier("openNoteGraph")
+                links("Исходящие связи", systemImage: "arrow.up.right", detail.outgoing)
+                links("Обратные ссылки", systemImage: "arrow.down.left", detail.backlinks)
             case .success(nil):
                 SectionIntro(symbol: "doc", title: "Заметка не импортирована", detail: uid)
             case .failure:
@@ -140,19 +142,27 @@ struct ImportedNoteScreen: View {
     }
 
     @ViewBuilder
-    private func links(_ heading: String, _ links: [ImportedNoteLink]) -> some View {
+    private func links(_ heading: String, systemImage: String, _ links: [ImportedNoteLink]) -> some View {
         if !links.isEmpty {
-            Section(heading) {
+            Section {
                 ForEach(links) { link in
                     if let title = link.title {
-                        NavigationLink(value: ImportedNoteRoute.note(link.uid)) { linkLabel(title, link) }
-                            .accessibilityIdentifier("\(link.isBacklink ? "backlink" : "outgoing")-\(link.uid)-\(link.id.position)")
+                        NavigationLink(value: ImportedNoteRoute.note(link.uid)) {
+                            Label {
+                                linkLabel(title, link)
+                            } icon: {
+                                Image(systemName: AppSection.notes.symbol)
+                            }
+                        }
+                        .accessibilityIdentifier("\(link.isBacklink ? "backlink" : "outgoing")-\(link.uid)-\(link.id.position)")
                     } else {
                         linkLabel("Не импортирована: \(link.uid)", link)
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("missingNote-\(link.uid)-\(link.id.position)")
                     }
                 }
+            } header: {
+                Label(heading, systemImage: systemImage)
             }
         }
     }
